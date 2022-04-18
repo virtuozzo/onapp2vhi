@@ -1,0 +1,9 @@
+0. shutdown VM
+#virsh shutdown vtspnxjsblaxim
+1. set proper disk path and VM identifier  in recovery.xml
+2. create vm from recovery.xml 
+#virsh crate recovery.xml
+3. set proper VM identifier in scripts/grub_installation.sh
+#sed -i 's/identifier/vtspnxjsblaxim/g' scripts/grub_installation.sh
+4. execute scripts/grub_installation.sh script
+#sh scripts/grub_installation.sh

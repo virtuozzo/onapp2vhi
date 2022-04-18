@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<domain type="kvm" xmlns:qemu="http://libvirt.org/schemas/domain/qemu/1.0">
+  <name>identifier</name>
+  <description>recovery</description>
+  <memory>1048576</memory>
+  <currentMemory>1048576</currentMemory>
+  <vcpu current="1">4</vcpu>
+  <vcpus>
+    <vcpu id="0" enabled="yes" hotpluggable="no" order="1"/>
+  </vcpus>
+  <cputune>
+    <shares>1</shares>
+  </cputune>
+  <features>
+    <pae/>
+    <acpi/>
+    <apic/>
+  </features>
+  <os>
+    <type arch="x86_64" machine="pc">hvm</type>
+    <kernel>/onapp/tools/recovery/recovery-centos-7.7.kernel</kernel>
+    <initrd>/onapp/tools/recovery/recovery-centos-7.7.initrd</initrd>
+    <cmdline>root=live:CDLABEL=recovery-centos rootfstype=auto ro liveimg quiet rhgb rd.luks=0 rd.md=0 rd.dm=0 rdshell ip=10.63.0.124::10.63.0.1:255.255.255.0:recovery.kvm:eth0:off console=ttyS0,11520 password=$1$UvXIC532$IwuT/uTlEV9r..EewzL9h1 </cmdline>
+  </os>
+  <devices>
+    <emulator>/usr/libexec/qemu-kvm</emulator>
+    <disk type="file" device="cdrom">
+      <source file="/onapp/tools/recovery/recovery-centos-7.7.iso"/>
+      <target dev="hdb" bus="virtio"/>
+      <readonly/>
+    </disk>
+    <disk type="block" device="disk">
+      <source dev="/dev/onapp-ufevliekwvznhd/pdirxsyhjruusy"/>
+      <target dev="vda" bus="virtio"/>
+      <driver type="raw" name="qemu" cache="none" discard="ignore"/>
+    </disk>
+    <disk type="file" device="cdrom">
+      <source file="/onapp/tools/scripts.iso"/>
+      <target dev="hdc" bus="ide"/>
+      <readonly/>
+    </disk>
+
+ <serial type='pty'>
+   <target port='0'/>
+ </serial>
+ <console type='pty'>
+   <target type='serial' port='0'/>
+ </console>
+    <input type="tablet" bus="usb"/>
+  </devices>
+  <qemu:commandline>
+    <qemu:arg value="-global"/>
+    <qemu:arg value="virtio-pci.disable-modern=on"/>
+  </qemu:commandline>
+</domain>
+
