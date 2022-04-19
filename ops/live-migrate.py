@@ -157,7 +157,7 @@ def vm(idn='',vhip=''):
         if rc == 0 and ou != '':
             VHI_VM_ID = str(ou).strip("\n")
             print( "NEW VHI VM CREATED: " + VHI_CP_URL + "/compute/servers/instances/" + VHI_VM_ID  )
-            print( "...STOPPING VM BEFORE MIGRATION...")
+            print( "...stopping target VHI VM before migration...")
             CMD = "ssh -p{ssh_port} root@{vhi_cp} 'while true; do vinfra service compute server stop {vm_id} --hard --wait --timeout 15 -f json | jq -c [.name,.id,.vm_state,.power_state,.status] ;  pwstate=\"`vinfra service compute server show {vm_id} -f json | jq -r .power_state `\" ; echo \"$pwstate\" ; if [[ \"$pwstate\" == \"SHUTDOWN\" ]]; then break; fi ; sleep 1; done' 2>/dev/null ".format(ssh_port=VHI_SSH_PORT,vhi_cp=VHI_CP_IP,vm_id=VHI_VM_ID)
             run_command(CMD,8,1)
         #---
@@ -274,8 +274,10 @@ def vm(idn='',vhip=''):
                    del source.attrib['dev']
            elif disk.attrib['device'] == "cdrom":
                #device.remove(disk)
-               for source in disk.findall('source'):
-                   source.attrib['file'] = '/tmp/grub2.img'
+               cdrom_file = disk.find('source').attrib['file']
+               disk.find('source').attrib['file'] = '/tmp/grub2.img'
+               CMD = "ssh -p{ssh_port} root@{ohv_ip} 'scp -P{ssh_port} {cd_file} root@{vhv_ip}:/tmp/' ; ssh -p{ssh_port} root@{vhv_ip} 'ls /tmp/grub2*'".format(ohv_ip=VM_OHV_IP,vhv_ip=VHI_HV_IP,ssh_port=ONAPP_SSH_PORT,cd_file=cdrom_file,vm_idn=VM_IDn)
+               (rc,ou) = run_command(CMD,8,0)
        nic_num = 0
        for nic in device.findall("interface"):
            if nic_num == 0:
