@@ -96,47 +96,11 @@ def vm(idn='',vhip=''):
     print("-- OnApp: check if VM [{vm_idn}] is running on HV [{hv_ip}] --".format(vm_idn=VM_IDn,hv_ip=VM_OHV_IP))
     CMD = "ssh -p{ssh_port} root@{hv_ip} 'virsh list | grep {vm_idn}' 2>/dev/null ".format(hv_ip=VM_OHV_IP,ssh_port=ONAPP_SSH_PORT,vm_idn=VM_IDn)
     (rc,ou) = run_command(CMD,8,0)
-    if ou == "":
-       print("VM IS NOT RUNNING.\n PLEASE, START VM OR USE COLD-MIGRATE OPTION.")
+    if ou != "":
+       print("VM IS RUNNING.\n PLEASE, STOP THE VM BEFORE ITS OFFLINE MIGRATION.")
        exit(11)
 
-#--is_VM_Online--#
-
-
-#--step_7--#
-#--OnApp: get VM's XML config from OnApp hypervisor --#
-    print('-------')
-    print("-- OnApp: get VM's [{vm_idn}] XML config --".format(vm_idn=VM_IDn))
-    print('---')
-    URL = ONAPP_CP_URL + "/virtual_machines.json"
-    CMD = "ssh root@{hv_ip} 'virsh dumpxml {vm_idn} > /tmp/{vm_idn}.xml && cat /tmp/{vm_idn}.xml ' 2>/dev/null ".format(hv_ip=VM_OHV_IP,vm_idn=VM_IDn)
-    (rc,ou) = run_command(CMD,1,0)
-    VM_XML_CFG = str(ou)
-    print('---')
-    print("[...result output is too big...]\n")
-    if int(rc) != 0:
-       print("ERROR: Can't find VM running on Hypervisor. \n" + VM_XML_CFG)
-       exit()
-
-    vmxml = KVMxml.fromstring(VM_XML_CFG)
-
-#    print(KVMxml.tostring(vmxml))
-
-    XML_OVM_DISKS = []
-    XML_OVM_MACS = []
-
-    for device in vmxml.findall("devices"):
-       for disk in device.findall("disk"):
-           if disk.attrib['device'] == "disk":
-               disk_name = disk.find('target').attrib['dev']
-               disk_path =  disk.find('source').attrib['dev']
-               XML_OVM_DISKS.append({'name': disk_name , 'path': disk_path })
-       for nic in device.findall("interface"):
-           XML_OVM_MACS.append(nic.find('mac').attrib['address'])
-
-    print("XML_OVM_DISKS: " + str(XML_OVM_DISKS) + "\n")
-    print("XML_OVM_MACS: " + str(XML_OVM_MACS) + "\n")
-
+#--is_VM_Offline--#
 
 #--step_8--#
 #--OnApp: create similar VM on VHI side --#
@@ -256,88 +220,24 @@ def vm(idn='',vhip=''):
     print("XML_VVM_NICS: " + str(XML_VVM_NICS) + "\n")
     
 
-#--step_10--#
-#--OnApp: edit VM's XML config for VHI --#
-    global disk_num
-    global nic_num
-    for device in vmxml.findall("devices"):
-       for disk in device.findall("disk"):
-           if disk.attrib['device'] == "disk":
-               disk.attrib['type'] = 'file'
-               disk_label = disk.find('target').attrib['dev']
-               for driver in disk.findall('driver'):
-                   driver.attrib['type'] = 'qcow2'
-                   driver.attrib['io'] = 'native'
-                   driver.attrib['discard'] = 'unmap'
-               for source in disk.findall('source'):
-                   source.attrib['file'] = VHI_VM_DISKS[disk_label]
-                   del source.attrib['dev']
-           elif disk.attrib['device'] == "cdrom":
-               #device.remove(disk)
-               for source in disk.findall('source'):
-                   source.attrib['file'] = '/tmp/grub2.img'
-       nic_num = 0
-       for nic in device.findall("interface"):
-           if nic_num == 0:
-              for src in nic.findall('source'):
-                  src.attrib['bridge'] = 'br-int'
-              vport = nic.findall('virtualport')
-              if not vport:
-                  vp = KVMxml.Element('virtualport', type='openvswitch')
-                  prm = KVMxml.Element('parameters', interfaceid=XML_VVM_NICS[0]['id'])
-                  vp.text = "\n\t"
-                  vp.tail = "\n      "
-                  prm.tail = "\n      "
-                  nic.insert(2,vp)
-                  vp.append(prm)
-              for tgt in nic.findall('target'):
-                  tgt.attrib['dev'] = XML_VVM_NICS[0]['tap']
-           elif nic_num > 0:
-               device.remove(nic)
-           nic_num += 1
-           
-#    print(KVMxml.tostring(vmxml))
-
-    xmltree = KVMxml.ElementTree(vmxml)
-    xmltree.write("/tmp/{}.xml".format(OVM_IDENTIFIER))  
-
-#--vvm_xml_created--#
-
-#--step_11--#
-#--OnApp: Upload O2V migration XML to OnApp hypervisor --#
-    print('-------')
-    print("-- Upload OnApp2VHI VM {vm_idn} migration XML to OnApp HV [{hv_ip}] --".format(vm_idn=VM_IDn,hv_ip=VM_OHV_IP))
-    CMD = "scp -P{ssh_port} /tmp/{vm_idn}.xml root@{hv_ip}:/tmp/ ; ssh -p{ssh_port} root@{hv_ip} 'ls /tmp/{vm_idn}.xml'".format(hv_ip=VM_OHV_IP,ssh_port=ONAPP_SSH_PORT,vm_idn=VM_IDn)
-    (rc,ou) = run_command(CMD,8,0)
-#--xml_config_uploaded--#
-
 #--step_12--#
-#--OnApp: RUN O2V migration from OnApp to VHI hypervisor --#
+#--OnApp: RUN O2V offline VM's disks migration from OnApp to VHI hypervisor --#
     print('-------')
-    print("-- Run OnApp2VHI VM {vm_idn} migration from OnApp to VHI hypervisor {hv_ip} --".format(vm_idn=VM_IDn,hv_ip=VM_OHV_IP))
-    onappvm_disks = ",".join([str(dsk['name']) for dsk in XML_OVM_DISKS]) 
-    CMD = "ssh -p{ossh_port} root@{ohv_ip} 'virsh migrate --live --auto-converge --unsafe --copy-storage-all --migrate-disks {vm_disks} --xml /tmp/{vm_idn}.xml --verbose {vm_idn} qemu+ssh://{vhv_ip}:{vssh_port}/system?no_verify=1 tcp:{vhv_ip} '".format(ohv_ip=VM_OHV_IP,vhv_ip=VHI_HV_IP,ossh_port=ONAPP_SSH_PORT,vssh_port=VHI_SSH_PORT,vm_disks=onappvm_disks,vm_idn=VM_IDn)
-    #print(CMD)
-    (rc,ou) = run_command(CMD,8,1)
+    print("-- Run O2V offline VM's disks migration from OnApp to VHI hypervisor --".format(vm_idn=VM_IDn,hv_ip=VM_OHV_IP))
+    dsk_num = 0
+    for ovm_dsk in ONAPPVM_DISKS:
+        store_idn = ovm_dsk['datastore_idn']
+        disk_idn =  ovm_dsk['disk_idn']
+        CMD = "ssh -p{ossh_port} root@{ocp_ip} 'curl -k -s -X PUT -d \"{{\\\"state\\\":3}}\" {ohv_ip}:8080/lvm/Datastore/{stor_idn}/VDisk/{dsk_idn}'".format(ocp_ip=ONAPP_CP_HOST,ossh_port=ONAPP_SSH_PORT,ohv_ip=VM_OHV_IP,stor_idn=store_idn,dsk_idn=disk_idn)
+        (rc,ou) = run_command(CMD,0,0)
+        CMD = "ssh -p{ossh_port} root@{ohv_ip} 'qemu-img convert -p -f raw -O qcow2 /dev/{ostor_idn}/{odsk_idn} /onapp/backups/{odsk_idn}.qcow2'".format(ossh_port=ONAPP_SSH_PORT,ohv_ip=VM_OHV_IP,ostor_idn=store_idn,odsk_idn=disk_idn)
+        (rc,ou) = run_command(CMD,8,1)
+        CMD = "ssh -p{ossh_port} root@{ocp_ip} 'curl -k -s -X PUT -d \"{{\\\"state\\\":2}}\" {ohv_ip}:8080/lvm/Datastore/{ds_idn}/VDisk/{dsk_idn}'".format(ocp_ip=ONAPP_CP_HOST,ossh_port=ONAPP_SSH_PORT,ohv_ip=VM_OHV_IP,ds_idn=store_idn,dsk_idn=disk_idn)
+        (rc,ou) = run_command(CMD,0,0)
+        CMD = "ssh -p{ossh_port} root@{ohv_ip} 'scp -v -P{vssh_port} /onapp/backups/{odsk_idn}.qcow2 root@{vhv_ip}:{vdsk_path}'".format(ossh_port=ONAPP_SSH_PORT,ohv_ip=VM_OHV_IP,vssh_port=VHI_SSH_PORT,vhv_ip=VHI_HV_IP,odsk_idn=disk_idn,vdsk_path=XML_VVM_DISKS[dsk_num])
+        (rc,ou) = run_command(CMD,8,1)
+        dsk_num += 1
 #--vm_migrated--#
-
-#--step_12--#
-#--OnApp: STOP just migrated OnApp VM on VHI hypervisor --#
-    print('-------')
-    print("-- Stop just migrate OnApp VM {vm_idn} on VHI hypervisor {hv_ip} --".format(vm_idn=VM_IDn,hv_ip=VHI_HV_IP))
-    CMD = "ssh -p{vssh_port} root@{vhi_hv} 'virsh destroy {vm_idn} '".format(vhi_hv=VHI_HV_IP,vssh_port=VHI_SSH_PORT,vm_idn=VM_IDn)
-    #print(CMD)
-    (rc,ou) = run_command(CMD,8,0)
-#--onapp_vhi_vm_stopped--#
-
-#--step_13--#
-#--OnApp: START origina pre-created VHI VM on VHI hypervisor --#
-    print('-------')
-    print("-- Start original pre-created VHI VM {vhi_vm_id} on VHI hypervisor {hv_ip} --".format(vhi_vm_id=VM_IDn,hv_ip=VHI_HV_IP))
-    CMD = "ssh -p{ssh_port} root@{vhi_hv} 'vinfra service compute server start {vm_id} -f json | jq -c -r \"[ .id , .power_state ]\" ' 2>/dev/null ".format(ssh_port=VHI_SSH_PORT,vhi_hv=VHI_HV_IP,vm_id=VHI_VM_ID)
-    #print(CMD)
-    (rc,ou) = run_command(CMD,8,0)
-#--migration_finished--# 
 
 cli.add_command(vm)
 

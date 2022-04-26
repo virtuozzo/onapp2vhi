@@ -123,7 +123,7 @@ def get_onapp_vm_disks(vm_idn='',verbosity=8):
     API_VM_DISKS = []
     for line in ou.splitlines():
        dsk = json.loads(line)
-       API_VM_DISKS.append( { 'identifier': dsk[0].encode('ascii'),'datastore_id':dsk[1], 'size': dsk[2], 'number': dsk[3], 'primary': dsk[4], "is_swap": dsk[5],'path': "/dev/"+str(API_DS[dsk[1]])+"/"+str(dsk[0]) } )
+       API_VM_DISKS.append( { 'disk_idn': dsk[0].encode('ascii'),'ds_id':dsk[1], 'size': dsk[2], 'number': dsk[3], 'primary': dsk[4], "is_swap": dsk[5],'path': "/dev/"+str(API_DS[dsk[1]])+"/"+str(dsk[0]),'datastore_idn': str(API_DS[dsk[1]]) } )
 
     return API_VM_DISKS
 
