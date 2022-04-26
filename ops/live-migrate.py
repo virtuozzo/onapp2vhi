@@ -46,7 +46,7 @@ def vm(idn='',vhip=''):
     print('-------')
     print("-- OnApp: get source VM parameters --")
     URL = ONAPP_CP_URL + "/virtual_machines.json"
-    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c --arg vm_idn {vm_idn} '.[] | select(.virtual_machine.identifier==$vm_idn) | [ .virtual_machine.identifier, .virtual_machine.hypervisor_id, .virtual_machine.ip_addresses[0][\"ip_address\"][\"address\"] ] '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, vm_idn=VM_IDn)
+    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -r -c --arg vm_idn {vm_idn} '.[] | select(.virtual_machine.identifier==$vm_idn) | [ .virtual_machine.identifier, .virtual_machine.hypervisor_id, .virtual_machine.ip_addresses[0][\"ip_address\"][\"address\"] ] '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, vm_idn=VM_IDn)
     (rc,ou) = run_command(CMD,8,0)  
     OVM_IDENTIFIER = str(json.loads(ou)[0]).encode('ascii')
     OVM_HV_ID = int(json.loads(ou)[1])
@@ -57,7 +57,7 @@ def vm(idn='',vhip=''):
     print('-------')
     print("-- OnApp: get VM's {hypervisor_ip} by {hypervisor_id} --")
     URL = ONAPP_CP_URL + "/hypervisors.json"
-    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | select(.hypervisor.id=={hv_id}) | .hypervisor.ip_address '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, hv_id=OVM_HV_ID)
+    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -r -c '.[] | select(.hypervisor.id=={hv_id}) | .hypervisor.ip_address '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, hv_id=OVM_HV_ID)
     (rc,ou) = run_command(CMD,8,0)
     VM_OHV_IP=str(ou).strip("\n")
 #--VM_OHV_IP--#

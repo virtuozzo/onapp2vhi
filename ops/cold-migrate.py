@@ -46,7 +46,7 @@ def vm(idn='',vhip=''):
     print('-------')
     print("-- OnApp: get source VM parameters --")
     URL = ONAPP_CP_URL + "/virtual_machines.json"
-    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c --arg vm_idn {vm_idn} '.[] | select(.virtual_machine.identifier==$vm_idn) | [ .virtual_machine.identifier, .virtual_machine.hypervisor_id, .virtual_machine.ip_addresses[0][\"ip_address\"][\"address\"] ] '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, vm_idn=VM_IDn)
+    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -r -c --arg vm_idn {vm_idn} '.[] | select(.virtual_machine.identifier==$vm_idn) | [ .virtual_machine.identifier, .virtual_machine.hypervisor_id, .virtual_machine.ip_addresses[0][\"ip_address\"][\"address\"] ] '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, vm_idn=VM_IDn)
     (rc,ou) = run_command(CMD,8,0)  
     OVM_IDENTIFIER = str(json.loads(ou)[0]).encode('ascii')
     OVM_HV_ID = int(json.loads(ou)[1])
@@ -57,7 +57,7 @@ def vm(idn='',vhip=''):
     print('-------')
     print("-- OnApp: get VM's {hypervisor_ip} by {hypervisor_id} --")
     URL = ONAPP_CP_URL + "/hypervisors.json"
-    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | select(.hypervisor.id=={hv_id}) | .hypervisor.ip_address '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, hv_id=OVM_HV_ID)
+    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -r -c '.[] | select(.hypervisor.id=={hv_id}) | .hypervisor.ip_address '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, hv_id=OVM_HV_ID)
     (rc,ou) = run_command(CMD,8,0)
     VM_OHV_IP=str(ou).strip("\n")
 #--VM_OHV_IP--#
@@ -122,7 +122,7 @@ def vm(idn='',vhip=''):
             VHI_VM_ID = str(ou).strip("\n")
             print( "NEW VHI VM CREATED: " + VHI_CP_URL + "/compute/servers/instances/" + VHI_VM_ID  )
             print( "...STOPPING VM BEFORE MIGRATION...")
-            CMD = "ssh -p{ssh_port} root@{vhi_cp} 'while true; do vinfra service compute server stop {vm_id} --hard --wait --timeout 15 -f json | jq -c [.name,.id,.vm_state,.power_state,.status] ;  pwstate=\"`vinfra service compute server show {vm_id} -f json | jq -r .power_state `\" ; echo \"$pwstate\" ; if [[ \"$pwstate\" == \"SHUTDOWN\" ]]; then break; fi ; sleep 1; done' 2>/dev/null ".format(ssh_port=VHI_SSH_PORT,vhi_cp=VHI_CP_IP,vm_id=VHI_VM_ID)
+            CMD = "ssh -p{ssh_port} root@{vhi_cp} 'while true; do vinfra service compute server stop {vm_id} --hard --wait --timeout 15 -f json | jq -r -c [.name,.id,.vm_state,.power_state,.status] ;  pwstate=\"`vinfra service compute server show {vm_id} -f json | jq -r .power_state `\" ; echo \"$pwstate\" ; if [[ \"$pwstate\" == \"SHUTDOWN\" ]]; then break; fi ; sleep 1; done' 2>/dev/null ".format(ssh_port=VHI_SSH_PORT,vhi_cp=VHI_CP_IP,vm_id=VHI_VM_ID)
             run_command(CMD,8,1)
         #---
         print('-------')
@@ -230,11 +230,11 @@ def vm(idn='',vhip=''):
         disk_idn =  ovm_dsk['disk_idn']
         CMD = "ssh -p{ossh_port} root@{ocp_ip} 'curl -k -s -X PUT -d \"{{\\\"state\\\":3}}\" {ohv_ip}:8080/lvm/Datastore/{stor_idn}/VDisk/{dsk_idn}'".format(ocp_ip=ONAPP_CP_HOST,ossh_port=ONAPP_SSH_PORT,ohv_ip=VM_OHV_IP,stor_idn=store_idn,dsk_idn=disk_idn)
         (rc,ou) = run_command(CMD,0,0)
-        CMD = "ssh -p{ossh_port} root@{ohv_ip} 'qemu-img convert -p -f raw -O qcow2 /dev/{ostor_idn}/{odsk_idn} /onapp/backups/{odsk_idn}.qcow2'".format(ossh_port=ONAPP_SSH_PORT,ohv_ip=VM_OHV_IP,ostor_idn=store_idn,odsk_idn=disk_idn)
+        CMD = "ssh -t -p{ossh_port} root@{ohv_ip} 'qemu-img convert -p -f raw -O qcow2 -o cluster_size=1048576,lazy_refcounts=on /dev/{ostor_idn}/{odsk_idn} /onapp/backups/{odsk_idn}.qcow2'".format(ossh_port=ONAPP_SSH_PORT,ohv_ip=VM_OHV_IP,ostor_idn=store_idn,odsk_idn=disk_idn)
         (rc,ou) = run_command(CMD,8,1)
         CMD = "ssh -p{ossh_port} root@{ocp_ip} 'curl -k -s -X PUT -d \"{{\\\"state\\\":2}}\" {ohv_ip}:8080/lvm/Datastore/{ds_idn}/VDisk/{dsk_idn}'".format(ocp_ip=ONAPP_CP_HOST,ossh_port=ONAPP_SSH_PORT,ohv_ip=VM_OHV_IP,ds_idn=store_idn,dsk_idn=disk_idn)
         (rc,ou) = run_command(CMD,0,0)
-        CMD = "ssh -p{ossh_port} root@{ohv_ip} 'scp -v -P{vssh_port} /onapp/backups/{odsk_idn}.qcow2 root@{vhv_ip}:{vdsk_path}'".format(ossh_port=ONAPP_SSH_PORT,ohv_ip=VM_OHV_IP,vssh_port=VHI_SSH_PORT,vhv_ip=VHI_HV_IP,odsk_idn=disk_idn,vdsk_path=XML_VVM_DISKS[dsk_num])
+        CMD = "ssh -t -p{ossh_port} root@{ohv_ip} 'scp -P{vssh_port} /onapp/backups/{odsk_idn}.qcow2 root@{vhv_ip}:{vdsk_path}'".format(ossh_port=ONAPP_SSH_PORT,ohv_ip=VM_OHV_IP,vssh_port=VHI_SSH_PORT,vhv_ip=VHI_HV_IP,odsk_idn=disk_idn,vdsk_path=XML_VVM_DISKS[dsk_num])
         (rc,ou) = run_command(CMD,8,1)
         dsk_num += 1
 #--vm_migrated--#
