@@ -4,6 +4,7 @@ import os
 import sys
 import json
 import click
+import time
 import xml.etree.ElementTree as KVMxml
 from click_default_group import DefaultGroup
 
@@ -58,9 +59,8 @@ def vm(idn='',vhip=''):
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | select(.hypervisor.id=={hv_id}) | .hypervisor.ip_address '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, hv_id=VM_OHV_ID)
     (rc,ou) = run_command(CMD,8,0)
     VM_OHV_IP=str(ou).strip("\n")
-#--VM_OHV_IP--#
 
-#--step_4--#
+#--step_3--#
 #--OnApp: get OnApp VM disk info --#
     print('-------')
     print("-- OnApp: get VM's disk info --")
@@ -77,15 +77,32 @@ def vm(idn='',vhip=''):
 #--OnApp: Check if VM is running at OnApp hypervisor --#
     print('-------')
     print("-- OnApp: check if VM [{vm_idn}] is running on HV [{hv_ip}] --".format(vm_idn=VM_IDn,hv_ip=VM_OHV_IP))
-    URL = ONAPP_CP_URL + "/virtual_machines.json"
+    print('---')
     CMD = "ssh root@{hv_ip} 'virsh dominfo {vm_idn}'".format(hv_ip=VM_OHV_IP,vm_idn=VM_IDn)
     (rc,ou) = run_command(CMD,8,0)
     if rc == 0:
        print("VM IS  RUNNING.\n ")
+#Save original xml and remove cdrom
+       CMD = "ssh root@{hv_ip} 'virsh dumpxml {vm_idn} 2>/dev/null > /tmp/{vm_idn}.xml ; cat /tmp/{vm_idn}.xml' 2>/dev/null".format(vm_idn=VM_IDn,hv_ip=VM_OHV_IP)
+       (rc,ou) = run_command(CMD,1,0)
+       VM_XML_CFG = str(ou)
+       vmxml = KVMxml.fromstring(VM_XML_CFG)
+       for device in vmxml.findall("devices"):
+           for disk in device.findall("disk"):
+               if disk.attrib['device'] == "cdrom":
+                   device.remove(disk)
+       xmltree = KVMxml.ElementTree(vmxml)
+       xmltree.write("scripts/{}.xml".format(VM_IDn))
+
+
        CMD = "ssh root@{hv_ip} 'virsh shutdown {vm_idn}'".format(hv_ip=VM_OHV_IP,vm_idn=VM_IDn)
        (rc,ou) = run_command(CMD,8,0)
+       while rc != 1:
+           time.sleep(10)
+           CMD = "ssh root@{hv_ip} 'virsh dominfo {vm_idn}'".format(hv_ip=VM_OHV_IP,vm_idn=VM_IDn)
+           (rc,ou) = run_command(CMD,8,0)
 
-
+#Generate recovery config xml
     tree = KVMxml.parse('scripts/recovery.xml')
     root = tree.getroot()
     for device in root.findall("devices"):
@@ -105,7 +122,6 @@ def vm(idn='',vhip=''):
     # --OnApp: Run sed --#
     print('-------')
     print("-- OnApp: check if VM [{vm_idn}] is running on HV [{hv_ip}] --".format(vm_idn=VM_IDn, hv_ip=VM_OHV_IP))
-    URL = ONAPP_CP_URL + "/virtual_machines.json"
     CMD = "ssh root@{hv_ip} 'sed -i 's/identifier/{vm_idn}/g' /onapp/tools/scripts/grub_installation.sh && sed -i 's/identifier/{vm_idn}/g' /onapp/tools/scripts/recovery.xml.mg'".format(
         hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
     (rc, ou) = run_command(CMD, 8, 0)
@@ -114,7 +130,6 @@ def vm(idn='',vhip=''):
     # --OnApp: Start VM is recovery mode --#
     print('-------')
     print("-- OnApp: check if VM [{vm_idn}] is running on HV [{hv_ip}] --".format(vm_idn=VM_IDn, hv_ip=VM_OHV_IP))
-    URL = ONAPP_CP_URL + "/virtual_machines.json"
     CMD = "ssh root@{hv_ip} 'virsh create /onapp/tools/scripts/recovery.xml.mg'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
     (rc, ou) = run_command(CMD, 8, 0)
 
@@ -122,12 +137,15 @@ def vm(idn='',vhip=''):
     # --OnApp: SInstall grub --#
     print('-------')
     print("-- OnApp: check if VM [{vm_idn}] is running on HV [{hv_ip}] --".format(vm_idn=VM_IDn, hv_ip=VM_OHV_IP))
-    URL = ONAPP_CP_URL + "/virtual_machines.json"
     CMD = "ssh -t -t  root@{hv_ip} sh -c -l '/onapp/tools/scripts/grub_installation.sh'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
     (rc, ou) = run_command(CMD, 8, 0)
 
 #--step_8--#
-
+    # --OnApp: Start VM is recovery mode --#
+    print('-------')
+    print("-- OnApp: check if VM [{vm_idn}] is running on HV [{hv_ip}] --".format(vm_idn=VM_IDn, hv_ip=VM_OHV_IP))
+    CMD = "ssh root@{hv_ip} 'virsh shutdown {vm_idn} && sleep 60 && virsh create /onapp/tools/scripts/{vm_idn}.xml'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
+    (rc, ou) = run_command(CMD, 8, 0)
 
 
 

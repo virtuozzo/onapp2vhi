@@ -38,7 +38,7 @@ def run_command(CMD,verbose=1,interactive=1):
       exit_code = subprocess.call(CMD,shell=True)
 
    if verbose >= 8 :
-      print( "Result[" + str(exit_code) + "]: " + str(cmd_output.encode('ascii')) )
+      print( "Result[" + str(exit_code) + "]: " + str(cmd_output) )
    elif verbose >= 1 and exit_code >= 1:
       print(exit_code) 
 
