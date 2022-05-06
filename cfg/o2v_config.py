@@ -17,7 +17,13 @@ VHI_CP_IP = '10.63.0.63'
 VHI_HV_IP = '10.63.0.64'
 
 VHI_SSH_PORT = 2222
-VHI_IMAGE = 'cirros'
+VHI_LINUX_IMAGE = 'cirros'
+VHI_WINDOWS_IMAGE = 'windows2012'
 VHI_FLAVOR = 'small'
 VHI_SG_ID = '207c9e28-abe4-48b1-b704-4b5a3c0df097'
 #
+## General options
+SSH_OPTS = "-o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no'"
+IMG_SPARSING = False
+
+
