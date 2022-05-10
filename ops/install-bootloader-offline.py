@@ -141,10 +141,21 @@ def vm(idn='',vhip=''):
     (rc, ou) = run_command(CMD, 8, 0)
 
 #--step_8--#
-    # --OnApp: Start VM is recovery mode --#
+    # --OnApp: Shutdown VM  --#
+    print('-------')
+    print("-- OnApp: shutdown VM [{vm_idn}]  on HV [{hv_ip}] --".format(vm_idn=VM_IDn, hv_ip=VM_OHV_IP))
+    CMD = "ssh root@{hv_ip} 'virsh shutdown {vm_idn}'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
+    (rc,ou) = run_command(CMD,8,0)
+    while rc != 1:
+        time.sleep(10)
+        CMD = "ssh root@{hv_ip} 'virsh dominfo {vm_idn}'".format(hv_ip=VM_OHV_IP,vm_idn=VM_IDn)
+        (rc,ou) = run_command(CMD,8,0)
+
+#--step_8--#
+    # --OnApp: Start VM  --#
     print('-------')
     print("-- OnApp: check if VM [{vm_idn}] is running on HV [{hv_ip}] --".format(vm_idn=VM_IDn, hv_ip=VM_OHV_IP))
-    CMD = "ssh root@{hv_ip} 'virsh shutdown {vm_idn} && sleep 60 && virsh create /onapp/tools/scripts/{vm_idn}.xml'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
+    CMD = "ssh root@{hv_ip} 'virsh create /onapp/tools/scripts/{vm_idn}.xml'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
     (rc, ou) = run_command(CMD, 8, 0)
 
 

@@ -35,7 +35,7 @@
       <driver type="raw" name="qemu" cache="none" discard="ignore"/>
     </disk>
     <disk type="file" device="cdrom">
-      <source file="/onapp/tools/scripts.iso"/>
+      <source file="/onapp/tools/scripts/scripts.iso"/>
       <target dev="hdc" bus="ide"/>
       <readonly/>
     </disk>
