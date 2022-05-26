@@ -32,5 +32,6 @@ else
 
         grub-install --recheck $ROOT_DEV || grub2-install --recheck $ROOT_DEV
         sed -i 's/^GRUB_DISABLE_LINUX_UUID=true/#GRUB_DISABLE_LINUX_UUID=true/' /etc/default/grub
+        sed -i 's/^GRUB_DISABLE_UUID=true/#GRUB_DISABLE_UUID=true/' /etc/default/grub
         grub-mkconfig -o $GRUB_CONF || grub2-mkconfig -o $GRUB_CONF
 fi
