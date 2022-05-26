@@ -12,13 +12,22 @@ from o2v_config import *
 ##-----FUNCTION-------##
 ##-----run_command-------##
  ######################
-def run_command(CMD,verbose=1,interactive=1):
+def run_command(CMD,verbose=1,interactive=1,comment=''):
 
    if verbose >= 1 and verbose < 8:
+      if verbose >= 5 and comment != '':
+         print("-----")
+         print(comment)
+      print("----")
       print( "Running: " + CMD )
-
+      if verbose >= 5 and comment != '':
+         print("---")
+       
    elif verbose >= 8:
-      print( "-----")
+      if comment != '':
+         print( "-----")
+         print(str(comment).strip())
+      print( "----")
       print( "Running: " + CMD )
       print( "---")
 

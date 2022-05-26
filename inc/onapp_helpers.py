@@ -17,9 +17,12 @@ from onapp_helpers import *
 ##-----FUNCTION-------##
 ##---list_onapp_vms---##
  ######################
-def list_onapp_vms(vals='',by='',url=''):
+def list_onapp_vms(vals='',by='',url='',verbosity=8):
 
     URL = ONAPP_CP_URL + '/virtual_machines.json'
+
+    if verbosity > 7:
+       verbosity = 7
 
     if vals == "" and by == "":
        jqexp = "jq -c '.[] | [ .virtual_machine.id , .virtual_machine.identifier , .virtual_machine.hostname , .virtual_machine.booted ]'"
@@ -42,10 +45,9 @@ def list_onapp_vms(vals='',by='',url=''):
        vals_str = str( vals_list ).replace("'",'')
        jqexp = "jq -c '.[] | {vls}'".format(vls=vals_str)
 
+    NOTE = ''' STEP0: LIST ONAPP VMS '''
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {res_url}".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, res_url=URL) + " | {jqex}".format(jqex=jqexp)
-    print ('-----')
-    (rc,ou) = run_command(CMD,7,0)
-    print ('---')
+    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     print ("{}".format(ou))
 
     return (rc,ou.decode('ascii'))
@@ -61,21 +63,21 @@ def get_onapp_vm_nics(vm_idn='',verbosity=8):
 
     #--OnApp: get source VM NICs' MACs info --#
 
-    print('-------')
-    print("-- OnApp: get VM's MACS --")
+    NOTE = """ -- OnApp: get VM's MACS -- """
+
     URL = ONAPP_CP_URL + "/virtual_machines/{}/network_interfaces.json".format(VM_IDn)
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | [ .network_interface[\"id\"],.network_interface[\"mac_address\"],.network_interface[\"primary\"] ] '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL )
-    (rc,ou) = run_command(CMD,8,0)
+    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     API_VM_MACS = []
     for line in ou.splitlines():
        nic = json.loads(line)
        API_VM_MACS.append( { 'id': nic[0], 'mac': nic[1].encode('ascii'),'primary': nic[2] } ) 
 
-    print('-------')
-    print("-- OnApp: get VM's IP addresses --")
+    NOTE = """ -- OnApp: get VM's IP addresses -- """
+
     URL = ONAPP_CP_URL + "/virtual_machines/{}/ip_addresses.json".format(VM_IDn)
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | [ .ip_address_join[\"network_interface_id\"],.ip_address_join[\"ip_address\"][\"address\"] ] '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL )
-    (rc,ou) = run_command(CMD,8,0)
+    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     API_VM_IPS = defaultdict( lambda: [] )
     for line in ou.splitlines():
        nic = json.loads(line)
@@ -102,24 +104,27 @@ def get_onapp_vm_disks(vm_idn='',verbosity=8):
     VM_IDn = vm_idn
 
 #--OnApp: get source VM data_stores --#
-    print('-------')
-    print("-- OnApp: get OnApp datastores --")
+
+    NOTE = """ -- OnApp: get OnApp datastores -- """
+
     URL = ONAPP_CP_URL + "/settings/data_stores.json"
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | [ .data_store.id , .data_store.identifier ] '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL)
-    (rc,ou) = run_command(CMD,7,0)
+    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     API_DS = {}
     for line in ou.splitlines():
        ds = json.loads(line)
        API_DS[ ds[0] ] = ds[1].encode('ascii')
-    print ("ONAPP_DATASTORES: \n" + str(API_DS))
-    print("")
+    if verbosity >= 7:
+       print ("ONAPP_DATASTORES: \n" + str(API_DS))
+       print("")
 
 #--OnApp: get source VM disks --#
-    print('-------')
-    print("-- OnApp: get VM's disks by {identifier} --")
+    
+    NOTE = """ -- OnApp: get VM's disks by {identifier} -- """
+
     URL = ONAPP_CP_URL + "/virtual_machines/{}/disks.json".format(VM_IDn)
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | [ .disk.identifier,.disk.data_store_id,.disk.disk_size,.disk.disk_vm_number,.disk.primary,.disk.is_swap ] '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL )
-    (rc,ou) = run_command(CMD,8,0)
+    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     API_VM_DISKS = []
     for line in ou.splitlines():
        dsk = json.loads(line)
@@ -138,24 +143,26 @@ def get_onapp_vm_primary_disk(vm_idn='',verbosity=8):
     VM_IDn = vm_idn
 
 #--OnApp: get source VM data_stores --#
-    print('-------')
-    print("-- OnApp: get OnApp datastores --")
+    
+    NOTE = """ -- OnApp: get OnApp datastores -- """
+
     URL = ONAPP_CP_URL + "/settings/data_stores.json"
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | [ .data_store.id , .data_store.identifier ] '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL)
-    (rc,ou) = run_command(CMD,7,0)
+    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     API_DS = {}
     for line in ou.splitlines():
        ds = json.loads(line)
        API_DS[ ds[0] ] = ds[1].encode('ascii')
-    print ("ONAPP_DATASTORES: \n" + str(API_DS))
-    print("")
-
+    if vertosity >= 7:
+       print ("ONAPP_DATASTORES: \n" + str(API_DS))
+    
 #--OnApp: get source VM disks --#
-    print('-------')
-    print("-- OnApp: get VM's disks by {identifier} --")
+    
+    NOTE = """ -- OnApp: get VM's disks by {identifier} -- """
+
     URL = ONAPP_CP_URL + "/virtual_machines/{}/disks.json".format(VM_IDn)
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | select(.disk.primary==true) | [ .disk.identifier,.disk.data_store_id ] '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL )
-    (rc,ou) = run_command(CMD,8,0)
+    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     API_VM_PRIMARY_DISK = []
     for line in ou.splitlines():
        dsk = json.loads(line)

@@ -1,6 +1,9 @@
 import sys
 sys.dont_write_bytecode = True
 
+#-VERBOSITY_LEVEL-
+VERBOSITY = 8
+
 #
 ## ONAPP API CREDENTIALS ##
 ONAPP_CP_HOST = "cpinv.onappdev.com"
@@ -25,5 +28,6 @@ VHI_SG_ID = '207c9e28-abe4-48b1-b704-4b5a3c0df097'
 ## General options
 SSH_OPTS = "-o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no'"
 IMG_SPARSING = False
+
 
 
