@@ -270,6 +270,8 @@ def vm(idn='',vhip='',snc='',verb=''):
         for ovm_dsk in ONAPPVM_DISKS:
             store_idn = ovm_dsk['datastore_idn']
             disk_idn = ovm_dsk['disk_idn']
+            CMD = "ssh -p{ossh_port} {sshopt} root@{ocp_ip} 'curl -k -s -X PUT -d \"{{\\\"state\\\":3}}\" {ohv_ip}:8080/lvm/Datastore/{stor_idn}/VDisk/{dsk_idn}' 2>/dev/null".format(ocp_ip=ONAPP_CP_HOST,ossh_port=ONAPP_SSH_PORT,sshopt=SSH_OPTS,ohv_ip=VM_OHV_IP,stor_idn=store_idn,dsk_idn=disk_idn)
+            (rc,ou) = run_command(CMD,0,0)
             CMD = "ssh -p{ossh_port} {sshopt} root@{ohv_ip} 'for port in {{2048..2064}}; do nbd=`qemu-nbd -f -t --nocache --aio=native -p $port -f raw /dev/{ostor_idn}/{odsk_idn} --fork 2>&1` ; res=$? ; if [[ $res == 0 ]] && [[ $nbd == \"\" ]]; then echo $port; break; else port=$((port+1)); fi ; done' 2>/dev/null ".format(ossh_port=ONAPP_SSH_PORT,sshopt=SSH_OPTS,ohv_ip=VM_OHV_IP,ostor_idn=store_idn,odsk_idn=disk_idn)
             (rc,ou) = run_command(CMD,verbosity,0)
             nbd_port = str(ou).strip().encode('ascii')
