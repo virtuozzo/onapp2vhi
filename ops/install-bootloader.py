@@ -52,79 +52,87 @@ def vm(idn='',vhip=''):
 
 #--step_1--#
 #--OnApp: get source VM parameters--#
-    print('-------')
-    print("-- OnApp: get source VM parameters --")
+    
+    NOTE = """ -- OnApp: get source VM parameters -- """
+
     URL = ONAPP_CP_URL + "/virtual_machines.json"
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c --arg vm_idn {vm_idn} '.[] | select(.virtual_machine.identifier==$vm_idn) | [ .virtual_machine.identifier, .virtual_machine.hypervisor_id, .virtual_machine.ip_addresses[0][\"ip_address\"][\"address\"] ] '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, vm_idn=VM_IDn)
-    (rc,ou) = run_command(CMD,verbosity,0)   
+    (rc,ou) = run_command(CMD,verbosity,0,NOTE)   
     VM_OHV_ID = int(json.loads(ou)[1])
     print("HV_ID: " + str(VM_OHV_ID))
 #--VM_OHV_ID--#
 
 #--step_2--#
 #--OnApp: get source VM hypervisor IP address --#
-    print('-------')
-    print("-- OnApp: get VM's {hypervisor_ip} by {hypervisor_id} --")
+    
+    NOTE = """ -- OnApp: get VM's {hypervisor_ip} by {hypervisor_id} -- """
+
     URL = ONAPP_CP_URL + "/hypervisors.json"
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | select(.hypervisor.id=={hv_id}) | .hypervisor.ip_address '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, hv_id=VM_OHV_ID)
-    (rc,ou) = run_command(CMD,verbosity,0)
+    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     VM_OHV_IP=str(ou).strip("\n")
 #--VM_OHV_IP--#
 
 #--step_3--#
 #--OnApp: get source VM IP address --#
-    print('-------')
-    print("-- OnApp: get VM's {ip_address} by {identifier} --")
+    
+    NOTE = """ -- OnApp: get VM's {ip_address} by {identifier} -- """
+
     URL = ONAPP_CP_URL + "/virtual_machines/{}/ip_addresses.json".format(VM_IDn)
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[0] | .ip_address_join.ip_address.address' ".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL )
-    (rc,ou) = run_command(CMD,verbosity,0)
+    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     VM_SRC_IP=str(ou).strip("\n")
 #--VM_SRC_IP--#
 
 #--step_4--#
 #--OnApp: Check if VM is running at OnApp hypervisor --#
-    print('-------')
-    print("-- OnApp: check if VM [{vm_idn}] is running on HV [{hv_ip}] --".format(vm_idn=VM_IDn,hv_ip=VM_OHV_IP))
+    
+    NOTE = """ -- OnApp: check if VM is running on HV -- """
+
     CMD = "ssh root@{hv_ip} 'virsh list | grep {vm_idn}'".format(hv_ip=VM_OHV_IP,vm_idn=VM_IDn)
-    (rc,ou) = run_command(CMD,verbosity,0)
+    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     #if vm not booted -> then EXIT
 #--is_VM_Online--#
 
 # --step_5--#
 # --OnApp: GRUB_DISABLE_LINUX_UUID set to false --#
-    print('-------')
-    print("-- OnApp: GRUB_DISABLE_LINUX_UUID set to false for VM [{vm_idn}] --".format(vm_idn=VM_IDn))
+    
+    NOTE = """ -- OnApp: GRUB_DISABLE_LINUX_UUID set to false for VM -- """
+    
     CMD = "ssh  root@{vm_ip} -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' 'sed -i 's/^GRUB_DISABLE_LINUX_UUID=true/#GRUB_DISABLE_LINUX_UUID=true/' /etc/default/grub'".format(
         vm_ip=VM_SRC_IP)
-    (rc, ou) = run_command(CMD,verbosity,0)
+    (rc, ou) = run_command(CMD,verbosity,0,NOTE)
     # if vm not booted -> then EXIT
     # --is_VM_Online--#
 
 # --step_6--#
 # --OnApp: GRUB_DISABLE_UUID set to false --#
-    print('-------')
-    print("-- OnApp: GRUB_DISABLE_UUID set to falsefor VM [{vm_idn}] --".format(vm_idn=VM_IDn))
+    
+    NOTE = """ -- OnApp: GRUB_DISABLE_UUID set to falsefor VM -- """
+    
     CMD = "ssh  root@{vm_ip} -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' 'sed -i 's/^GRUB_DISABLE_UUID=true/#GRUB_DISABLE_UUID=true/' /etc/default/grub'".format(
         vm_ip=VM_SRC_IP)
-    (rc, ou) = run_command(CMD,verbosity,0)
+    (rc, ou) = run_command(CMD,verbosity,0,NOTE)
     # if vm not booted -> then EXIT
     # --is_VM_Online--#
 
 #--step_7--#
 #--OnApp: install grub --#
-    print('-------')
-    print("-- OnApp: install grub for VM [{vm_idn}] --".format(vm_idn=VM_IDn))
+    
+    NOTE = """ -- OnApp: install grub for VM -- """
+
     CMD = "ssh root@{vm_ip} -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' 'grub-install --recheck /dev/vda || grub2-install --recheck /dev/vda'".format(vm_ip=VM_SRC_IP)
-    (rc,ou) = run_command(CMD,verbosity,0)
+    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     #if vm not booted -> then EXIT
 #--is_VM_Online--#
 
 #--step_8--#
 #--OnApp: Generate grub config --#
-    print('-------')
-    print("-- OnApp: Generate grub config for VM [{vm_idn}] --".format(vm_idn=VM_IDn))
+    
+    NOTE = """ -- OnApp: Generate grub config for VM [{vm_idn}] -- """
+
     CMD = "ssh root@{vm_ip} -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' 'grub-mkconfig -o /boot/grub/grub.cfg || grub2-mkconfig -o /boot/grub2/grub.cfg'".format(vm_ip=VM_SRC_IP)
-    (rc,ou) = run_command(CMD,verbosity,0)
+    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     #if vm not booted -> then EXIT
 #--is_VM_Online--#
 

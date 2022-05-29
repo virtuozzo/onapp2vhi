@@ -54,44 +54,47 @@ def vm(idn='',vhip='',verb=0):
 
 #--step_1--#
 #--OnApp: get source VM parameters--#
-    print('-------')
-    print("-- OnApp: get source VM parameters --")
+    
+    NOTE = """ -- OnApp: get source VM parameters -- """
     URL = ONAPP_CP_URL + "/virtual_machines.json"
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c --arg vm_idn {vm_idn} '.[] | select(.virtual_machine.identifier==$vm_idn) | [ .virtual_machine.identifier, .virtual_machine.hypervisor_id, .virtual_machine.ip_addresses[0][\"ip_address\"][\"address\"] ] '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, vm_idn=VM_IDn)
-    (rc,ou) = run_command(CMD,verbosity,0)   
+    (rc,ou) = run_command(CMD,verbosity,0,NOTE)   
     VM_OHV_ID = int(json.loads(ou)[1])
     print("HV_ID: " + str(VM_OHV_ID))
 #--VM_OHV_ID--#
 
 #--step_2--#
 #--OnApp: get source VM hypervisor IP address --#
-    print('-------')
-    print("-- OnApp: get VM's {hypervisor_ip} by {hypervisor_id} --")
+    
+    NOTE = """ -- OnApp: get VM's hypervisor IP by hypervisor ID -- """
+
     URL = ONAPP_CP_URL + "/hypervisors.json"
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | select(.hypervisor.id=={hv_id}) | .hypervisor.ip_address '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, hv_id=VM_OHV_ID)
-    (rc,ou) = run_command(CMD,verbosity,0)
+    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     VM_OHV_IP=str(ou).strip("\n")
 
 #--step_3--#
 #--OnApp: get OnApp VM disk info --#
-    print('-------')
-    print("-- OnApp: get VM's disk info --")
+    
+    NOTE = """ -- OnApp: get VM's disk info: -- """
 
     ONAPPVM_DISKS = get_onapp_vm_primary_disk(idn,verbosity)    
-
-    print ("OnApp_VM_PRIMARY_DISK:")
-    print ONAPPVM_DISKS[0]['path']
-    print("")
+    
+    if verbosity > 5:
+       print(NOTE)
+       print("OnApp_VM_PRIMARY_DISK:")
+       print(ONAPPVM_DISKS[0]['path'])
+       print("")
 
 #--ONAPPVM_DISKS--#
 
-#--step_5--#
+#--step_4--#
 #--OnApp: Check if VM is running at OnApp hypervisor --#
-    print('-------')
-    print("-- OnApp: check if VM [{vm_idn}] is running on HV [{hv_ip}] --".format(vm_idn=VM_IDn,hv_ip=VM_OHV_IP))
-    print('---')
+    
+    NOTE = """ -- OnApp: check if VM is running on Hypervisor -- """
+    
     CMD = "ssh root@{hv_ip} 'virsh dominfo {vm_idn}'".format(hv_ip=VM_OHV_IP,vm_idn=VM_IDn)
-    (rc,ou) = run_command(CMD,verbosity,0)
+    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     if rc == 0:
        print("VM IS  RUNNING.\n ")
 #Save original xml and remove cdrom
@@ -108,7 +111,6 @@ def vm(idn='',vhip='',verb=0):
                    device.remove(disk)
        xmltree = KVMxml.ElementTree(vmxml)
        xmltree.write("scripts/{}.xml".format(VM_IDn))
-
 
        CMD = "ssh root@{hv_ip} 'virsh shutdown {vm_idn}'".format(hv_ip=VM_OHV_IP,vm_idn=VM_IDn)
        (rc,ou) = run_command(CMD,verbosity,0)
@@ -128,55 +130,57 @@ def vm(idn='',vhip='',verb=0):
     tree.write('scripts/recovery.xml.mg')
 
     # --OnApp: Run scp--#
-    print('-------')
-    #    print("-- OnApp: check if VM [{vm_idn}] is running on HV [{hv_ip}] --".format(vm_idn=VM_IDn,hv_ip=VM_OHV_IP))
+
+    NOTE = """ -- Copy scripts -- """
+
     CMD = "scp -r scripts  root@{hv_ip}:/onapp/tools/".format(hv_ip=VM_OHV_IP)
-    (rc, ou) = run_command(CMD,verbosity,0)
+    (rc, ou) = run_command(CMD,verbosity,0,NOTE)
 
     # --step_5--#
     # --OnApp: Run sed --#
-    print('-------')
-    print("-- OnApp: check if VM [{vm_idn}] is running on HV [{hv_ip}] --".format(vm_idn=VM_IDn, hv_ip=VM_OHV_IP))
+
+    NOTE = """ -- Correct grub config -- """
+
     CMD = "ssh root@{hv_ip} 'sed -i 's/identifier/{vm_idn}/g' /onapp/tools/scripts/grub_installation.sh && sed -i 's/identifier/{vm_idn}/g' /onapp/tools/scripts/recovery.xml.mg'".format(
         hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
-    (rc, ou) = run_command(CMD,verbosity,0)
+    (rc, ou) = run_command(CMD,verbosity,0,NOTE)
 
-    # --step_5--#
-    # --OnApp: Start VM is recovery mode --#
-    print('-------')
-    print("-- OnApp: check if VM [{vm_idn}] is running on HV [{hv_ip}] --".format(vm_idn=VM_IDn, hv_ip=VM_OHV_IP))
+    # --step_6--#
+    # --OnApp: Start VM in recovery mode --#
+
+    NOTE = """ -- Start VM in recovery mode -- """
+
     CMD = "ssh root@{hv_ip} 'virsh create /onapp/tools/scripts/recovery.xml.mg'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
-    (rc, ou) = run_command(CMD,verbosity,0)
+    (rc, ou) = run_command(CMD,verbosity,0,NOTE)
 
-    # --step_8--#
-    # --OnApp: SInstall grub --#
-    print('-------')
-    print("-- OnApp: check if VM [{vm_idn}] is running on HV [{hv_ip}] --".format(vm_idn=VM_IDn, hv_ip=VM_OHV_IP))
+    # --step_7--#
+    # --OnApp: Install grub --#
+
+    NOTE = """ -- Install grub for VM -- """
+
     CMD = "ssh -t -t  root@{hv_ip} sh -c -l '/onapp/tools/scripts/grub_installation.sh'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
-    (rc, ou) = run_command(CMD,verbosity,0)
+    (rc, ou) = run_command(CMD,verbosity,0,NOTE)
 
-#--step_8--#
+    #--step_8--#
     # --OnApp: Shutdown VM  --#
-    print('-------')
-    print("-- OnApp: shutdown VM [{vm_idn}]  on HV [{hv_ip}] --".format(vm_idn=VM_IDn, hv_ip=VM_OHV_IP))
+    
+    NOTE = """ -- OnApp: shutdown VM on Hypervisor """
+
     CMD = "ssh root@{hv_ip} 'virsh shutdown {vm_idn}'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
-    (rc,ou) = run_command(CMD,verbosity,0)
+    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     while rc != 1:
         time.sleep(10)
         CMD = "ssh root@{hv_ip} 'virsh dominfo {vm_idn}'".format(hv_ip=VM_OHV_IP,vm_idn=VM_IDn)
         (rc,ou) = run_command(CMD,verbosity,0)
 
-#--step_8--#
+    #--step_9--#
     # --OnApp: Start VM  --#
-    print('-------')
-    print("-- OnApp: check if VM [{vm_idn}] is running on HV [{hv_ip}] --".format(vm_idn=VM_IDn, hv_ip=VM_OHV_IP))
+    
+    NOTE = """ -- OnApp: Start VM -- """
+
     CMD = "ssh root@{hv_ip} 'virsh create /onapp/tools/scripts/{vm_idn}.xml'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
     (rc, ou) = run_command(CMD,verbosity,0)
 
-
-
-#--step_10--#
-#--VM_XML--#
 
 cli.add_command(vm)
 
