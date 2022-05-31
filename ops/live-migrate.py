@@ -231,7 +231,7 @@ def vm(idn='',vhip='',verb=''):
         (rc,ou) = run_command(CMD,verbosity,0)
         VHI_VM_DISKS[disk_lb] = str(ou).strip().encode('ascii')
     
-    if verbose >= 7:
+    if verbosity >= 7:
        print("VHI_VM_DISKS: {}".format(VHI_VM_DISKS))
 
 #--step_10--#
@@ -248,7 +248,7 @@ def vm(idn='',vhip='',verb=''):
     VM_XML_CFG = str(ou) 
     vhixml = KVMxml.fromstring(VM_XML_CFG)
   
-    if verbose ==8:
+    if verbosity == 8:
        print("---\nResult[{}]:\n".format(rc))
 
 #    print(KVMxml.tostring(vhixml))
@@ -269,7 +269,7 @@ def vm(idn='',vhip='',verb=''):
            vvm_tap = nic.find('target').attrib['dev' ]
            XML_VVM_NICS.append( { 'mac': vvm_mac, 'id': vvm_nic_id, 'tap': vvm_tap } )
 
-    if verbose >= 7:
+    if verbosity >= 7:
        print("XML_VVM_DISKS: " + str(XML_VVM_DISKS) + "\n")
        print("XML_VVM_NICS: " + str(XML_VVM_NICS) + "\n")
     
