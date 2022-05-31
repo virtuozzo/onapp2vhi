@@ -28,7 +28,7 @@ def cli():
 @click.option('--vhip','--vhi-ip','--vhi-hypervisor-ip', default='', help="VHI destination HV IP address.")
 @click.option('--verb', '-v', '--v', '--verbosity', default='', help="Verbolity level of values between 0 and 8")
 #click.argument('name',default='') - not used
-def vm(idn='',vhip='',verb=0):
+def vm(idn='',vhip='',verb=''):
     if idn == '' :
        print ('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
        exit(17)
