@@ -141,7 +141,7 @@ def vm(idn='',vhip='',verb=''):
 
     NOTE = """ -- Correct grub config -- """
 
-    CMD = "ssh root@{hv_ip} 'sed -i 's/identifier/{vm_idn}/g' /onapp/tools/scripts/grub_installation.sh && sed -i 's/identifier/{vm_idn}/g' /onapp/tools/scripts/recovery.xml.mg'".format(
+    CMD = "ssh root@{hv_ip} 'sed -i 's/identifier/{vm_idn}/g' /onapp/tools/scripts/vm_grub_install.sh && sed -i 's/identifier/{vm_idn}/g' /onapp/tools/scripts/recovery.xml.mg'".format(
         hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
     (rc, ou) = run_command(CMD,verbosity,0,NOTE)
 
@@ -158,7 +158,7 @@ def vm(idn='',vhip='',verb=''):
 
     NOTE = """ -- Install grub for VM -- """
 
-    CMD = "ssh -t -t  root@{hv_ip} sh -c -l '/onapp/tools/scripts/grub_installation.sh'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
+    CMD = "ssh -t -t  root@{hv_ip} sh -c -l '/onapp/tools/scripts/vm_grub_install.sh'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
     (rc, ou) = run_command(CMD,verbosity,0,NOTE)
 
     #--step_8--#
