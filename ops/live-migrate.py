@@ -168,7 +168,7 @@ def vm(idn='',vhip='',verb=''):
 
     if ou == '':
         #print("LETS CREATE TARGET VM: ")
-        CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra service compute server create onapp2vhi_vm_{vm_idn} --description 'onapp_vm_{vm_idn}' --network id=public,fixed-ip={vm_ip},mac={vm_mac},security-group={vhi_sg} --volume source=image,id={image},size={disk_size} --flavor small -f json | jq -r \".id\"' 2>/dev/null ".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhi_cp=VHI_CP_IP,vm_idn=VM_IDn,vm_ip=ONAPPVM_PRI_IP,vm_mac=ONAPPVM_PRI_MAC,vhi_sg=VHI_SG_ID,image=VHI_IMAGE,disk_size=ONAPPVM_DISKS[0]['size'])
+        CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra service compute server create onapp2vhi_vm_{vm_idn} --description 'onapp_vm_{vm_idn}' --network id=public,fixed-ip={vm_ip},mac={vm_mac},security-group={vhi_sg} --volume source=image,id={image},size={disk_size} --flavor {vhi_flavor} -f json | jq -r \".id\"' 2>/dev/null ".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhi_cp=VHI_CP_IP,vm_idn=VM_IDn,vm_ip=ONAPPVM_PRI_IP,vm_mac=ONAPPVM_PRI_MAC,vhi_sg=VHI_SG_ID,image=VHI_IMAGE,disk_size=ONAPPVM_DISKS[0]['size'],vhi_flavor=VHI_FLAVOR)
         (rc,ou) = run_command(CMD,verbosity,0)
         if rc == 0 and ou != '':
             VHI_VM_ID = str(ou).strip("\n")
