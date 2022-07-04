@@ -11,6 +11,7 @@ ONAPP_CP_URL = "https://{}".format(ONAPP_CP_HOST)
 ONAPP_USER_EMAIL = 'admin@example.com'
 ONAPP_USER_APIKEY = '279041cc2507e99f54e526007b9a2c7f536c4cdc'
 ONAPP_SSH_PORT = 22
+ONAPP_HV_IP = '10.63.0.5'
 #
 #
 ## VHI Cloud DEFAULTS ##

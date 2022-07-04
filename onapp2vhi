@@ -42,6 +42,7 @@ Providers:
     install-bootloader-offline
     live-migrate
     cold-migrate
+    template-migrate
     help  """
    exit(13)
 
