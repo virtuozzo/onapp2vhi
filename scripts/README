@@ -1,3 +1,6 @@
+#Prepare ISO on mac
+hdiutil makehybrid -iso -joliet -o ~/Devel/onapp2vhi/scripts/scripts.iso .
+
 0. shutdown VM
 #virsh shutdown vtspnxjsblaxim
 1. set proper disk path and VM identifier  in recovery.xml
