@@ -153,7 +153,7 @@ def get_onapp_vm_primary_disk(vm_idn='',verbosity=8):
     for line in ou.splitlines():
        ds = json.loads(line)
        API_DS[ ds[0] ] = ds[1].encode('ascii')
-    if vertosity >= 7:
+    if verbosity >= 7:
        print ("ONAPP_DATASTORES: \n" + str(API_DS))
     
 #--OnApp: get source VM disks --#

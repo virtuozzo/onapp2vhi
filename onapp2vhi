@@ -43,6 +43,8 @@ Providers:
     live-migrate
     cold-migrate
     template-migrate
+    install-win-drivers
+    install-win-drivers-offline
     help  """
    exit(13)
 

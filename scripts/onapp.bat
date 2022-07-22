@@ -1,0 +1,7 @@
+c:\cygwin\bin\mkdir -p c:/vz-guest-tools-win
+c:\cygwin\bin\tar --force-local -xf c:/vz-guest-tools-win.tar -C c:/vz-guest-tools-win
+cd /d C:\vz-guest-tools-win
+c:\vz-guest-tools-win\setupMain.exe
+cd /d C:\
+msiexec /i CloudbaseInitSetup_1_1_2_x64.msi /qn /l*v log.txt
+c:\cygwin\bin\rm -rf c:/vz-guest-tools-win

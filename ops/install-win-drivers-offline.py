@@ -53,9 +53,9 @@ def vm(idn='',vhip='',verb=''):
     VM_IDn = idn
 
 #--step_1--#
-#--OnApp: get source VM parameters--#
-    
+#--OnApp: get source VM parameters--# 
     NOTE = """ -- OnApp: get source VM parameters -- """
+    
     URL = ONAPP_CP_URL + "/virtual_machines.json"
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c --arg vm_idn {vm_idn} '.[] | select(.virtual_machine.identifier==$vm_idn) | [ .virtual_machine.identifier, .virtual_machine.hypervisor_id, .virtual_machine.ip_addresses[0][\"ip_address\"][\"address\"] ] '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, vm_idn=VM_IDn)
     (rc,ou) = run_command(CMD,verbosity,0,NOTE)   
@@ -65,7 +65,6 @@ def vm(idn='',vhip='',verb=''):
 
 #--step_2--#
 #--OnApp: get source VM hypervisor IP address --#
-    
     NOTE = """ -- OnApp: get VM's hypervisor IP by hypervisor ID -- """
 
     URL = ONAPP_CP_URL + "/hypervisors.json"
@@ -73,113 +72,82 @@ def vm(idn='',vhip='',verb=''):
     (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     VM_OHV_IP=str(ou).strip("\n")
 
+
 #--step_3--#
-#--OnApp: get OnApp VM disk info --#
-    
+#--OnApp: get OnApp VM primary disk info --#
     NOTE = """ -- OnApp: get VM's disk info: -- """
 
-    ONAPPVM_DISKS = get_onapp_vm_primary_disk(idn,verbosity)    
+    ONAPPVM_PRIMARY_DISK = get_onapp_vm_primary_disk(idn,verbosity)    
     
     if verbosity > 5:
        print(NOTE)
        print("OnApp_VM_PRIMARY_DISK:")
-       print(ONAPPVM_DISKS[0]['path'])
+       print(ONAPPVM_PRIMARY_DISK[0]['path'])
        print("")
 
-#--ONAPPVM_DISKS--#
+    ONAPPVM_DISK_MAPPER = ONAPPVM_PRIMARY_DISK[0]['path'].replace("onapp-", "onapp--")
+    ONAPPVM_DISK_MAPPER = ONAPPVM_DISK_MAPPER.replace("/", "-")
+    ONAPPVM_DISK_MAPPER = ONAPPVM_DISK_MAPPER.replace("-dev-", "/dev/mapper/")
+    ONAPPVM_DISK_PARTITION = ONAPPVM_DISK_MAPPER + 'X1'
+    print("ONAPPVM_DISK_MAPPER:")
+    print(ONAPPVM_DISK_MAPPER) 
+    print("ONAPPVM_DISK_PARTITION:")
+    print(ONAPPVM_DISK_PARTITION)
+
 
 #--step_4--#
-#--OnApp: Check if VM is running at OnApp hypervisor --#
-    
+#--OnApp: Check if VM is running at OnApp hypervisor --#   
     NOTE = """ -- OnApp: check if VM is running on Hypervisor -- """
     
     CMD = "ssh root@{hv_ip} 'virsh dominfo {vm_idn}'".format(hv_ip=VM_OHV_IP,vm_idn=VM_IDn)
     (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     if rc == 0:
        print("VM IS  RUNNING.\n ")
-#Save original xml and remove cdrom
-       CMD = "ssh root@{hv_ip} 'virsh dumpxml {vm_idn} 2>/dev/null > /tmp/{vm_idn}.xml ; cat /tmp/{vm_idn}.xml' 2>/dev/null".format(vm_idn=VM_IDn,hv_ip=VM_OHV_IP)
-       if verbosity == 0:
-          (rc,ou) = run_command(CMD,0,0)
-       else:
-          (rc,ou) = run_command(CMD,1,0)
-       VM_XML_CFG = str(ou)
-       vmxml = KVMxml.fromstring(VM_XML_CFG)
-       for device in vmxml.findall("devices"):
-           for disk in device.findall("disk"):
-               if disk.attrib['device'] == "cdrom":
-                   device.remove(disk)
-       xmltree = KVMxml.ElementTree(vmxml)
-       xmltree.write("scripts/{}.xml".format(VM_IDn))
-
        CMD = "ssh root@{hv_ip} 'virsh shutdown {vm_idn}'".format(hv_ip=VM_OHV_IP,vm_idn=VM_IDn)
        (rc,ou) = run_command(CMD,verbosity,0)
        while rc != 1:
-           time.sleep(10)
+           time.sleep(60)
            CMD = "ssh root@{hv_ip} 'virsh dominfo {vm_idn}'".format(hv_ip=VM_OHV_IP,vm_idn=VM_IDn)
            (rc,ou) = run_command(CMD,verbosity,0)
 
-#Generate recovery config xml
-    tree = KVMxml.parse('scripts/recovery.xml')
-    root = tree.getroot()
-    for device in root.findall("devices"):
-        for disk in device.findall("disk"):
-            if disk.attrib['type'] == "block":
-                for source in disk.findall('source'):
-                    source.attrib['dev'] = ONAPPVM_DISKS[0]['path']
-    tree.write('scripts/recovery.xml.mg')
+# --step_5--#
+# --OnApp: Activate VM disk --#
+    NOTE = """ -- Activate VM disk -- """
 
-    # --OnApp: Run scp--#
-
-    NOTE = """ -- Copy scripts -- """
-
-    CMD = "scp -r scripts  root@{hv_ip}:/onapp/tools/".format(hv_ip=VM_OHV_IP)
+    CMD = "ssh root@{hv_ip} 'lvchange -ay {primary_disk}'".format(hv_ip=VM_OHV_IP, primary_disk=ONAPPVM_PRIMARY_DISK[0]['path'])
     (rc, ou) = run_command(CMD,verbosity,0,NOTE)
 
-    # --step_5--#
-    # --OnApp: Run sed --#
 
-    NOTE = """ -- Correct grub config -- """
+ # --step_6--#
+ # --OnApp: Add partition devmappings and mount disk --#
+    NOTE = """ -- Add partition devmappings and mount disk -- """
 
-    CMD = "ssh root@{hv_ip} 'sed -i 's/identifier/{vm_idn}/g' /onapp/tools/scripts/vm_grub_install.sh && sed -i 's/identifier/{vm_idn}/g' /onapp/tools/scripts/recovery.xml.mg'".format(
-        hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
+    CMD = "ssh root@{hv_ip} 'kpartx -av -p X {primary_disk}'".format(hv_ip=VM_OHV_IP, primary_disk=ONAPPVM_PRIMARY_DISK[0]['path'])
+    (rc, ou) = run_command(CMD,verbosity,0,NOTE)
+    CMD = "ssh root@{hv_ip} 'mkdir -p /mnt/prepare_win; mount {primary_disk_partition} /mnt/prepare_win'".format(hv_ip=VM_OHV_IP, primary_disk_partition=ONAPPVM_DISK_PARTITION)
     (rc, ou) = run_command(CMD,verbosity,0,NOTE)
 
-    # --step_6--#
-    # --OnApp: Start VM in recovery mode --#
+# --step_7--#
+# --OnApp: Run scp--#
+    NOTE = """ -- Copy drivers and scripts -- """
 
-    NOTE = """ -- Start VM in recovery mode -- """
-
-    CMD = "ssh root@{hv_ip} 'virsh create /onapp/tools/scripts/recovery.xml.mg'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
+    CMD = "scp -r  ~/vz-guest-tools-win.tar  root@{hv_ip}:/mnt/prepare_win/vz-guest-tools-win.tar".format(hv_ip=VM_OHV_IP)
+    (rc, ou) = run_command(CMD,verbosity,0,NOTE)
+    CMD = "scp -r  ~/CloudbaseInitSetup_1_1_2_x64.msi  root@{hv_ip}:/mnt/prepare_win/CloudbaseInitSetup_1_1_2_x64.msi".format(hv_ip=VM_OHV_IP)
+    (rc, ou) = run_command(CMD,verbosity,0,NOTE)
+    CMD = "scp -r  scripts/onapp.bat  root@{hv_ip}:/mnt/prepare_win/onapp.bat".format(hv_ip=VM_OHV_IP)
     (rc, ou) = run_command(CMD,verbosity,0,NOTE)
 
-    # --step_7--#
-    # --OnApp: Install grub --#
 
-    NOTE = """ -- Install grub for VM -- """
+# --step_8--#
+# --OnApp: Run kpartx and mount disk --#
+    NOTE = """ -- Run unmount and del partition devmappings -- """
 
-    CMD = "ssh -t -t  root@{hv_ip} sh -c -l '/onapp/tools/scripts/vm_grub_install.sh'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
+    CMD = "ssh root@{hv_ip} 'umount {primary_disk_partition} '".format(hv_ip=VM_OHV_IP, primary_disk_partition=ONAPPVM_DISK_PARTITION)
+    (rc, ou) = run_command(CMD,verbosity,0,NOTE)
+    CMD = "ssh root@{hv_ip} 'kpartx -d -p X {primary_disk}'".format(hv_ip=VM_OHV_IP, primary_disk=ONAPPVM_PRIMARY_DISK[0]['path'])
     (rc, ou) = run_command(CMD,verbosity,0,NOTE)
 
-    #--step_8--#
-    # --OnApp: Shutdown VM  --#
-    
-    NOTE = """ -- OnApp: shutdown VM on Hypervisor """
-
-    CMD = "ssh root@{hv_ip} 'virsh shutdown {vm_idn}'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
-    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
-    while rc != 1:
-        time.sleep(10)
-        CMD = "ssh root@{hv_ip} 'virsh dominfo {vm_idn}'".format(hv_ip=VM_OHV_IP,vm_idn=VM_IDn)
-        (rc,ou) = run_command(CMD,verbosity,0)
-
-    #--step_9--#
-    # --OnApp: Start VM  --#
-    
-    NOTE = """ -- OnApp: Start VM -- """
-
-    CMD = "ssh root@{hv_ip} 'virsh create /onapp/tools/scripts/{vm_idn}.xml'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
-    (rc, ou) = run_command(CMD,verbosity,0)
 
 
 cli.add_command(vm)
