@@ -35,10 +35,10 @@ def cli():
     pass
 
 @click.command()
-@click.option('--vdom',--vhi-domain', default='', help="VHI Domain.")
+@click.option('--vdom','--vhi-domain', default='', help="VHI Domain.")
 @click.option('--vproj','--vhi-project', default='', help="VHI Project.")
 @click.option('--vuser','--vhi-user', default='', help="VHI User.")
-@click.option('--vpass','vhi-pass','--vhi-password', default='', help="VHI Password.")
+@click.option('--vpass','--vhi-pass','--vhi-password', default='', help="VHI Password.")
 @click.option('--idn','--vm','--identifier','--vm-identifier', default='', help="OnApp VM identifier.")
 @click.option('--vhip','--vhi-ip','--vhi-hypervisor-ip', default='', help="VHI destination HV IP address.")
 @click.option('--verb', '-v', '--v', '--verbosity', default='', help="Verbolity level of values between 0 and 8")
@@ -196,7 +196,7 @@ def vm(vdom='',vproj='',vuser='',vpass='',idn='',vhip='',verb=''):
 
     ONAPPVM_PRI_IP = ONAPPVM_NICS[0]['ips'][0]
     ONAPPVM_PRI_MAC = ONAPPVM_NICS[0]['mac']
-    CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'for vmid in `vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiusr}\" --vinfra-password=\"{vhipass}\" service compute server list -f json | jq -r \".[] | .id \"`; do echo \"[\\\"$vmid\\\",\" `vinfra service compute server iface list --server $vmid -f json | jq -c \".[] | [ .fixed_ips, .mac_addr ]\"` \"]\" | egrep -e \"{vm_ip}|{vm_mac}\"; done' 2>/dev/null ".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_cp=VHI_CP_IP,vm_ip=ONAPPVM_PRI_IP,vm_mac=ONAPPVM_PRI_MAC)
+    CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'for vmid in `vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server list -f json | jq -r \".[] | .id \"`; do echo \"[\\\"$vmid\\\",\" `vinfra service compute server iface list --server $vmid -f json | jq -c \".[] | [ .fixed_ips, .mac_addr ]\"` \"]\" | egrep -e \"{vm_ip}|{vm_mac}\"; done' 2>/dev/null ".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_cp=VHI_CP_IP,vm_ip=ONAPPVM_PRI_IP,vm_mac=ONAPPVM_PRI_MAC)
     (rc,ou) = run_command(CMD,verbosity,0)
 
     VHI_VM_ID = ''
@@ -208,13 +208,13 @@ def vm(vdom='',vproj='',vuser='',vpass='',idn='',vhip='',verb=''):
 
     if ou == '':
         #print("LETS CREATE TARGET VM: ")
-        CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiusr}\" --vinfra-password=\"{vhipass}\" service compute server create onapp2vhi_vm_{vm_idn} --description 'onapp_vm_{vm_idn}' --network id=public,fixed-ip={vm_ip},mac={vm_mac},security-group={vhi_sg} --volume source=image,id={image},size={disk_size} --flavor {vhi_flavor} -f json | jq -r \".id\"' 2>/dev/null ".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_cp=VHI_CP_IP,vm_idn=VM_IDn,vm_ip=ONAPPVM_PRI_IP,vm_mac=ONAPPVM_PRI_MAC,vhi_sg=VHI_SG_ID,image=VHI_IMAGE,disk_size=ONAPPVM_DISKS[0]['size'],vhi_flavor=VHI_FLAVOR)
+        CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server create onapp2vhi_vm_{vm_idn} --description 'onapp_vm_{vm_idn}' --network id=public,fixed-ip={vm_ip},mac={vm_mac},spoofing-protection-disable --volume source=image,id={image},size={disk_size} --flavor {vhi_flavor} -f json | jq -r \".id\"' 2>/dev/null ".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_cp=VHI_CP_IP,vm_idn=VM_IDn,vm_ip=ONAPPVM_PRI_IP,vm_mac=ONAPPVM_PRI_MAC,vhi_sg=VHI_SG_ID,image=VHI_IMAGE,disk_size=ONAPPVM_DISKS[0]['size'],vhi_flavor=VHI_FLAVOR)
         (rc,ou) = run_command(CMD,verbosity,0)
         if rc == 0 and ou != '':
             VHI_VM_ID = str(ou).strip("\n")
             print( "NEW VHI VM CREATED: " + VHI_CP_URL + "/compute/servers/instances/" + VHI_VM_ID  )
             print( "...stopping target VHI VM before migration...")
-            CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'while true; do vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiusr}\" --vinfra-password=\"{vhipass}\" service compute server stop {vm_id} --hard --wait --timeout 15 -f json | jq -c [.name,.id,.vm_state,.power_state,.status] ;  pwstate=\"`vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiusr}\" --vinfra-password=\"{vhipass}\" service compute server show {vm_id} -f json | jq -r .power_state `\" ; echo \"$pwstate\" ; if [[ \"$pwstate\" == \"SHUTDOWN\" ]]; then break; fi ; sleep 1; done' 2>/dev/null ".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_cp=VHI_CP_IP,vm_id=VHI_VM_ID)
+            CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'while true; do vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server stop {vm_id} --hard --wait --timeout 15 -f json | jq -c [.name,.id,.vm_state,.power_state,.status] ;  pwstate=\"`vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server show {vm_id} -f json | jq -r .power_state `\" ; echo \"$pwstate\" ; if [[ \"$pwstate\" == \"SHUTDOWN\" ]]; then break; fi ; sleep 1; done' 2>/dev/null ".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_cp=VHI_CP_IP,vm_id=VHI_VM_ID)
             run_command(CMD,verbosity,1)
 
         NOTE = """ -- VHI: create and attach extra VHI VM's disks -- """
@@ -222,10 +222,10 @@ def vm(vdom='',vproj='',vuser='',vpass='',idn='',vhip='',verb=''):
         if len(ONAPPVM_DISKS) > 1:
             for idx,dsk in enumerate(ONAPPVM_DISKS):
                 if idx >= 1:
-                   CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiusr}\" --vinfra-password=\"{vhipass}\" service compute volume create --size {disk_size} onapp-{vm_id} --storage-policy default -f json | jq -c -r \".id\"' 2>/dev/null ".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_cp=VHI_CP_IP,disk_size=dsk['size'],vm_id=VHI_VM_ID)
+                   CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute volume create --size {disk_size} onapp-{vm_id} --storage-policy default -f json | jq -c -r \".id\"' 2>/dev/null ".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_cp=VHI_CP_IP,disk_size=dsk['size'],vm_id=VHI_VM_ID)
                    (rc,ou) = run_command(CMD,verbosity,0)
                    new_disk_id = str(ou).strip().encode('ascii') 
-                   CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiusr}\" --vinfra-password=\"{vhipass}\" service compute server volume attach --server {vm_id} {disk_id} -f json | jq -c ' 2>/dev/null".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_cp=VHI_CP_IP,vm_id=VHI_VM_ID,disk_id=new_disk_id)
+                   CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server volume attach --server {vm_id} {disk_id} -f json | jq -c ' 2>/dev/null".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_cp=VHI_CP_IP,vm_id=VHI_VM_ID,disk_id=new_disk_id)
                    (rc,ou) = run_command(CMD,verbosity,0)
 
         NOTE = """ -- VHI: allocate and assign extra VHI VM's IP addresses to primary NIC-- """
@@ -234,10 +234,10 @@ def vm(vdom='',vproj='',vuser='',vpass='',idn='',vhip='',verb=''):
            IPS_PARAMS = ''
            for ip in ONAPPVM_NICS[0]['ips']:
               IPS_PARAMS += "--fixed-ip ip-address={} ".format(ip)
-           CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiusr}\" --vinfra-password=\"{vhipass}\" service compute server iface list --server {vm_id} -f json | jq -c -r .[0].id' 2>/dev/null".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_cp=VHI_CP_IP,vm_id=VHI_VM_ID)
+           CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server iface list --server {vm_id} -f json | jq -c -r .[0].id' 2>/dev/null".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_cp=VHI_CP_IP,vm_id=VHI_VM_ID)
            (rc,ou) = run_command(CMD,verbosity,0)
            VHI_NIC0_ID= str(ou).strip().encode('ascii')
-           CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiusr}\" --vinfra-password=\"{vhipass}\" service compute server iface set {ip_params} --server {vm_id} {nic_id} -f json | jq -c -r .fixed_ips' 2>/dev/null".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_cp=VHI_CP_IP,ip_params=IPS_PARAMS,vm_id=VHI_VM_ID,nic_id=VHI_NIC0_ID)
+           CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server iface set {ip_params} --server {vm_id} {nic_id} -f json | jq -c -r .fixed_ips' 2>/dev/null".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_cp=VHI_CP_IP,ip_params=IPS_PARAMS,vm_id=VHI_VM_ID,nic_id=VHI_NIC0_ID)
            (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     else:
         print("Destination VHI VM with IP/MAC ALREADY EXISTS:")
@@ -252,7 +252,7 @@ def vm(vdom='',vproj='',vuser='',vpass='',idn='',vhip='',verb=''):
     
     NOTE = """ -- VHI: define VHI VM's hypervisor and disks -- """
     
-    CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'host `vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiusr}\" --vinfra-password=\"{vhipass}\" service compute server show {vm_id} -f json | jq -r .host`' 2>/dev/null | awk '/ has address /{{print $NF}}' ".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_cp=VHI_CP_IP,vm_id=VHI_VM_ID)
+    CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'host `vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server show {vm_id} -f json | jq -r .host`' 2>/dev/null | awk '/ has address /{{print $NF}}' ".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_cp=VHI_CP_IP,vm_id=VHI_VM_ID)
     (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$',ou) != None:
         VHI_HV_IP = str(ou).strip("\n")
@@ -260,7 +260,7 @@ def vm(vdom='',vproj='',vuser='',vpass='',idn='',vhip='',verb=''):
     else:
         print("Error: VM's VHI hypervisor IP address is invalid: {hv_ip}".format(hv_ip=ou))
         exit(23)
-    CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_hv} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiusr}\" --vinfra-password=\"{vhipass}\" service compute server volume list --server {vm_id} -f json | jq -c' 2>/dev/null ".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_hv=VHI_HV_IP,vm_id=VHI_VM_ID)
+    CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_hv} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server volume list --server {vm_id} -f json | jq -c' 2>/dev/null ".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_hv=VHI_HV_IP,vm_id=VHI_VM_ID)
     (rc,ou) = run_command(CMD,verbosity,0)
     vhivm_disks = json.loads(str(ou)) 
     
@@ -396,7 +396,7 @@ def vm(vdom='',vproj='',vuser='',vpass='',idn='',vhip='',verb=''):
     
     NOTE = """ -- Start original pre-created VHI VM on VHI hypervisor -- """
 
-    CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_hv} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiusr}\" --vinfra-password=\"{vhipass}\" service compute server start {vm_id} -f json | jq -c -r \"[ .id , .power_state ]\" ' 2>/dev/null ".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_hv=VHI_HV_IP,vm_id=VHI_VM_ID)
+    CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_hv} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server start {vm_id} -f json | jq -c -r \"[ .id , .power_state ]\" ' 2>/dev/null ".format(ssh_port=VHI_SSH_PORT,sshopt=SSH_OPTS,vhidom=VHIDOM,vhiproj=VHIPROJ,vhiuser=VHIUSER,vhipass=VHIPASS,vhi_hv=VHI_HV_IP,vm_id=VHI_VM_ID)
     #print(CMD)
     (rc,ou) = run_command(CMD,verbosity,0,NOTE)
 
