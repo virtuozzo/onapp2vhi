@@ -18,6 +18,17 @@ sys.path.append(plug_path+'/inc')
 from o2v_config import *
 from functions import *
 from onapp_helpers import *
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 
 @click.group(cls=DefaultGroup, default='vm', invoke_without_command=True, default_if_no_args=True)
 def cli():
@@ -57,11 +68,18 @@ def vm(idn='',vhip='',verb=''):
     NOTE = """ -- OnApp: get source VM parameters -- """ 
 
     URL = ONAPP_CP_URL + "/virtual_machines.json"
-    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -r -c --arg vm_idn {vm_idn} '.[] | select(.virtual_machine.identifier==$vm_idn) | [ .virtual_machine.identifier, .virtual_machine.hypervisor_id, .virtual_machine.ip_addresses[0][\"ip_address\"][\"address\"], .virtual_machine.operating_system ] '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, vm_idn=VM_IDn)
+    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -r -c --arg vm_idn {vm_idn} '.[] | select(.virtual_machine.identifier==$vm_idn) | [ .virtual_machine.identifier, .virtual_machine.hypervisor_id, .virtual_machine.ip_addresses[0][\"ip_address\"][\"address\"], .virtual_machine.operating_system, .virtual_machine.allowed_hot_migrate] '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, vm_idn=VM_IDn)
     (rc,ou) = run_command(CMD,verbosity,0,NOTE)  
     OVM_IDENTIFIER = str(json.loads(ou)[0]).encode('ascii')
     OVM_HV_ID = int(json.loads(ou)[1])
     OVM_OS = str(json.loads(ou)[3]).encode('ascii')
+    OVM_HOT_MIGRATE = str(json.loads(ou)[4]).encode('ascii')
+
+    if OVM_HOT_MIGRATE == 'False' :
+       print (bcolors.WARNING +  "ATENTION hot_migrate is not allowed for VM \n" + bcolors.ENDC)
+
+    if OVM_HOT_MIGRATE == 'True' :
+       print (bcolors.OKGREEN + "HOT migrate is  allowed for VM \n" + bcolors.ENDC)
 
 #--step_2--#
 #--OnApp: get source VM hypervisor IP address --#

@@ -5,3 +5,5 @@ c:\vz-guest-tools-win\setupMain.exe
 cd /d C:\
 msiexec /i CloudbaseInitSetup_1_1_2_x64.msi /qn /l*v log.txt
 c:\cygwin\bin\rm -rf c:/vz-guest-tools-win
+shutdown /r
+c:\cygwin\bin\rm -rf c:/onapp.bat

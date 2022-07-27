@@ -17,6 +17,16 @@ sys.path.append(plug_path+'/inc')
 from o2v_config import *
 from functions import *
 from onapp_helpers import *
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 
 @click.group(cls=DefaultGroup, default='vm', invoke_without_command=True, default_if_no_args=True)
@@ -133,11 +143,18 @@ def vm(idn='',vhip='',verb=''):
 
     CMD = "scp -r  ~/vz-guest-tools-win.tar  root@{hv_ip}:/mnt/prepare_win/vz-guest-tools-win.tar".format(hv_ip=VM_OHV_IP)
     (rc, ou) = run_command(CMD,verbosity,0,NOTE)
+    if  rc != 0:
+       print (bcolors.FAIL + "Something went wrong. Couldn't transfer vz-guest-tools-win into VM \n" + bcolors.ENDC)
+
     CMD = "scp -r  ~/CloudbaseInitSetup_1_1_2_x64.msi  root@{hv_ip}:/mnt/prepare_win/CloudbaseInitSetup_1_1_2_x64.msi".format(hv_ip=VM_OHV_IP)
     (rc, ou) = run_command(CMD,verbosity,0,NOTE)
+    if  rc != 0:
+       print (bcolors.FAIL + "Something went wrong. Couldn't transfer CloudbaseInitSetup into VM \n" + bcolors.ENDC)
+
     CMD = "scp -r  scripts/onapp.bat  root@{hv_ip}:/mnt/prepare_win/onapp.bat".format(hv_ip=VM_OHV_IP)
     (rc, ou) = run_command(CMD,verbosity,0,NOTE)
-
+    if  rc != 0:
+       print (bcolors.FAIL + "Something went wrong. Couldn't transfer onapp.bat into VM \n" + bcolors.ENDC)
 
 # --step_8--#
 # --OnApp: Run kpartx and mount disk --#

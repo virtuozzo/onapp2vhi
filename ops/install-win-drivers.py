@@ -15,6 +15,16 @@ sys.path.append(plug_path+'/inc')
 
 from o2v_config import *
 from functions import *
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 
 @click.group(cls=DefaultGroup, default='vm', invoke_without_command=True, default_if_no_args=True)
@@ -101,9 +111,14 @@ def vm(idn='',vhip='',verb=''):
 
     CMD = "scp -P{ssh_port} {sshopt} ~/CloudbaseInitSetup_1_1_2_x64.msi Administrator@{vm_ip}:C:/ 2>/dev/null ".format(ssh_port=ONAPP_SSH_PORT,sshopt=SSH_OPTS,vm_ip=VM_SRC_IP)
     (rc,ou) = run_command(CMD,verbosity,0)
+    if  rc != 0:
+       print (bcolors.FAIL + "Something went wrong. Couldn't transfer CloudbaseInitSetup into VM \n" + bcolors.ENDC)
+
 
     CMD = "scp -P{ssh_port} {sshopt} ~/vz-guest-tools-win.tar Administrator@{vm_ip}:C:/ 2>/dev/null ".format(ssh_port=ONAPP_SSH_PORT,sshopt=SSH_OPTS,vm_ip=VM_SRC_IP)
     (rc,ou) = run_command(CMD,verbosity,0)
+    if  rc != 0:
+       print (bcolors.FAIL + "Something went wrong. Couldn't transfer vz-guest-tools-win into VM \n" + bcolors.ENDC)
 
 #--step_6--#
 #--OnApp: install drivers --#
