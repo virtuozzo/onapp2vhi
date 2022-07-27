@@ -25,7 +25,11 @@ VHI_LINUX_IMAGE = 'cirros'
 VHI_WINDOWS_IMAGE = 'windows2012'
 VHI_FLAVOR = 'small'
 VHI_SG_ID = '207c9e28-abe4-48b1-b704-4b5a3c0df097'
-VHI_PROJECT_ID = '77f1c52d31d04a82aadd07fd4ead5305'
+#VHI_PROJECT_ID = '77f1c52d31d04a82aadd07fd4ead5305'
+VINFRA_DOMAIN = 'Default'
+VINFRA_PROJECT = 'default'
+VINFRA_USER = 'onapp2'
+VINFRA_PASS = '4OnApp13777'
 #
 ## General options
 SSH_OPTS = "-o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no'"
