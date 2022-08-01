@@ -19,25 +19,32 @@ os_version = str(platform.linux_distribution()[1]).split('.')[0]
 try:
    import pip
 except ImportError:
-   print "[ >NO MODULE 'PIP' FOUND< ]"
-   print "Please install python3 and pip3 module and try again ..."
+   print("[ >NO MODULE 'PIP' FOUND< ]")
+   print("Please install python3 and pip3 module and try again ...")
 
 try:
    import click
    import click_default_group
+   import requests
+   import colorlog
 except ImportError:
-   print "[ >NO MODULE 'click' or 'click-default-group' FOUND< ]".format(pk='click')
-   print "[ Please install 'click' and 'click-default-group' python modules and try again.. ]"
+    print("No python modules found: 'click', 'click-default-group', 'requests', 'colorlog'")
+    print("Installing missed python modules. . .")
+    os.system('pip install click')
+    os.system('pip install click-default-group')
+    os.system('pip install requests')
+    os.system('pip install colorlog')
 
 if len(sys.argv) <= 1:
-   print "Ask for help with 'onapp2vhi help' command."
+   print("Ask for help with 'onapp2vhi help' command.")
    exit(11)
   
 if str(sys.argv[1])+".py" not in os.listdir(plugin_folder):
-   print sys.argv[1] + \
+   print(sys.argv[1] + \
     """ is not defined. Use one of below ones..
 Providers:
     list-onapp-vms
+    list-onapp-users
     install-bootloader
     install-bootloader-offline
     live-migrate
@@ -45,7 +52,8 @@ Providers:
     template-migrate
     install-win-drivers
     install-win-drivers-offline
-    help  """
+    user-migrate
+    help  """)
    exit(13)
 
 

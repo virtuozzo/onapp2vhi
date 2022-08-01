@@ -146,7 +146,7 @@ def vm(idn='',vhip='',verb=''):
     if  rc != 0:
        print (bcolors.FAIL + "Something went wrong. Couldn't transfer vz-guest-tools-win into VM \n" + bcolors.ENDC)
 
-    CMD = "scp -r  ~/CloudbaseInitSetup_1_1_2_x64.msi  root@{hv_ip}:/mnt/prepare_win/CloudbaseInitSetup_1_1_2_x64.msi".format(hv_ip=VM_OHV_IP)
+    CMD = "scp -r  ~/CloudbaseInitSetup_Stable_x64.msi  root@{hv_ip}:/mnt/prepare_win/CloudbaseInitSetup_Stable_x64.msi".format(hv_ip=VM_OHV_IP)
     (rc, ou) = run_command(CMD,verbosity,0,NOTE)
     if  rc != 0:
        print (bcolors.FAIL + "Something went wrong. Couldn't transfer CloudbaseInitSetup into VM \n" + bcolors.ENDC)

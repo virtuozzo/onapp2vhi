@@ -50,10 +50,10 @@ def vm(idn='',vhip='',verb=''):
 
     if verb == '': verb = str(VERBOSITY)
     if not str(verb).isdigit():
-       print("Effor: '--verbosity' parameter should be a number")
+       print("Error: '--verbosity' parameter should be a number")
        exit(11)
     if int(verb) < 0 or int(verb) > 8:
-       print("Effor: '--verbosity' parameter should be a number between 0 and 8")
+       print("Error: '--verbosity' parameter should be a number between 0 and 8")
        exit(12)
     if verb != '':
        verbosity = int(verb)
