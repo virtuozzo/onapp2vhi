@@ -54,6 +54,46 @@ def list_onapp_vms(vals='',by='',url='',verbosity=8):
 
 
  ######################
+##-----FUNCTION-------##
+##---list_onapp_users---##
+ ######################
+def list_onapp_users(vals='',by='',url='',verbosity=8):
+
+    URL = ONAPP_CP_URL + '/users.json'
+
+    if verbosity > 7:
+       verbosity = 7
+
+    if vals == "" and by == "":
+       jqexp = "jq -c '.[] | [ .user.id, .user.email, .user.login, .user.roles[0].role.label ]'"
+    elif vals == "" and by != "":
+       by_arg=by.split("=")[0]
+       by_val=by.split("=")[1]
+       jqexp = "jq -c '.[] | select(.user.{by_a}=={by_v}) | [ .user.id, .user.email, .user.login, .user.roles[0].role.label ]'".format(by_a=by_arg,by_v=by_val)
+    elif vals != "" and by != "":
+       by_arg=by.split("=")[0]
+       by_val=by.split("=")[1]
+       vals_list = [ ".user.{}".format(x) for x in vals.split(",") ]
+       if len(vals_list) == 1:
+          vals_list = vals_list[0]
+       vals_str = str( vals_list ).replace("'",'')
+       jqexp = "jq -c '.[] | select(.user.{by_a}=={by_v}) | {vls} '".format(by_a=by_arg,by_v=by_val,vls=vals_str)
+    else:
+       vals_list = [ ".user.{}".format(x) for x in vals.split(",") ]
+       if len(vals_list) == 1:
+          vals_list = vals_list[0]
+       vals_str = str( vals_list ).replace("'",'')
+       jqexp = "jq -c '.[] | {vls}'".format(vls=vals_str)
+
+    NOTE = ''' STEP0: LIST ONAPP USERS '''
+    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {res_url}".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, res_url=URL) + " | {jqex}".format(jqex=jqexp)
+    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
+    print ("{}".format(ou))
+
+    return (rc,ou.decode('ascii'))
+
+
+ ######################
 ##----- FUNCTION ------##
 ##-get_onapp_vm_nics---##
  ######################

@@ -109,7 +109,7 @@ def vm(idn='',vhip='',verb=''):
     print('-------')
     print("-- Upload drivers to VM --".format(hv_ip=ONAPP_HV_IP))
 
-    CMD = "scp -P{ssh_port} {sshopt} ~/CloudbaseInitSetup_1_1_2_x64.msi Administrator@{vm_ip}:C:/ 2>/dev/null ".format(ssh_port=ONAPP_SSH_PORT,sshopt=SSH_OPTS,vm_ip=VM_SRC_IP)
+    CMD = "scp -P{ssh_port} {sshopt} ~/CloudbaseInitSetup_Stable_x64.msi Administrator@{vm_ip}:C:/ 2>/dev/null ".format(ssh_port=ONAPP_SSH_PORT,sshopt=SSH_OPTS,vm_ip=VM_SRC_IP)
     (rc,ou) = run_command(CMD,verbosity,0)
     if  rc != 0:
        print (bcolors.FAIL + "Something went wrong. Couldn't transfer CloudbaseInitSetup into VM \n" + bcolors.ENDC)
@@ -125,7 +125,7 @@ def vm(idn='',vhip='',verb=''):
     
     NOTE = """ -- OnApp: install drivers for VM -- """
 
-    CMD = """ssh Administrator@{vm_ip} -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' 'cd C:; msiexec /i CloudbaseInitSetup_1_1_2_x64.msi /qn /l*v log.txt' """.format(vm_ip=VM_SRC_IP)
+    CMD = """ssh Administrator@{vm_ip} -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' 'cd C:; msiexec /i CloudbaseInitSetup_Stable_x64.msi /qn /l*v log.txt' """.format(vm_ip=VM_SRC_IP)
     (rc,ou) = run_command(CMD,verbosity,0,NOTE)
 
     CMD = """ssh Administrator@{vm_ip} -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' "mkdir -p 'C:/vz-guest-tools-win'
