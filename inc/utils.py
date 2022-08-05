@@ -1,0 +1,98 @@
+def _find_largest_element(some_list):
+    """
+    Find the bigger string element in the list
+    :param some_list:
+    :return:
+    """
+    fn = lambda item: len(str(item))
+    max_item = max(some_list or [''], key=fn)
+    return len(max_item)
+
+
+def _find_longest_item(matrix, headers=False):
+    """
+    Find the longest item in a column of matrix and assign it to ID of the column
+    :param matrix:
+        [['test, 'test'],
+         ['test, 'test'],
+         ['test, 'test']]
+    :param headers: bool
+    :return: {0: 10, 1: 5, 2: 25, . . .}
+    """
+    long_dict = {}
+    if headers:
+        for i, element in enumerate(matrix):
+            long_dict[i] = len(element)
+        return long_dict
+
+    row_length = len(matrix[0])
+    total = []
+    for i in range(0, row_length):
+        matrix_factory = []
+        for row in matrix:
+            matrix_factory.append(row[i])
+        total.append(matrix_factory)
+    if len(total) == 1:
+        for i, tot in enumerate(total[0]):
+            long_dict[i] = _find_largest_element(tot)
+        return long_dict
+
+    for i, tot in enumerate(total):
+        long_dict[i] = _find_largest_element(tot)
+    return long_dict
+
+
+def parse_matrix(headers, matrix):
+    """
+    This function is working with lists in list (matrix) and show it like table in console, ex.:
+        ------------------------------------------|
+        |ID  |IDENTIFIER     |HOSTNAME  |TEMPLATE |
+        ------------------------------------------|
+        |190 |jscvwcxdcjckvy |cloudinit |null     |
+        ------------------------------------------|
+    :param headers: headers of table
+    :param matrix: lists in list
+        [['test, 'test'],
+         ['test, 'test'],
+         ['test, 'test']]
+    :return:
+    """
+    schema_matrix = _find_longest_item(matrix)
+    schema_header = _find_longest_item(headers, headers=True)
+    for k_m, v_m in schema_matrix.items():
+        for k_h, v_h in schema_header.items():
+            if k_m != k_h:
+                continue
+
+            elif v_m >= v_h:
+                schema_matrix[k_m] = v_m
+                continue
+
+            schema_matrix[k_m] = v_h
+    white_space = " "
+    header_str = ""
+    table_str = ""
+    sum_list = []
+    sum_list.append(len(headers)*2)
+    for i, head in enumerate(headers):
+        sum_list.append(schema_matrix[i])
+        _number = schema_matrix[i] - len(str(head)) + 1
+        _prepare_str = "|{head}{spaces}".format(head=head.upper(), spaces=white_space*_number)
+        header_str += _prepare_str
+    for i, row in enumerate(matrix):
+        row_str = ""
+        for j, elem in enumerate(row):
+            _number = schema_matrix[j] - len(str(elem)) + 1
+            row_str += "|{elem}{spaces}".format(elem=elem, spaces=white_space*_number)
+        if i+2 > len(matrix):
+            table_str += row_str + "|"
+            continue
+
+        table_str += row_str + "|\n"
+    separator = "-" * sum(sum_list) + "|"
+    final_string = "{sep1}\n{head}\n{sep2}\n{table}\n{sep3}".format(sep1=separator,
+                                                                    head=header_str + "|",
+                                                                    sep2=separator,
+                                                                    table=table_str,
+                                                                    sep3=separator)
+    return final_string

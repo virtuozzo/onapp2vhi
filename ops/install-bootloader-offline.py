@@ -30,18 +30,18 @@ def cli():
 #click.argument('name',default='') - not used
 def vm(idn='',vhip='',verb=''):
     if idn == '' :
-       print ('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
+       logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
        exit(17)
 #    if vhip == '':
-#       print ('You need to pass VHI hypervisor IP address through --vhi-ip=? parameter ')
+#       logs.info('You need to pass VHI hypervisor IP address through --vhi-ip=? parameter ')
 #       exit(18)
 
     if verb == '': verb = str(VERBOSITY)
     if not str(verb).isdigit():
-       print("Effor: '--verbosity' parameter should be a number")
+       logs.info("Effor: '--verbosity' parameter should be a number")
        exit(11)
     if int(verb) < 0 or int(verb) > 8:
-       print("Effor: '--verbosity' parameter should be a number between 0 and 8")
+       logs.info("Effor: '--verbosity' parameter should be a number between 0 and 8")
        exit(12)
     if verb != '':
        verbosity = int(verb)
@@ -60,7 +60,7 @@ def vm(idn='',vhip='',verb=''):
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c --arg vm_idn {vm_idn} '.[] | select(.virtual_machine.identifier==$vm_idn) | [ .virtual_machine.identifier, .virtual_machine.hypervisor_id, .virtual_machine.ip_addresses[0][\"ip_address\"][\"address\"] ] '".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, vm_idn=VM_IDn)
     (rc,ou) = run_command(CMD,verbosity,0,NOTE)   
     VM_OHV_ID = int(json.loads(ou)[1])
-    print("HV_ID: " + str(VM_OHV_ID))
+    logs.info("HV_ID: " + str(VM_OHV_ID))
 #--VM_OHV_ID--#
 
 #--step_2--#
@@ -81,10 +81,10 @@ def vm(idn='',vhip='',verb=''):
     ONAPPVM_DISKS = get_onapp_vm_primary_disk(idn,verbosity)    
     
     if verbosity > 5:
-       print(NOTE)
-       print("OnApp_VM_PRIMARY_DISK:")
-       print(ONAPPVM_DISKS[0]['path'])
-       print("")
+       logs.info(NOTE)
+       logs.info("OnApp_VM_PRIMARY_DISK:")
+       logs.info(ONAPPVM_DISKS[0]['path'])
+       logs.info("")
 
 #--ONAPPVM_DISKS--#
 
@@ -96,7 +96,7 @@ def vm(idn='',vhip='',verb=''):
     CMD = "ssh root@{hv_ip} 'virsh dominfo {vm_idn}'".format(hv_ip=VM_OHV_IP,vm_idn=VM_IDn)
     (rc,ou) = run_command(CMD,verbosity,0,NOTE)
     if rc == 0:
-       print("VM IS  RUNNING.\n ")
+       logs.info("VM IS  RUNNING.\n ")
 #Save original xml and remove cdrom
        CMD = "ssh root@{hv_ip} 'virsh dumpxml {vm_idn} 2>/dev/null > /tmp/{vm_idn}.xml ; cat /tmp/{vm_idn}.xml' 2>/dev/null".format(vm_idn=VM_IDn,hv_ip=VM_OHV_IP)
        if verbosity == 0:
@@ -179,7 +179,7 @@ def vm(idn='',vhip='',verb=''):
     NOTE = """ -- OnApp: Start VM -- """
 
     CMD = "ssh root@{hv_ip} 'virsh create /onapp/tools/scripts/{vm_idn}.xml'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
-    (rc, ou) = run_command(CMD,verbosity,0)
+    (rc, ou) = run_command(CMD,verbosity,0,NOTE)
 
 
 cli.add_command(vm)

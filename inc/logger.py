@@ -37,14 +37,14 @@ class OnAppVHILogger:
     def __init__(self):
         self._logger = setup_logger()
 
-    def info(self, msg, data=None):
-        if data:
-            self._logger.info("----------")
-            self._logger.info(" -- {msg}".format(msg=msg))
-            self._logger.info(" -- Data: {data}".format(data=data))
-            self._logger.info("----------")
-            return
+    def info(self, msg, separator=False):
+        if separator:
+            self._logger.info('- - - '*15)
+        self._logger.info("{msg}".format(msg=msg))
 
-        self._logger.info("----------")
-        self._logger.info(" -- {msg}".format(msg=msg))
-        self._logger.info("----------")
+    def error(self, msg):
+        self._logger.error("{msg}".format(msg=msg))
+
+    def warn(self, msg):
+        self._logger.warning("{msg}".format(msg=msg))
+

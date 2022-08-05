@@ -11,7 +11,8 @@ sys.path.append(plug_path+'inc')
 
 from o2v_config import *
 from functions import *
-from onapp_helpers import *
+from utils import parse_matrix
+
 
  ######################
 ##-----FUNCTION-------##
@@ -20,7 +21,6 @@ from onapp_helpers import *
 def list_onapp_vms(vals='',by='',url='',verbosity=8):
 
     URL = ONAPP_CP_URL + '/virtual_machines.json'
-
     if verbosity > 7:
        verbosity = 7
 
@@ -48,8 +48,12 @@ def list_onapp_vms(vals='',by='',url='',verbosity=8):
     NOTE = ''' STEP0: LIST ONAPP VMS '''
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {res_url}".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, res_url=URL) + " | {jqex}".format(jqex=jqexp)
     (rc,ou) = run_command(CMD,verbosity,0,NOTE)
-    print ("{}".format(ou))
-
+    default_vals = ['id', 'identifier', 'hostname', 'booted']
+    if vals:
+        default_vals = vals.split(",")
+    vm_list = [a.replace('[', '').replace(']', '').replace('\"', '').split(',') for a in ou.splitlines()]
+    vms = parse_matrix(default_vals, vm_list)
+    logs.info("\n{}".format(vms))
     return (rc,ou.decode('ascii'))
 
 
@@ -73,7 +77,9 @@ def list_onapp_users(vals='',by='',url='',verbosity=8):
     elif vals != "" and by != "":
        by_arg=by.split("=")[0]
        by_val=by.split("=")[1]
-       vals_list = [ ".user.{}".format(x) for x in vals.split(",") ]
+       if 'roles' in vals:
+           vals = vals.replace('roles', 'roles[0].role.label')
+       vals_list = [".user.{}".format(x) for x in vals.split(",")]
        if len(vals_list) == 1:
           vals_list = vals_list[0]
        vals_str = str( vals_list ).replace("'",'')
@@ -88,8 +94,12 @@ def list_onapp_users(vals='',by='',url='',verbosity=8):
     NOTE = ''' STEP0: LIST ONAPP USERS '''
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {res_url}".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, res_url=URL) + " | {jqex}".format(jqex=jqexp)
     (rc,ou) = run_command(CMD,verbosity,0,NOTE)
-    print ("{}".format(ou))
-
+    default_vals = ['id', 'email', 'login', 'roles']
+    if vals:
+        default_vals = vals.split(",")
+    user_list = [a.replace('[', '').replace(']', '').replace('\"', '').split(',') for a in ou.splitlines()]
+    users = parse_matrix(default_vals, user_list)
+    logs.info("\n{}".format(users))
     return (rc,ou.decode('ascii'))
 
 
@@ -111,7 +121,7 @@ def get_onapp_vm_nics(vm_idn='',verbosity=8):
     API_VM_MACS = []
     for line in ou.splitlines():
        nic = json.loads(line)
-       API_VM_MACS.append( { 'id': nic[0], 'mac': nic[1].encode('ascii'),'primary': nic[2] } ) 
+       API_VM_MACS.append( { 'id': nic[0], 'mac': nic[1].encode('ascii'),'primary': nic[2] } )
 
     NOTE = """ -- OnApp: get VM's IP addresses -- """
 
@@ -121,10 +131,10 @@ def get_onapp_vm_nics(vm_idn='',verbosity=8):
     API_VM_IPS = defaultdict( lambda: [] )
     for line in ou.splitlines():
        nic = json.loads(line)
-       if nic[0] in API_VM_IPS.keys() : 
-            API_VM_IPS[ nic[0] ].append( nic[1].encode('ascii') ) 
+       if nic[0] in API_VM_IPS.keys() :
+            API_VM_IPS[ nic[0] ].append( nic[1].encode('ascii') )
        else:
-           API_VM_IPS[ nic[0] ] = [ nic[1].encode('ascii') ] 
+           API_VM_IPS[ nic[0] ] = [ nic[1].encode('ascii') ]
 
     API_VM_NICS = []
 
@@ -155,11 +165,11 @@ def get_onapp_vm_disks(vm_idn='',verbosity=8):
        ds = json.loads(line)
        API_DS[ ds[0] ] = ds[1].encode('ascii')
     if verbosity >= 7:
-       print ("ONAPP_DATASTORES: \n" + str(API_DS))
-       print("")
+       logs.info("ONAPP_DATASTORES: \n" + str(API_DS))
+       logs.info("")
 
 #--OnApp: get source VM disks --#
-    
+
     NOTE = """ -- OnApp: get VM's disks by {identifier} -- """
 
     URL = ONAPP_CP_URL + "/virtual_machines/{}/disks.json".format(VM_IDn)
@@ -183,7 +193,7 @@ def get_onapp_vm_primary_disk(vm_idn='',verbosity=8):
     VM_IDn = vm_idn
 
 #--OnApp: get source VM data_stores --#
-    
+
     NOTE = """ -- OnApp: get OnApp datastores -- """
 
     URL = ONAPP_CP_URL + "/settings/data_stores.json"
@@ -194,10 +204,10 @@ def get_onapp_vm_primary_disk(vm_idn='',verbosity=8):
        ds = json.loads(line)
        API_DS[ ds[0] ] = ds[1].encode('ascii')
     if verbosity >= 7:
-       print ("ONAPP_DATASTORES: \n" + str(API_DS))
-    
+       logs.info("ONAPP_DATASTORES: \n" + str(API_DS))
+
 #--OnApp: get source VM disks --#
-    
+
     NOTE = """ -- OnApp: get VM's disks by {identifier} -- """
 
     URL = ONAPP_CP_URL + "/virtual_machines/{}/disks.json".format(VM_IDn)

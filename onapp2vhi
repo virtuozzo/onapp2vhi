@@ -1,60 +1,40 @@
 #!/usr/bin/env python2
-
+import os
 import platform
 import sys
-import os
 import re
 import importlib
+import pip
+import click
+import click_default_group
+import colorlog
 
 plugin_folder = os.path.join(os.path.dirname(__file__), 'ops')
 
 os_distro = str(platform.linux_distribution()[0]).split(' ')[0]
 os_version = str(platform.linux_distribution()[1]).split('.')[0]
 
-#if os_distro != 'CentOS' or os_version < 7:
+# if os_distro != 'CentOS' or os_version < 7:
 #   print "OS: {distro} {version}".format(distro=os_distro,version=os_version)
 #   print "Operating system distro should be Centos 7 or higher!"
 #   exit(7)
 
-try:
-   import pip
-except ImportError:
-   print("[ >NO MODULE 'PIP' FOUND< ]")
-   print("Please install python3 and pip3 module and try again ...")
-
-try:
-   import click
-   import click_default_group
-   import requests
-   import colorlog
-except ImportError:
-    print("No python modules found: 'click', 'click-default-group', 'requests', 'colorlog'")
-    print("Installing missed python modules. . .")
-    os.system('pip install click')
-    os.system('pip install click-default-group')
-    os.system('pip install requests')
-    os.system('pip install colorlog')
 
 if len(sys.argv) <= 1:
-   print("Ask for help with 'onapp2vhi help' command.")
-   exit(11)
-  
-if str(sys.argv[1])+".py" not in os.listdir(plugin_folder):
-   print(sys.argv[1] + \
-    """ is not defined. Use one of below ones..
-Providers:
-    list-onapp-vms
-    list-onapp-users
-    install-bootloader
-    install-bootloader-offline
-    live-migrate
-    cold-migrate
-    template-migrate
-    install-win-drivers
-    install-win-drivers-offline
-    user-migrate
-    help  """)
-   exit(13)
+    print("Ask for help with 'onapp2vhi help' command.")
+    exit(11)
+
+if str(sys.argv[1]) in ("--help", "help", "man", "--h"):
+    _providers = sorted([filename[:-3] for filename in os.listdir(plugin_folder) if filename.endswith('.py')])
+    _str_prov = ''
+    for i, provider in enumerate(_providers):
+        if i == 0:
+            _str_prov = _str_prov + '   ' + provider + '\n    '
+            continue
+
+        _str_prov = _str_prov + provider + '\n    '
+    print("Providers:\n {prov}".format(prov=_str_prov))
+    exit(13)
 
 
 class MyCLI(click.MultiCommand):
@@ -75,9 +55,9 @@ class MyCLI(click.MultiCommand):
             eval(code, ns, ns)
         return ns['cli']
 
+
 cli = MyCLI(help='This tool\'s subcommands are loaded from a '
-            'plugin folder dynamically.')
+                 'plugin folder dynamically.')
 
 if __name__ == '__main__':
     cli()
-
