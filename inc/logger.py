@@ -42,9 +42,13 @@ class OnAppVHILogger:
             self._logger.info('- - - '*15)
         self._logger.info("{msg}".format(msg=msg))
 
-    def error(self, msg):
+    def error(self, msg, separator=False):
+        if separator:
+            self._logger.info('- - - '*15)
         self._logger.error("{msg}".format(msg=msg))
 
-    def warn(self, msg):
+    def warn(self, msg, separator=False):
+        if separator:
+            self._logger.info('- - - '*15)
         self._logger.warning("{msg}".format(msg=msg))
 

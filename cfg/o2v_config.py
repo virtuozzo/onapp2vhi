@@ -21,6 +21,7 @@ ONAPP_HV_IP = '10.63.0.5'
 # - - - - - - - - - - - - - - -
 # VHI Cloud DEFAULTS ##
 VHI_CP_URL = 'https://cvhi.onappdev.com:8888'
+VHI_PANEL_URL = 'https://cvhi.onappdev.com:8800'
 VHI_API_PATH = '/api/v2'
 VHI_CP_IP = '10.63.0.63'
 VHI_LOGIN = 'admin'

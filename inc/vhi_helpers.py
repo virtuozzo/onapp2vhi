@@ -1,18 +1,14 @@
 import requests
 import json
 from o2v_config import *
-from functions import *
+from functions import logs
 
 
 # ToDo:
-#  ssh keys migrate
 #  password generation + email notification
 
 
 class Vhi:
-    # Temporary User Password:
-    USER_PASSWORD = "Test123$"
-
     # VHI ROLES:
     VHI_ADMIN = "domain_admin"
     VHI_PROJECT_MEMBER = "project_admin"
@@ -102,7 +98,7 @@ class Vhi:
 
             _user_role = self.VHI_PROJECT_MEMBER
         vhi_user = {"name": user_data['user_login'],
-                    "password": self.USER_PASSWORD,
+                    "password": user_data['password'],
                     "system_permissions": [],
                     "email": user_data['user_email'],
                     "enabled": True}
@@ -173,13 +169,13 @@ class Vhi:
         """
         Create new project on VHI side with provided properties
         :param proj_data: {'user_email': 'email@email.com', . . .}
-        :param object_type: "user", "project"
+        :param object_type: "user", "project", "ssh_keys"
         :return:
         """
         self._auth()
         object_properties = self._define_object_type(proj_data, object_type)
         if object_properties['exist']:
-            return
+            return False
 
         logs.info('{}-- VHI: Create new {} --'.format(SPACES, object_properties['name']), separator=True)
         logs.info('POST {}'.format(object_properties['url']))
@@ -193,4 +189,9 @@ class Vhi:
                                                                            object_properties['name'],
                                                                            response.content))
         logs.info('Response [{}]: {}'.format(response.status_code, response.content))
-        self.project_id = response.json()['id']
+        object_id = response.json()['id']
+        if object_type == "user":
+            self.user_id = object_id
+        elif object_type == "project":
+            self.project_id = object_id
+        return True

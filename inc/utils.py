@@ -1,3 +1,7 @@
+import string
+import random
+
+
 def _find_largest_element(some_list):
     """
     Find the bigger string element in the list
@@ -96,3 +100,16 @@ def parse_matrix(headers, matrix):
                                                                     table=table_str,
                                                                     sep3=separator)
     return final_string
+
+
+def generate_random_password(length=12):
+    """
+    Generates password for User with default length 12
+    :param length: (int) the length of password
+    :return: (str) password
+    """
+    characters = list(string.ascii_letters + string.digits + "!@#$%^&*()")
+    random.shuffle(characters)
+    password = [random.choice(characters) for _ in range(length)]
+    random.shuffle(password)
+    return "".join(password)
