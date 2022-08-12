@@ -26,7 +26,7 @@ def cli():
               help="Select specific params with --select=a,b,c option.")
 @click.option('--by', '--where', '--where-arg', default='',
               help="Select by specific params with --where='id=13' option.")
-@click.option('--verb', '-v', '--v', '--verbosity', default='', help="Verbolity level of values between 0 and 8")
+@click.option('--verb', '-v', '--v', '--verbosity', default='', help="Verbosity level of values between 0 and 8")
 # click.argument('name',default='') - not used
 def vms(vals='', by='', verb=''):
     if verb == '': verb = "0"
