@@ -271,7 +271,9 @@ def get_onapp_vm_flavor(vm_identifier):
     :return:
     """
     _url = '{}/virtual_machines/{}.json'.format(ONAPP_CP_URL, vm_identifier)
+    logs.info('GET {}'.format(_url))
     response = requests.get(_url, auth=AUTH)
+    logs.info('Response [{}]: {}'.format(response.status_code, response.json()))
     vm_props = response.json()['virtual_machine']
     return {'vcpus': vm_props['cpus'],
             'ram': vm_props['memory'],

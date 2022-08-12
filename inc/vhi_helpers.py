@@ -120,8 +120,6 @@ class Vhi:
                            "ram": vm_data['ram'],
                            "disk": 0})
 
-    def _object_type(self):
-
     def _define_object_type(self, obj_data, object_type):
         if object_type == 'user':
             exist, name = self.verify_object_on_vhi_side(obj_data['user_email'],

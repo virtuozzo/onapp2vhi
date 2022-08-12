@@ -134,7 +134,7 @@ def vm(idn='', vhip='', verb=''):
     # --step_8--#
     # --OnApp: Generate grub config --#
 
-    NOTE = """ -- OnApp: Generate grub config for VM [{vm_idn}] -- """
+    NOTE = """ -- OnApp: Generate grub config for VM [{vm_idn}] -- """.format(vm_idn=VM_IDn)
 
     CMD = "ssh root@{vm_ip} -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' 'grub-mkconfig -o /boot/grub/grub.cfg || grub2-mkconfig -o /boot/grub2/grub.cfg'".format(
         vm_ip=VM_SRC_IP)

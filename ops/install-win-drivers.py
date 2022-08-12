@@ -114,15 +114,17 @@ def vm(idn='', vhip='', verb=''):
     # --OnApp: Upload drivers image to VM--#
     logs.info('-------')
     logs.info("-- Upload drivers to VM --".format(hv_ip=ONAPP_HV_IP))
-
-    CMD = "scp -P{ssh_port} {sshopt} ~/CloudbaseInitSetup_Stable_x64.msi Administrator@{vm_ip}:C:/ 2>/dev/null ".format(
-        ssh_port=ONAPP_SSH_PORT, sshopt=SSH_OPTS, vm_ip=VM_SRC_IP)
+    cloudbase_init = os.path.join(os.getcwd(), "CloudbaseInitSetup_Stable_x64.msi")
+    vz_guest_tools = os.path.join(os.getcwd(), "vz-guest-tools-win.tar")
+    logs.info('File path: {}'.format(cloudbase_init))
+    logs.info('File path: {}'.format(vz_guest_tools))
+    CMD = "scp -P{ssh_port} {sshopt} {init} Administrator@{vm_ip}:C:/ 2>/dev/null ".format(
+        ssh_port=ONAPP_SSH_PORT, init=cloudbase_init, sshopt=SSH_OPTS, vm_ip=VM_SRC_IP)
     (rc, ou) = run_command(CMD, verbosity, 0)
     if rc != 0:
         logs.info(bcolors.FAIL + "Something went wrong. Couldn't transfer CloudbaseInitSetup into VM \n" + bcolors.ENDC)
-
-    CMD = "scp -P{ssh_port} {sshopt} ~/vz-guest-tools-win.tar Administrator@{vm_ip}:C:/ 2>/dev/null ".format(
-        ssh_port=ONAPP_SSH_PORT, sshopt=SSH_OPTS, vm_ip=VM_SRC_IP)
+    CMD = "scp -P{ssh_port} {sshopt} {guest_tool} Administrator@{vm_ip}:C:/ 2>/dev/null ".format(
+        ssh_port=ONAPP_SSH_PORT, guest_tool=vz_guest_tools, sshopt=SSH_OPTS, vm_ip=VM_SRC_IP)
     (rc, ou) = run_command(CMD, verbosity, 0)
     if rc != 0:
         logs.info(bcolors.FAIL + "Something went wrong. Couldn't transfer vz-guest-tools-win into VM \n" + bcolors.ENDC)

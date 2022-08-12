@@ -84,8 +84,9 @@ def vm(vdom='', flavor='', vproj='', vuser='', vpass='', idn='', vhip='', snc=''
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -r -c --arg vm_idn {vm_idn} '.[] | select(.virtual_machine.identifier==$vm_idn) | [ .virtual_machine.identifier, .virtual_machine.hypervisor_id, .virtual_machine.ip_addresses[0][\"ip_address\"][\"address\"], .virtual_machine.operating_system ] '".format(
         user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, vm_idn=VM_IDn)
     (rc, ou) = run_command(CMD, verbosity, 0)
+    vm_list = [a.replace('[', '').replace(']', '').replace('\"', '').split(',') for a in ou.splitlines()][0]
     vhi = Vhi()
-    _on_app_flavor = get_onapp_vm_flavor(ou[0])
+    _on_app_flavor = get_onapp_vm_flavor(vm_list[0])
     vhi.create_object(_on_app_flavor, 'flavor')
     _flavour = vhi.flavor_name
     OVM_IDENTIFIER = str(json.loads(ou)[0]).encode('ascii')
