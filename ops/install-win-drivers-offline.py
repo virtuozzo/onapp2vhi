@@ -151,7 +151,7 @@ def vm(idn='', vhip='', verb=''):
     vz_guest_tools = os.path.join(os.getcwd(), "vz-guest-tools-win.tar")
     logs.info('File path: {}'.format(cloudbase_init))
     logs.info('File path: {}'.format(vz_guest_tools))
-    
+
     CMD = "scp -r  {path}  root@{hv_ip}:/mnt/prepare_win/vz-guest-tools-win.tar".format(
         path=vz_guest_tools, hv_ip=VM_OHV_IP)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)

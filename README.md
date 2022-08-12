@@ -6,20 +6,24 @@
 ## Setup local environment
 #### Please provide SSH KEYS to VHI(HV, CP) and OnApp(HV, CP, DS) from machine you are going to run migration.
   - Before running "./onapp2vhi" command please do next steps:
-    - you should be in onapp2vhi project
-    - RUN *sudo yum update*
-    - RUN *sudo yum –y install python2-pip*
-    - RUN *pip –V* (NOTE: you should see pip version ___pip 20.3.4 from /migrations/.venv/lib/python2.7/site-packages/pip (python 2.7)___)
-    - RUN */usr/local/bin/python -m pip install --upgrade pip_*
-    - RUN *pip install virtualenv*
-    - RUN *virtualenv -p /usr/bin/python2.7 .venv* (NOTE: path may be different, please find where python 2.7 is located)
-    - RUN *source .venv/bin/activate*
-    - RUN *pip install --upgrade pip*
+    - you should be in onapp2vhi project `[~/onapp2vhi] $ `
+    - RUN `sudo yum update`
+    - RUN `sudo yum –y install python2-pip`
+    - RUN `pip –V` (NOTE: you should see pip version ___pip 20.3.4 from /migrations/.venv/lib/python2.7/site-packages/pip (python 2.7)___)
+    - RUN `/usr/local/bin/python -m pip install --upgrade pip`
+    - RUN `pip install virtualenv`
+  - NOTE: path may be different, please find where python 2.7 is located (`which python2`)
+    - RUN `virtualenv -p /usr/bin/python2.7 .venv`
+    - RUN `source .venv/bin/activate`
+    - RUN `pip install --upgrade pip`
     - inside virtual env (you should see in console "(.venv) root@root #"):
-      - RUN _pip install -r requirements.txt_
+      - RUN `pip install -r requirements.txt`
   - Please provide credentials related to OnApp and VHI clouds in the file __cfg/o2v_config.py__
-    - vi ./cfg/o2v_config.py
+    - `vi ./cfg/o2v_config.py`
     - save file
+  - Copy files into project root dir:
+    - `vz-guest-tools-win.tar`
+    - `CloudbaseInitSetup_Stable_x64.msi`
   * You have installed separate __python 2.7 virtual environment__ that will not affect global python requirements.
   * You have installed all needed packages and libraries into our virtual environment. 
   * You have provided credentials to access our clouds.
@@ -42,7 +46,7 @@
     OR
     ./onapp2vhi man
     ```
-
+---
   - ### Get all Virtual servers:
     ```
     ./onapp2vhi list-onapp-vms
@@ -58,8 +62,7 @@
       ./onapp2vhi list-onapp-vms --by="user_id=7" --vals=identifier,hostname,memory,cpus,user_id,template_label,total_disk_size
       ./onapp2vhi list-onapp-vms --by="identifier=lidqtfwggohyzk" --vals=identifier,hostname,memory,cpus,user_id,template_label,total_disk_size
       ```
-
-
+---
   - ### Get all Users:
     - ./onapp2vhi list-onapp-vms
     - the same logic is using for users:
@@ -75,7 +78,7 @@
           ```
           ./onapp2vhi list-onapp-users --by="login=admin" --vals=id,email,login,roles,first_name,last_name
           ```
-  
+---
   - ### User migration:
     - When you decided which user should migrate, run one of next command (depends on input property):
       ```
@@ -90,7 +93,7 @@
       - user
       - migrated ssh keys (if he had in OnApp)
       - file with user login and password saved into /migrated_users/user_7.log
-       
+---
   - ### Linux based VM's:
     - First step is to install bootloader into VM on OnApp side:
       ```
@@ -102,6 +105,7 @@
       ```
       ./onapp2vhi live-migrate --vm=lidqtfwggohyzk
       ```
+---
   - ### Windows based VM's:
     - First step is to install bootloader into VM on OnApp side:
         ```
@@ -113,6 +117,9 @@
       ```
       ./onapp2vhi live-migrate --vm=lidqtfwggohyzk
       ```
+---
+  - ### Deactivate environment:
+    - RUN in terminal `deactivate`
 ---
 ---
 
