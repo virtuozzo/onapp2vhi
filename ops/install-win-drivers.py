@@ -114,10 +114,13 @@ def vm(idn='', vhip='', verb=''):
     # --OnApp: Upload drivers image to VM--#
     logs.info('-------')
     logs.info("-- Upload drivers to VM --".format(hv_ip=ONAPP_HV_IP))
+
+    # FILES TO COPY SHOULD BE LOCATED IN PROJECT FOLDER
     cloudbase_init = os.path.join(os.getcwd(), "CloudbaseInitSetup_Stable_x64.msi")
     vz_guest_tools = os.path.join(os.getcwd(), "vz-guest-tools-win.tar")
     logs.info('File path: {}'.format(cloudbase_init))
     logs.info('File path: {}'.format(vz_guest_tools))
+
     CMD = "scp -P{ssh_port} {sshopt} {init} Administrator@{vm_ip}:C:/ 2>/dev/null ".format(
         ssh_port=ONAPP_SSH_PORT, init=cloudbase_init, sshopt=SSH_OPTS, vm_ip=VM_SRC_IP)
     (rc, ou) = run_command(CMD, verbosity, 0)
