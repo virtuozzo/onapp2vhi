@@ -39,11 +39,11 @@ def list_onapp_vms(vals='',by='',url='',verbosity=8):
            jqexp = "jq -c '.[] | select(.virtual_machine.{by_a}=={by_v}) | {jqpex}'".format(by_a=by_arg,
                                                                                             by_v=by_val,
                                                                                             jqpex=_default_jqexp)
-       elif type(by_val) == bool:
+       elif by_val in ('true', 'false'):
            jqexp = "jq -c '.[] | select(.virtual_machine.{by_a}=={by_v}) | {jqpex}'".format(by_a=by_arg,
                                                                                             by_v=by_val,
                                                                                             jqpex=_default_jqexp)
-       elif not by_val.isdigit():
+       else:
            jqexp = "jq -c '.[] | select(.virtual_machine.{by_a}==\"{by_v}\") | {jqpex}'".format(by_a=by_arg,
                                                                                                 by_v=by_val,
                                                                                                 jqpex=_default_jqexp)
@@ -72,8 +72,6 @@ def list_onapp_vms(vals='',by='',url='',verbosity=8):
     logs.info('{} -- LIST ONAPP VIRTUAL MACHINES --'.format(SPACES))
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {res_url}".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, res_url=URL) + " | {jqex}".format(jqex=jqexp)
     (rc,ou) = run_command(CMD,verbosity,0,'')
-    logs.error(CMD)
-    logs.error(ou)
     default_vals = ['id', 'identifier', 'template_label', 'booted', 'user_id']
     if vals:
         default_vals = vals.split(",")
