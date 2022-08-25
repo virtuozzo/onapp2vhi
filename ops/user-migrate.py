@@ -2,7 +2,6 @@
 import os
 import sys
 import click
-import requests
 from click_default_group import DefaultGroup
 
 plug_path = os.getcwd()
@@ -10,12 +9,12 @@ sys.path.append(plug_path)
 sys.path.append(plug_path + '/cfg')
 sys.path.append(plug_path + '/inc')
 
-from o2v_config import *
-from functions import *
-from onapp_helpers import get_user_ssh_keys, get_user_data
-from vhi_ssh_keys import VhiSshKeys
-from vhi_helpers import Vhi
-from utils import generate_random_password
+from inc.vhi_ssh_keys import VhiSshKeys
+from inc.vhi_helpers import Vhi
+from inc.utils import generate_random_password
+from ops import logs
+from cfg.o2v_config import Helper, OnAppAPICredentials
+from inc.onapp_helpers import get_user_ssh_keys, get_user_data
 
 
 USER_PASSWORD = generate_random_password()
@@ -29,17 +28,19 @@ def cli():
 @click.command()
 @click.option('--idn', '--user', '--email', '--user-id', '--login', default='', help="OnApp User identifier.")
 def user(idn=''):
-    if idn == '':
+    if not idn:
         print('You need to pass OnApp User ID value through --user-identifier=? parameter ')
         exit(17)
+
     user_property = idn
     # OnApp URLS:
     if idn.isdigit():
         _type = 'ID'
-        url_user = "{onapp_url}/users/{user_id}.json".format(onapp_url=ONAPP_CP_URL, user_id=user_property)
+        url_user = "{onapp_url}/users/{user_id}.json".format(onapp_url=OnAppAPICredentials.ONAPP_CP_URL.value,
+                                                             user_id=user_property)
     else:
         _type = 'OTHER'
-        url_user = "{onapp_url}/users.json".format(onapp_url=ONAPP_CP_URL)
+        url_user = "{onapp_url}/users.json".format(onapp_url=OnAppAPICredentials.ONAPP_CP_URL.value)
 
     # --step_1--#
     # --OnApp: get source User information--#
@@ -63,7 +64,7 @@ def user(idn=''):
     vhi.create_object(vhi_user_data, 'user')
     _ssh_key = VhiSshKeys(vhi_user_data, get_user_ssh_keys(_user_data))
     _ssh_key.create_vhi_ssh_keys()
-    logs.info('{} -- VHI: User has been migrated successfully --'.format(SPACES))
+    logs.info('{} -- VHI: User has been migrated successfully --'.format(Helper.SPACES.value))
 
 
 cli.add_command(user)

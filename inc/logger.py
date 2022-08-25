@@ -51,4 +51,3 @@ class OnAppVHILogger:
         if separator:
             self._logger.info('- - - '*15)
         self._logger.warning("{msg}".format(msg=msg))
-

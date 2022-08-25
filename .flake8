@@ -1,0 +1,6 @@
+[flake8]
+exclude =
+    venv
+    __pycache__
+ignore = E501, E402, E265, E114, W605, E231, E226, E231, W291, E251, E731, E116, E225, E202, E201, C901, F522
+max-complexity = 10

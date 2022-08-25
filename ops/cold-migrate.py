@@ -1,24 +1,15 @@
 #!/usr/bin/env python2
-
-import os
 import re
-import sys
-import xml
-import json
 import click
 import xml.etree.ElementTree as KVMxml
 from click_default_group import DefaultGroup
+from inc.onapp_helpers import get_onapp_vm_flavor, get_onapp_vm_nics, get_onapp_vm_disks
+from inc.vhi_helpers import Vhi
+from cfg.o2v_config import OnAppAPICredentials, VHICLoudDefaults, Helper
+from inc.functions import run_command
+from ops import logs
+import json
 
-plug_path = os.getcwd()
-# print plug_path
-sys.path.append(plug_path)
-sys.path.append(plug_path + '/cfg')
-sys.path.append(plug_path + '/inc')
-
-from o2v_config import *
-from functions import *
-from onapp_helpers import *
-from vhi_helpers import Vhi
 
 @click.group(cls=DefaultGroup, default='vm', invoke_without_command=True, default_if_no_args=True)
 def cli():
@@ -43,34 +34,41 @@ def vm(vdom='', flavor='', vproj='', vuser='', vpass='', idn='', vhip='', snc=''
     #       print ('You need to pass VHI hypervisor IP address through --vhi-ip=? parameter ')
     #       exit(18)
 
-    if vdom == '':
-        VHIDOM = VINFRA_DOMAIN
+    if not vdom:
+        VHIDOM = VHICLoudDefaults.VINFRA_DOMAIN.value
     else:
         VHIDOM = vdom
-    if vproj == '':
-        VHIPROJ = VINFRA_PROJECT
+
+    if not vproj:
+        VHIPROJ = VHICLoudDefaults.VINFRA_PROJECT.value
     else:
         VHIPROJ = vproj
-    if vuser == '':
-        VHIUSER = VINFRA_USER
+
+    if not vuser:
+        VHIUSER = VHICLoudDefaults.VINFRA_USER.value
     else:
         VHIUSER = vuser
-    if vpass == '':
-        VHIPASS = VINFRA_PASS
+
+    if not vpass:
+        VHIPASS = VHICLoudDefaults.VINFRA_PASS.value
     else:
         VHIPASS = vpass
 
-    if verb == '': verb = str(VERBOSITY)
+    if not verb:
+        verb = str(Helper.VERBOSITY.value)
+
     if not str(verb).isdigit():
         logs.info("Effor: '--verbosity' parameter should be a number")
         exit(11)
+
     if int(verb) < 0 or int(verb) > 8:
         logs.info("Effor: '--verbosity' parameter should be a number between 0 and 8")
         exit(12)
-    if verb != '':
+
+    if verb:
         verbosity = int(verb)
     else:
-        verbosity = int(VERBOSITY)
+        verbosity = int(Helper.VERBOSITY.value)
 
     click.echo('...VM migration from OnApp to VHI...')
 
@@ -80,16 +78,18 @@ def vm(vdom='', flavor='', vproj='', vuser='', vpass='', idn='', vhip='', snc=''
     # --OnApp: get source VM parameters--#
     logs.info('-------')
     logs.info("-- OnApp: get source VM parameters --")
-    URL = ONAPP_CP_URL + "/virtual_machines.json"
+    URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/virtual_machines.json"
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -r -c --arg vm_idn {vm_idn} '.[] | select(.virtual_machine.identifier==$vm_idn) | [ .virtual_machine.identifier, .virtual_machine.hypervisor_id, .virtual_machine.ip_addresses[0][\"ip_address\"][\"address\"], .virtual_machine.operating_system ] '".format(
-        user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, vm_idn=VM_IDn)
+        user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value,
+        user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value,
+        full_url=URL, vm_idn=VM_IDn)
     (rc, ou) = run_command(CMD, verbosity, 0)
     vm_list = [a.replace('[', '').replace(']', '').replace('\"', '').split(',') for a in ou.splitlines()][0]
     vhi = Vhi()
     _on_app_flavor = get_onapp_vm_flavor(vm_list[0])
     vhi.create_object(_on_app_flavor, 'flavor')
     _flavour = vhi.flavor_name
-    OVM_IDENTIFIER = str(json.loads(ou)[0]).encode('ascii')
+    # OVM_IDENTIFIER = str(json.loads(ou)[0]).encode('ascii')
     OVM_HV_ID = int(json.loads(ou)[1])
     OVM_OS = str(json.loads(ou)[3]).encode('ascii')
     # --OVM_HV_ID--#
@@ -98,9 +98,11 @@ def vm(vdom='', flavor='', vproj='', vuser='', vpass='', idn='', vhip='', snc=''
     # --OnApp: get source VM hypervisor IP address --#
     logs.info('-------')
     logs.info("-- OnApp: get VM's {hypervisor_ip} by {hypervisor_id} --")
-    URL = ONAPP_CP_URL + "/hypervisors.json"
+    URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/hypervisors.json"
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -r -c '.[] | select(.hypervisor.id=={hv_id}) | .hypervisor.ip_address '".format(
-        user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, hv_id=OVM_HV_ID)
+        user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value,
+        user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value,
+        full_url=URL, hv_id=OVM_HV_ID)
     (rc, ou) = run_command(CMD, verbosity, 0)
     VM_OHV_IP = str(ou).strip("\n")
     # --VM_OHV_IP--#
@@ -138,11 +140,11 @@ def vm(vdom='', flavor='', vproj='', vuser='', vpass='', idn='', vhip='', snc=''
     logs.info('-------')
     logs.info("-- OnApp: check if VM [{vm_idn}] is running on HV [{hv_ip}] --".format(vm_idn=VM_IDn, hv_ip=VM_OHV_IP))
     CMD = "ssh -p{ssh_port} {sshopt} root@{hv_ip} 'virsh list | grep {vm_idn}' 2>/dev/null ".format(hv_ip=VM_OHV_IP,
-                                                                                                    ssh_port=ONAPP_SSH_PORT,
-                                                                                                    sshopt=SSH_OPTS,
+                                                                                                    ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value,
+                                                                                                    sshopt=Helper.SSH_OPTS.value,
                                                                                                     vm_idn=VM_IDn)
     (rc, ou) = run_command(CMD, verbosity, 0)
-    if ou != "":
+    if ou:
         logs.info("VM IS RUNNING.\n PLEASE, STOP THE VM BEFORE ITS OFFLINE MIGRATION.")
         exit(11)
 
@@ -156,31 +158,33 @@ def vm(vdom='', flavor='', vproj='', vuser='', vpass='', idn='', vhip='', snc=''
     ONAPPVM_PRI_IP = ONAPPVM_NICS[0]['ips'][0]
     ONAPPVM_PRI_MAC = ONAPPVM_NICS[0]['mac']
     CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'for vmid in `vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server list -f json | jq -r \".[] | .id \"`; do echo \"[\\\"$vmid\\\",\" `vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server iface list --server $vmid -f json | jq -c \".[] | [ .fixed_ips, .mac_addr ]\"` \"]\" | egrep -e \"{vm_ip}|{vm_mac}\"; done' 2>/dev/null ".format(
-        ssh_port=VHI_SSH_PORT, sshopt=SSH_OPTS, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER, vhipass=VHIPASS,
-        vhi_cp=VHI_CP_IP, vm_ip=ONAPPVM_PRI_IP, vm_mac=ONAPPVM_PRI_MAC)
+        ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhidom=VHIDOM,
+        vhiproj=VHIPROJ, vhiuser=VHIUSER, vhipass=VHIPASS,
+        vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, vm_ip=ONAPPVM_PRI_IP, vm_mac=ONAPPVM_PRI_MAC)
     (rc, ou) = run_command(CMD, verbosity, 0)
 
     VHI_VM_ID = ''
 
     if OVM_OS == 'windows':
-        VHI_IMAGE = VHI_WINDOWS_IMAGE
+        VHI_IMAGE = VHICLoudDefaults.VHI_WINDOWS_IMAGE.value
     else:
-        VHI_IMAGE = VHI_LINUX_IMAGE
+        VHI_IMAGE = VHICLoudDefaults.VHI_LINUX_IMAGE.value
 
-    if ou == '':
+    if not ou:
         # logs.info("LETS CREATE TARGET VM: ")
         CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server create onapp2vhi_vm_{vm_idn} --description 'onapp_vm_{vm_idn}' --network id=public,fixed-ip={vm_ip},mac={vm_mac},spoofing-protection-disable --volume source=image,id={image},size={disk_size} --flavor {vhi_flavor} -f json | jq -r \".id\"' 2>/dev/null ".format(
-            ssh_port=VHI_SSH_PORT, sshopt=SSH_OPTS, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER, vhipass=VHIPASS,
-            vhi_cp=VHI_CP_IP, vm_idn=VM_IDn, vm_ip=ONAPPVM_PRI_IP, vm_mac=ONAPPVM_PRI_MAC, vhi_sg=VHI_SG_ID,
+            ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhidom=VHIDOM, vhiproj=VHIPROJ,
+            vhiuser=VHIUSER, vhipass=VHIPASS, vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, vm_idn=VM_IDn,
+            vm_ip=ONAPPVM_PRI_IP, vm_mac=ONAPPVM_PRI_MAC, vhi_sg=VHICLoudDefaults.VHI_SG_ID.value,
             image=VHI_IMAGE, disk_size=ONAPPVM_DISKS[0]['size'], vhi_flavor=_flavour)
         (rc, ou) = run_command(CMD, verbosity, 0)
-        if rc == 0 and ou != '':
+        if not rc and ou:
             VHI_VM_ID = str(ou).strip("\n")
-            logs.info("NEW VHI VM CREATED: " + VHI_CP_URL + "/compute/servers/instances/" + VHI_VM_ID)
+            logs.info("NEW VHI VM CREATED: " + VHICLoudDefaults.VHI_CP_URL.value + "/compute/servers/instances/" + VHI_VM_ID)
             logs.info("...STOPPING VM BEFORE MIGRATION...")
             CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'while true; do vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server stop {vm_id} --hard --wait --timeout 15 -f json | jq -r -c [.name,.id,.vm_state,.power_state,.status] ;  pwstate=\"`vinfra service compute server show {vm_id} -f json | jq -r .power_state `\" ; echo \"$pwstate\" ; if [[ \"$pwstate\" == \"SHUTDOWN\" ]]; then break; fi ; sleep 1; done' 2>/dev/null ".format(
-                ssh_port=VHI_SSH_PORT, sshopt=SSH_OPTS, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER,
-                vhipass=VHIPASS, vhi_cp=VHI_CP_IP, vm_id=VHI_VM_ID)
+                ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER,
+                vhipass=VHIPASS, vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, vm_id=VHI_VM_ID)
             run_command(CMD, verbosity, 1)
         # ---
         logs.info('-------')
@@ -190,13 +194,14 @@ def vm(vdom='', flavor='', vproj='', vuser='', vpass='', idn='', vhip='', snc=''
             for idx, dsk in enumerate(ONAPPVM_DISKS):
                 if idx >= 1:
                     CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute volume create --size {disk_size} onapp-{vm_id} --storage-policy default -f json | jq -c -r \".id\"' 2>/dev/null ".format(
-                        ssh_port=VHI_SSH_PORT, sshopt=SSH_OPTS, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER,
-                        vhipass=VHIPASS, vhi_cp=VHI_CP_IP, disk_size=dsk['size'], vm_id=VHI_VM_ID)
+                        ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER,
+                        vhipass=VHIPASS, vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, disk_size=dsk['size'], vm_id=VHI_VM_ID)
                     (rc, ou) = run_command(CMD, verbosity, 0)
                     new_disk_id = str(ou).strip().encode('ascii')
                     CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server volume attach --server {vm_id} {disk_id} -f json | jq -c ' 2>/dev/null".format(
-                        ssh_port=VHI_SSH_PORT, sshopt=SSH_OPTS, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER,
-                        vhipass=VHIPASS, vhi_cp=VHI_CP_IP, vm_id=VHI_VM_ID, disk_id=new_disk_id)
+                        ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value,
+                        vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER, vhipass=VHIPASS,
+                        vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, vm_id=VHI_VM_ID, disk_id=new_disk_id)
                     (rc, ou) = run_command(CMD, verbosity, 0)
         # ---
         logs.info('-------')
@@ -207,13 +212,16 @@ def vm(vdom='', flavor='', vproj='', vuser='', vpass='', idn='', vhip='', snc=''
             for ip in ONAPPVM_NICS[0]['ips']:
                 IPS_PARAMS += "--fixed-ip ip-address={} ".format(ip)
             CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server iface list --server {vm_id} -f json | jq -c -r .[0].id' 2>/dev/null".format(
-                ssh_port=VHI_SSH_PORT, sshopt=SSH_OPTS, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER,
-                vhipass=VHIPASS, vhi_cp=VHI_CP_IP, vm_id=VHI_VM_ID)
+                ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value,
+                vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER,
+                vhipass=VHIPASS, vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, vm_id=VHI_VM_ID)
             (rc, ou) = run_command(CMD, verbosity, 0)
             VHI_NIC0_ID = str(ou).strip().encode('ascii')
             CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server iface set {ip_params} --server {vm_id} {nic_id} -f json | jq -c -r .fixed_ips' 2>/dev/null".format(
-                ssh_port=VHI_SSH_PORT, sshopt=SSH_OPTS, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER,
-                vhipass=VHIPASS, vhi_cp=VHI_CP_IP, ip_params=IPS_PARAMS, vm_id=VHI_VM_ID, nic_id=VHI_NIC0_ID)
+                ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value,
+                vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER,
+                vhipass=VHIPASS, vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, ip_params=IPS_PARAMS,
+                vm_id=VHI_VM_ID, nic_id=VHI_NIC0_ID)
             (rc, ou) = run_command(CMD, verbosity, 0)
         # ---
     else:
@@ -221,7 +229,7 @@ def vm(vdom='', flavor='', vproj='', vuser='', vpass='', idn='', vhip='', snc=''
         logs.info(ou)
         VHI_VM_ID = str(json.loads(ou)[0])
         logs.info("...please, remove the target VM on VHI or remove conflicting network interface of it...\n")
-        logs.info(VHI_CP_URL + "/compute/servers/instances/" + json.loads(ou)[0] + "/ \n")
+        logs.info(VHICLoudDefaults.VHI_CP_URL.value + "/compute/servers/instances/" + json.loads(ou)[0] + "/ \n")
         # exit(13)
 
     # --step_9--#
@@ -230,17 +238,19 @@ def vm(vdom='', flavor='', vproj='', vuser='', vpass='', idn='', vhip='', snc=''
     logs.info("-- VHI: define VHI VM's hypervisor and disks --")
     logs.info('---')
     CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'host `vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server show {vm_id} -f json | jq -r .host`' 2>/dev/null | awk '/ has address /{{print $NF}}' ".format(
-        ssh_port=VHI_SSH_PORT, sshopt=SSH_OPTS, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER, vhipass=VHIPASS,
-        vhi_cp=VHI_CP_IP, vm_id=VHI_VM_ID)
+        ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value,
+        vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER, vhipass=VHIPASS,
+        vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, vm_id=VHI_VM_ID)
     (rc, ou) = run_command(CMD, verbosity, 0)
-    if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', ou) != None:
+    if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', ou) is not None:
         VHI_HV_IP = str(ou).strip("\n")
         logs.info("VMs_HV_IP: {}".format(VHI_HV_IP))
     else:
         logs.info("Error: VM's VHI hypervisor IP address is invalid: {hv_ip}".format(hv_ip=ou))
         exit(23)
     CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_hv} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server volume list --server {vm_id} -f json | jq -c' 2>/dev/null ".format(
-        ssh_port=VHI_SSH_PORT, sshopt=SSH_OPTS, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER, vhipass=VHIPASS,
+        ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value,
+        vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER, vhipass=VHIPASS,
         vhi_hv=VHI_HV_IP, vm_id=VHI_VM_ID)
     (rc, ou) = run_command(CMD, verbosity, 0)
     vhivm_disks = json.loads(str(ou))
@@ -249,7 +259,7 @@ def vm(vdom='', flavor='', vproj='', vuser='', vpass='', idn='', vhip='', snc=''
 
     for disk_lb, disk_id in VHI_VM_DISKS.items():
         CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_hv} 'find /mnt/vstorage/vols/datastores/cinder/ -type f -name \"*volume-{disk_id}\"' 2>/dev/null".format(
-            ssh_port=VHI_SSH_PORT, sshopt=SSH_OPTS, vhi_hv=VHI_HV_IP, disk_id=disk_id)
+            ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhi_hv=VHI_HV_IP, disk_id=disk_id)
         (rc, ou) = run_command(CMD, verbosity, 0)
         VHI_VM_DISKS[disk_lb] = str(ou).strip().encode('ascii')
 
@@ -261,9 +271,9 @@ def vm(vdom='', flavor='', vproj='', vuser='', vpass='', idn='', vhip='', snc=''
     logs.info("-- VHI: get VHI VM XML config parameters --")
     logs.info('---')
     CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_hv} 'virsh dumpxml {vm_id} 2>/dev/null > /tmp/{vm_id}.xml ; cat /tmp/{vm_id}.xml' 2>/dev/null".format(
-        ssh_port=VHI_SSH_PORT, sshopt=SSH_OPTS, vhi_hv=VHI_HV_IP, vm_id=VHI_VM_ID)
+        ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhi_hv=VHI_HV_IP, vm_id=VHI_VM_ID)
 
-    if verbosity == 0:
+    if not verbosity:
         (rc, ou) = run_command(CMD, 0, 0)
     else:
         (rc, ou) = run_command(CMD, 1, 0)
@@ -300,7 +310,7 @@ def vm(vdom='', flavor='', vproj='', vuser='', vpass='', idn='', vhip='', snc=''
     logs.info('-------')
     logs.info("-- Run O2V offline VM's disks migration from OnApp to VHI hypervisor --".format(vm_idn=VM_IDn,
                                                                                                hv_ip=VM_OHV_IP))
-    if IMG_SPARSING:
+    if Helper.IMG_SPARSING.value:
         sparse_opt = '-S 1M'
     else:
         sparse_opt = ''
@@ -310,19 +320,23 @@ def vm(vdom='', flavor='', vproj='', vuser='', vpass='', idn='', vhip='', snc=''
             store_idn = ovm_dsk['datastore_idn']
             disk_idn = ovm_dsk['disk_idn']
             CMD = "ssh -p{ossh_port} {sshopt} root@{ocp_ip} 'curl -k -s -X PUT -d \"{{\\\"state\\\":3}}\" {ohv_ip}:8080/lvm/Datastore/{stor_idn}/VDisk/{dsk_idn}' 2>/dev/null".format(
-                ocp_ip=ONAPP_CP_HOST, ossh_port=ONAPP_SSH_PORT, sshopt=SSH_OPTS, ohv_ip=VM_OHV_IP, stor_idn=store_idn,
+                ocp_ip=OnAppAPICredentials.ONAPP_CP_HOST.value, ossh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value,
+                sshopt=Helper.SSH_OPTS.value, ohv_ip=VM_OHV_IP, stor_idn=store_idn,
                 dsk_idn=disk_idn)
             (rc, ou) = run_command(CMD, 0, 0)
             CMD = "ssh -t -p{ossh_port} {sshopt} root@{ohv_ip} 'qemu-img convert -p -f raw -O qcow2 -o cluster_size=1048576,lazy_refcounts=on {sp_opt} /dev/{ostor_idn}/{odsk_idn} /onapp/backups/{odsk_idn}.qcow2' 2>/dev/null".format(
-                ossh_port=ONAPP_SSH_PORT, sshopt=SSH_OPTS, ohv_ip=VM_OHV_IP, ostor_idn=store_idn, odsk_idn=disk_idn,
+                ossh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, ohv_ip=VM_OHV_IP,
+                ostor_idn=store_idn, odsk_idn=disk_idn,
                 sp_opt=sparse_opt)
             (rc, ou) = run_command(CMD, verbosity, 1)
             CMD = "ssh -p{ossh_port} {sshopt} root@{ocp_ip} 'curl -k -s -X PUT -d \"{{\\\"state\\\":2}}\" {ohv_ip}:8080/lvm/Datastore/{ds_idn}/VDisk/{dsk_idn}' 2>/dev/null".format(
-                ocp_ip=ONAPP_CP_HOST, ossh_port=ONAPP_SSH_PORT, sshopt=SSH_OPTS, ohv_ip=VM_OHV_IP, ds_idn=store_idn,
+                ocp_ip=OnAppAPICredentials.ONAPP_CP_HOST.value, ossh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value,
+                sshopt=Helper.SSH_OPTS.value, ohv_ip=VM_OHV_IP, ds_idn=store_idn,
                 dsk_idn=disk_idn)
             (rc, ou) = run_command(CMD, 0, 0)
             CMD = "ssh -t -p{ossh_port} {sshopt} root@{ohv_ip} 'scp -P{vssh_port} {sshopt} /onapp/backups/{odsk_idn}.qcow2 root@{vhv_ip}:{vdsk_path}' 2>/dev/null".format(
-                ossh_port=ONAPP_SSH_PORT, ohv_ip=VM_OHV_IP, vssh_port=VHI_SSH_PORT, sshopt=SSH_OPTS, vhv_ip=VHI_HV_IP,
+                ossh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value, ohv_ip=VM_OHV_IP,
+                vssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhv_ip=VHI_HV_IP,
                 odsk_idn=disk_idn, vdsk_path=XML_VVM_DISKS[dsk_num])
             (rc, ou) = run_command(CMD, verbosity, 1)
             dsk_num += 1
@@ -332,15 +346,18 @@ def vm(vdom='', flavor='', vproj='', vuser='', vpass='', idn='', vhip='', snc=''
             store_idn = ovm_dsk['datastore_idn']
             disk_idn = ovm_dsk['disk_idn']
             CMD = "ssh -p{ossh_port} {sshopt} root@{ocp_ip} 'curl -k -s -X PUT -d \"{{\\\"state\\\":3}}\" {ohv_ip}:8080/lvm/Datastore/{stor_idn}/VDisk/{dsk_idn}' 2>/dev/null".format(
-                ocp_ip=ONAPP_CP_HOST, ossh_port=ONAPP_SSH_PORT, sshopt=SSH_OPTS, ohv_ip=VM_OHV_IP, stor_idn=store_idn,
+                ocp_ip=OnAppAPICredentials.ONAPP_CP_HOST.value, ossh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value,
+                sshopt=Helper.SSH_OPTS.value, ohv_ip=VM_OHV_IP, stor_idn=store_idn,
                 dsk_idn=disk_idn)
             (rc, ou) = run_command(CMD, 0, 0)
             CMD = "ssh -p{ossh_port} {sshopt} root@{ohv_ip} 'for port in {{2048..2064}}; do nbd=`qemu-nbd -f -t --nocache --aio=native -p $port -f raw /dev/{ostor_idn}/{odsk_idn} --fork 2>&1` ; res=$? ; if [[ $res == 0 ]] && [[ $nbd == \"\" ]]; then echo $port; break; else port=$((port+1)); fi ; done' 2>/dev/null ".format(
-                ossh_port=ONAPP_SSH_PORT, sshopt=SSH_OPTS, ohv_ip=VM_OHV_IP, ostor_idn=store_idn, odsk_idn=disk_idn)
+                ossh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, ohv_ip=VM_OHV_IP,
+                ostor_idn=store_idn, odsk_idn=disk_idn)
             (rc, ou) = run_command(CMD, verbosity, 0)
             nbd_port = str(ou).strip().encode('ascii')
             CMD = "ssh -t -p{vssh_port} {sshopt} root@{vhv_ip} 'qemu-img convert -p -n -t directsync -o cluster_size=1048576,lazy_refcounts=on {sp_opt} nbd://{ohv_ip}:{nbdport} -O qcow2 {vdsk_path}' 2>/dev/null".format(
-                vssh_port=VHI_SSH_PORT, sshopt=SSH_OPTS, vhv_ip=VHI_HV_IP, ohv_ip=VM_OHV_IP, nbdport=nbd_port,
+                vssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhv_ip=VHI_HV_IP,
+                ohv_ip=VM_OHV_IP, nbdport=nbd_port,
                 vdsk_path=XML_VVM_DISKS[dsk_num], sp_opt=sparse_opt)
             (rc, ou) = run_command(CMD, verbosity, 1)
             dsk_num += 1
