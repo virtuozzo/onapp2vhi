@@ -1,14 +1,5 @@
 #!/usr/bin/env python
-import os
-import sys
-
 from inc.onapp_helpers import get_onapp_vm_primary_disk
-
-plug_path = os.getcwd()
-sys.path.append(plug_path)
-sys.path.append(plug_path+'/cfg')
-sys.path.append(plug_path+'/inc')
-
 import click
 import time
 import xml.etree.ElementTree as KVMxml
@@ -16,7 +7,7 @@ from click_default_group import DefaultGroup
 from cfg.o2v_config import OnAppAPICredentials, Helper
 from inc.functions import run_command
 import json
-from inc import logs
+from .. import logs
 
 
 @click.group(cls=DefaultGroup, default='vm', invoke_without_command=True, default_if_no_args=True)
@@ -28,7 +19,7 @@ def cli():
 @click.option('--idn','--vm','--identifier','--vm-identifier', default='', help="OnApp VM identifier.")
 @click.option('--vhip','--vhi-ip','--vhi-hypervisor-ip', default='', help="VHI destination HV IP address.")
 @click.option('--verb', '-v', '--v', '--verbosity', default='', help="Verbolity level of values between 0 and 8")
-#click.argument('name',default='') - not used
+# click.argument('name',default='') - not used
 def vm(idn='',vhip='',verb=''):
     if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')

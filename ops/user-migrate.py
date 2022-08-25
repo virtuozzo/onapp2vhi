@@ -1,18 +1,10 @@
 #!/usr/bin/env python2
-import os
-import sys
 import click
 from click_default_group import DefaultGroup
-
-plug_path = os.getcwd()
-sys.path.append(plug_path)
-sys.path.append(plug_path + '/cfg')
-sys.path.append(plug_path + '/inc')
-
 from inc.vhi_ssh_keys import VhiSshKeys
 from inc.vhi_helpers import Vhi
 from inc.utils import generate_random_password
-from ops import logs
+from .. import logs
 from cfg.o2v_config import Helper, OnAppAPICredentials
 from inc.onapp_helpers import get_user_ssh_keys, get_user_data
 

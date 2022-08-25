@@ -1,18 +1,8 @@
 #!/usr/bin/env python2
-
-import os
-import sys
-
 from inc.onapp_helpers import list_onapp_users
-
-plug_path = os.getcwd()
-sys.path.append(plug_path)
-sys.path.append(plug_path + '/cfg')
-sys.path.append(plug_path + '/inc')
-
 import click
 from click_default_group import DefaultGroup
-from ops import logs
+from .. import logs
 from cfg.o2v_config import Helper
 
 

@@ -7,7 +7,7 @@ from inc.onapp_helpers import get_onapp_vm_flavor, get_onapp_vm_nics, get_onapp_
 from inc.vhi_helpers import Vhi
 from cfg.o2v_config import OnAppAPICredentials, VHICLoudDefaults, Helper
 from inc.functions import run_command
-from ops import logs
+from .. import logs
 import json
 
 

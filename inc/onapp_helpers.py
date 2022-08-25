@@ -2,7 +2,7 @@ import os
 import sys
 import json
 from collections import defaultdict
-from inc import logs
+from .. import logs
 import requests
 from cfg.o2v_config import OnAppAPICredentials, Helper
 from functions import run_command
@@ -19,7 +19,7 @@ AUTH = (OnAppAPICredentials.ONAPP_USER_EMAIL.value, OnAppAPICredentials.ONAPP_US
 ######################
 ##-----FUNCTION-------##
 ##---list_onapp_vms---##
- ######################
+######################
 def list_onapp_vms(vals='',by='',url='',verbosity=8):
     _default_jqexp = ('[ .virtual_machine.id , .virtual_machine.label, .virtual_machine.identifier ,'
                       ' .virtual_machine.template_label , .virtual_machine.booted, .virtual_machine.user_id ]')
@@ -81,7 +81,7 @@ def list_onapp_vms(vals='',by='',url='',verbosity=8):
 ######################
 ##-----FUNCTION-------##
 ##---list_onapp_users---##
- ######################
+######################
 def list_onapp_users(vals='',by='',url='',verbosity=8):
 
     URL = OnAppAPICredentials.ONAPP_CP_URL.value + '/users.json'
@@ -146,7 +146,7 @@ def list_onapp_users(vals='',by='',url='',verbosity=8):
 ######################
 ##----- FUNCTION ------##
 ##-get_onapp_vm_nics---##
- ######################
+######################
 def get_onapp_vm_nics(vm_idn='',verbosity=8):
 
     VM_IDn = vm_idn
@@ -189,7 +189,7 @@ def get_onapp_vm_nics(vm_idn='',verbosity=8):
 ##########################
 ##------- FUNCTION -------##
 ##---get_onapp_vm_disks---##
- ##########################
+##########################
 def get_onapp_vm_disks(vm_idn='',verbosity=8):
 
     VM_IDn = vm_idn
@@ -227,7 +227,7 @@ def get_onapp_vm_disks(vm_idn='',verbosity=8):
 #########################
 ##------- FUNCTION -------##
 ##---get_onapp_vm_primary_disk---##
- ##########################
+##########################
 def get_onapp_vm_primary_disk(vm_idn='',verbosity=8):
 
     VM_IDn = vm_idn

@@ -1,15 +1,7 @@
 #!/usr/bin/env python2
-import os
-import sys
-
-plug_path = os.getcwd()
-sys.path.append(plug_path)
-sys.path.append(plug_path + '/cfg')
-sys.path.append(plug_path + '/inc')
-
 import json
 import click
-from ops import logs
+from .. import logs
 from click_default_group import DefaultGroup
 from cfg.o2v_config import OnAppAPICredentials, Helper
 from inc.functions import run_command
@@ -23,7 +15,7 @@ def cli():
 @click.command()
 @click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
 @click.option('--vhip', '--vhi-ip', '--vhi-hypervisor-ip', default='', help="VHI destination HV IP address.")
-@click.option('--verb', '-v', '--v', '--Helper.VERBOSITY.value', default='',
+@click.option('--verb', '-v', '--v', '--verbosity', default='',
               help="Verbolity level of values between 0 and 8")
 # click.argument('name',default='') - not used
 def vm(idn='', vhip='', verb=''):
@@ -43,9 +35,9 @@ def vm(idn='', vhip='', verb=''):
         logs.error("'--Helper.VERBOSITY.value' parameter should be a number between 0 and 8")
         exit(12)
     if verb:
-        Helper.VERBOSITY.value = int(verb)
+        verbosity = int(verb)
     else:
-        Helper.VERBOSITY.value = int(Helper.VERBOSITY.value)
+        verbosity = int(Helper.VERBOSITY.value)
 
     click.echo('...VM migration from OnApp to VHI...')
 
@@ -60,7 +52,7 @@ def vm(idn='', vhip='', verb=''):
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c --arg vm_idn {vm_idn} '.[] | select(.virtual_machine.identifier==$vm_idn) | [ .virtual_machine.identifier, .virtual_machine.hypervisor_id, .virtual_machine.ip_addresses[0][\"ip_address\"][\"address\"] ] '".format(
         user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value,
         full_url=URL, vm_idn=VM_IDn)
-    (rc, ou) = run_command(CMD, Helper.VERBOSITY.value, 0, NOTE)
+    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
     VM_OHV_ID = int(json.loads(ou)[1])
     logs.info("HV_ID: " + str(VM_OHV_ID))
     # --VM_OHV_ID--#
@@ -74,7 +66,7 @@ def vm(idn='', vhip='', verb=''):
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | select(.hypervisor.id=={hv_id}) | .hypervisor.ip_address '".format(
         user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value,
         full_url=URL, hv_id=VM_OHV_ID)
-    (rc, ou) = run_command(CMD, Helper.VERBOSITY.value, 0, NOTE)
+    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
     VM_OHV_IP = str(ou).strip("\n")
     # --VM_OHV_IP--#
 
@@ -87,7 +79,7 @@ def vm(idn='', vhip='', verb=''):
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[0] | .ip_address_join.ip_address.address' ".format(
         user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value,
         full_url=URL)
-    (rc, ou) = run_command(CMD, Helper.VERBOSITY.value, 0, NOTE)
+    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
     VM_SRC_IP = str(ou).strip("\n")
     # --VM_SRC_IP--#
 
@@ -97,7 +89,7 @@ def vm(idn='', vhip='', verb=''):
     NOTE = """ -- OnApp: check if VM is running on HV -- """
 
     CMD = "ssh root@{hv_ip} 'virsh list | grep {vm_idn}'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
-    (rc, ou) = run_command(CMD, Helper.VERBOSITY.value, 0, NOTE)
+    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
     # if vm not booted -> then EXIT
     # --is_VM_Online--#
 
@@ -108,7 +100,7 @@ def vm(idn='', vhip='', verb=''):
 
     CMD = "ssh  root@{vm_ip} -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' 'sed -i 's/^GRUB_DISABLE_LINUX_UUID=true/#GRUB_DISABLE_LINUX_UUID=true/' /etc/default/grub'".format(
         vm_ip=VM_SRC_IP)
-    (rc, ou) = run_command(CMD, Helper.VERBOSITY.value, 0, NOTE)
+    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
     # if vm not booted -> then EXIT
     # --is_VM_Online--#
 
@@ -119,7 +111,7 @@ def vm(idn='', vhip='', verb=''):
 
     CMD = "ssh  root@{vm_ip} -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' 'sed -i 's/^GRUB_DISABLE_UUID=true/#GRUB_DISABLE_UUID=true/' /etc/default/grub'".format(
         vm_ip=VM_SRC_IP)
-    (rc, ou) = run_command(CMD, Helper.VERBOSITY.value, 0, NOTE)
+    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
     # if vm not booted -> then EXIT
     # --is_VM_Online--#
 
@@ -130,7 +122,7 @@ def vm(idn='', vhip='', verb=''):
 
     CMD = "ssh root@{vm_ip} -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' 'grub-install --recheck /dev/vda || grub2-install --recheck /dev/vda'".format(
         vm_ip=VM_SRC_IP)
-    (rc, ou) = run_command(CMD, Helper.VERBOSITY.value, 0, NOTE)
+    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
     # if vm not booted -> then EXIT
     # --is_VM_Online--#
 
@@ -141,7 +133,7 @@ def vm(idn='', vhip='', verb=''):
 
     CMD = "ssh root@{vm_ip} -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' 'grub-mkconfig -o /boot/grub/grub.cfg || grub2-mkconfig -o /boot/grub2/grub.cfg'".format(
         vm_ip=VM_SRC_IP)
-    (rc, ou) = run_command(CMD, Helper.VERBOSITY.value, 0, NOTE)
+    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
     # if vm not booted -> then EXIT
 
 

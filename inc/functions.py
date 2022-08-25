@@ -1,7 +1,7 @@
 import subprocess
 import os
 import sys
-from inc import logs
+from .. import logs
 
 
 plug_path = os.getcwd()

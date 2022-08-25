@@ -1,16 +1,9 @@
 #!/usr/bin/env python2
 import os
-import sys
-
-plug_path = os.getcwd()
-sys.path.append(plug_path)
-sys.path.append(plug_path + '/cfg')
-sys.path.append(plug_path + '/inc')
-
 import json
 import click
 from click_default_group import DefaultGroup
-from ops import logs
+from .. import logs
 from cfg.o2v_config import OnAppAPICredentials, Helper
 from inc.functions import run_command
 
