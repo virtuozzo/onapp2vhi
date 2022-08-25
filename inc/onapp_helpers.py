@@ -5,6 +5,7 @@ from cfg.o2v_config import OnAppAPICredentials, Helper
 from functions import run_command
 from inc.logger import logs
 from utils import parse_matrix
+from collections import namedtuple
 
 
 AUTH = (OnAppAPICredentials.ONAPP_USER_EMAIL.value, OnAppAPICredentials.ONAPP_USER_APIKEY.value)
@@ -269,6 +270,26 @@ def get_onapp_vm_flavor(vm_identifier):
     return {'vcpus': vm_props['cpus'],
             'ram': vm_props['memory'],
             'name': 'onapp_flavor_{}_{}'.format(vm_props['cpus'], vm_props['memory'])}
+
+
+def get_onapp_bucket_access_controls(bucket_id):
+    """
+        Blah blah blah
+        :param bucket_id:
+        :return: json of access controls
+    """
+    _url = '{url}/billing/buckets/{bucket_id}/access_controls.json'.format(
+        url=OnAppAPICredentials.ONAPP_CP_URL.value, bucket_id=bucket_id)
+    logs.info("{}-- OnApp: Get User Bucket Rate Card --   \n".format(Helper.SPACES.value), separator=True)
+    logs.info('GET {url}'.format(url=_url))
+    response = requests.get(_url, auth=AUTH)
+    _access_controls = response.json() if response.status_code == 200 else False
+    if _access_controls:
+        logs.info('Response [{}]: {}'.format(response.status_code, _access_controls))
+        return _access_controls
+    else:
+        logs.error('Response is wrong [{}]'.format(response.status_code))
+        return _access_controls
 
 
 def get_user_ssh_keys(user_data):
