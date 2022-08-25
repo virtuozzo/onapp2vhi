@@ -1,7 +1,7 @@
 import requests
 import json
 from cfg.o2v_config import VHICLoudDefaults, Helper
-from functions import logs
+from inc.logger import logs
 
 
 # ToDo:
