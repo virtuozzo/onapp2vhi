@@ -5,6 +5,8 @@ import sys
 import json
 from collections import defaultdict
 
+import requests
+
 plug_path=os.getcwd()
 sys.path.append(plug_path)
 sys.path.append(plug_path+'inc')
@@ -14,22 +16,37 @@ from functions import *
 from utils import parse_matrix
 
 
+AUTH = (ONAPP_USER_EMAIL, ONAPP_USER_APIKEY)
+
+
  ######################
 ##-----FUNCTION-------##
 ##---list_onapp_vms---##
  ######################
 def list_onapp_vms(vals='',by='',url='',verbosity=8):
-
+    _default_jqexp = ('[ .virtual_machine.id , .virtual_machine.identifier ,'
+                      ' .virtual_machine.template_label , .virtual_machine.booted, .virtual_machine.user_id ]')
     URL = ONAPP_CP_URL + '/virtual_machines.json'
     if verbosity > 7:
        verbosity = 7
 
     if vals == "" and by == "":
-       jqexp = "jq -c '.[] | [ .virtual_machine.id , .virtual_machine.identifier , .virtual_machine.hostname , .virtual_machine.booted ]'"
+       jqexp = "jq -c '.[] | {}'".format(_default_jqexp)
     elif vals == "" and by != "":
        by_arg=by.split("=")[0]
        by_val=by.split("=")[1]
-       jqexp = "jq -c '.[] | select(.virtual_machine.{by_a}=={by_v}) | [ .virtual_machine.id , .virtual_machine.identifier , .virtual_machine.hostname , .virtual_machine.booted ]'".format(by_a=by_arg,by_v=by_val)
+       if by_val.isdigit():
+           jqexp = "jq -c '.[] | select(.virtual_machine.{by_a}=={by_v}) | {jqpex}'".format(by_a=by_arg,
+                                                                                            by_v=by_val,
+                                                                                            jqpex=_default_jqexp)
+       elif by_val in ('true', 'false'):
+           jqexp = "jq -c '.[] | select(.virtual_machine.{by_a}=={by_v}) | {jqpex}'".format(by_a=by_arg,
+                                                                                            by_v=by_val,
+                                                                                            jqpex=_default_jqexp)
+       else:
+           jqexp = "jq -c '.[] | select(.virtual_machine.{by_a}==\"{by_v}\") | {jqpex}'".format(by_a=by_arg,
+                                                                                                by_v=by_val,
+                                                                                                jqpex=_default_jqexp)
     elif vals != "" and by != "":
        by_arg=by.split("=")[0]
        by_val=by.split("=")[1]
@@ -37,7 +54,14 @@ def list_onapp_vms(vals='',by='',url='',verbosity=8):
        if len(vals_list) == 1:
           vals_list = vals_list[0]
        vals_str = str( vals_list ).replace("'",'')
-       jqexp = "jq -c '.[] | select(.virtual_machine.{by_a}=={by_v}) | {vls} '".format(by_a=by_arg,by_v=by_val,vls=vals_str)
+       if by_val.isdigit():
+           jqexp = "jq -c '.[] | select(.virtual_machine.{by_a}=={by_v}) | {jqpex}'".format(by_a=by_arg,
+                                                                                            by_v=by_val,
+                                                                                            jqpex=vals_str)
+       elif not by_val.isdigit():
+           jqexp = "jq -c '.[] | select(.virtual_machine.{by_a}==\"{by_v}\") | {jqpex}'".format(by_a=by_arg,
+                                                                                                by_v=by_val,
+                                                                                                jqpex=vals_str)
     else:
        vals_list = [ ".virtual_machine.{}".format(x) for x in vals.split(",") ]
        if len(vals_list) == 1:
@@ -45,10 +69,10 @@ def list_onapp_vms(vals='',by='',url='',verbosity=8):
        vals_str = str( vals_list ).replace("'",'')
        jqexp = "jq -c '.[] | {vls}'".format(vls=vals_str)
 
-    NOTE = ''' STEP0: LIST ONAPP VMS '''
+    logs.info('{} -- LIST ONAPP VIRTUAL MACHINES --'.format(SPACES))
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {res_url}".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, res_url=URL) + " | {jqex}".format(jqex=jqexp)
-    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
-    default_vals = ['id', 'identifier', 'hostname', 'booted']
+    (rc,ou) = run_command(CMD,verbosity,0,'')
+    default_vals = ['id', 'identifier', 'template_label', 'booted', 'user_id']
     if vals:
         default_vals = vals.split(",")
     vm_list = [a.replace('[', '').replace(']', '').replace('\"', '').split(',') for a in ou.splitlines()]
@@ -65,15 +89,23 @@ def list_onapp_users(vals='',by='',url='',verbosity=8):
 
     URL = ONAPP_CP_URL + '/users.json'
 
+    _default_jqexp = '[ .user.id, .user.email, .user.login, .user.roles[0].role.label ]'
     if verbosity > 7:
        verbosity = 7
 
     if vals == "" and by == "":
-       jqexp = "jq -c '.[] | [ .user.id, .user.email, .user.login, .user.roles[0].role.label ]'"
+       jqexp = "jq -c '.[] | {}'".format(_default_jqexp)
     elif vals == "" and by != "":
        by_arg=by.split("=")[0]
        by_val=by.split("=")[1]
-       jqexp = "jq -c '.[] | select(.user.{by_a}=={by_v}) | [ .user.id, .user.email, .user.login, .user.roles[0].role.label ]'".format(by_a=by_arg,by_v=by_val)
+       if by_val.isdigit():
+        jqexp = "jq -c '.[] | select(.user.{by_a}=={by_v}) | {jqpex}'".format(by_a=by_arg,
+                                                                              by_v=by_val,
+                                                                              jqpex=_default_jqexp)
+       elif not by_val.isdigit():
+           jqexp = "jq -c '.[] | select(.user.{by_a}==\"{by_v}\") | {jqpex}'".format(by_a=by_arg,
+                                                                                     by_v=by_val,
+                                                                                     jqpex=_default_jqexp)
     elif vals != "" and by != "":
        by_arg=by.split("=")[0]
        by_val=by.split("=")[1]
@@ -83,20 +115,31 @@ def list_onapp_users(vals='',by='',url='',verbosity=8):
        if len(vals_list) == 1:
           vals_list = vals_list[0]
        vals_str = str( vals_list ).replace("'",'')
-       jqexp = "jq -c '.[] | select(.user.{by_a}=={by_v}) | {vls} '".format(by_a=by_arg,by_v=by_val,vls=vals_str)
+       if by_val.isdigit():
+        jqexp = "jq -c '.[] | select(.user.{by_a}=={by_v}) | {jqpex}'".format(by_a=by_arg,
+                                                                              by_v=by_val,
+                                                                              jqpex=vals_str)
+       elif not by_val.isdigit():
+           jqexp = "jq -c '.[] | select(.user.{by_a}==\"{by_v}\") | {jqpex}'".format(by_a=by_arg,
+                                                                                     by_v=by_val,
+                                                                                     jqpex=vals_str)
     else:
+       if 'roles' in vals:
+           vals = vals.replace('roles', 'roles[0].role.label')
        vals_list = [ ".user.{}".format(x) for x in vals.split(",") ]
        if len(vals_list) == 1:
           vals_list = vals_list[0]
        vals_str = str( vals_list ).replace("'",'')
        jqexp = "jq -c '.[] | {vls}'".format(vls=vals_str)
 
-    NOTE = ''' STEP0: LIST ONAPP USERS '''
+    logs.info('{} -- LIST ONAPP USERS --'.format(SPACES))
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {res_url}".format(user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, res_url=URL) + " | {jqex}".format(jqex=jqexp)
-    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
+    (rc,ou) = run_command(CMD,verbosity,0,'')
     default_vals = ['id', 'email', 'login', 'roles']
     if vals:
         default_vals = vals.split(",")
+        if 'roles[0].role.label' in default_vals:
+            default_vals[default_vals.index('roles[0].role.label')] = 'roles'
     user_list = [a.replace('[', '').replace(']', '').replace('\"', '').split(',') for a in ou.splitlines()]
     users = parse_matrix(default_vals, user_list)
     logs.info("\n{}".format(users))
@@ -219,3 +262,63 @@ def get_onapp_vm_primary_disk(vm_idn='',verbosity=8):
        API_VM_PRIMARY_DISK.append( { 'path': "/dev/"+str(API_DS[dsk[1]])+"/"+str(dsk[0]) } )
 
     return API_VM_PRIMARY_DISK
+
+
+def get_onapp_vm_flavor(vm_identifier):
+    """
+    Get ram, cpu, data store
+    :param vm_identifier: "lidqtfwggohyzk"
+    :return:
+    """
+    _url = '{}/virtual_machines/{}.json'.format(ONAPP_CP_URL, vm_identifier)
+    logs.info('GET {}'.format(_url))
+    response = requests.get(_url, auth=AUTH)
+    logs.info('Response [{}]: {}'.format(response.status_code, response.json()))
+    vm_props = response.json()['virtual_machine']
+    return {'vcpus': vm_props['cpus'],
+            'ram': vm_props['memory'],
+            'name': 'onapp_flavor_{}_{}'.format(vm_props['cpus'], vm_props['memory'])}
+
+
+def get_user_ssh_keys(user_data):
+    """
+    Get user ssh keys and return them
+    :param user_data: {"id": 3, "first_name": "Test1", "last_name": "Test2", . . .}
+    :return: [ssh_key1, ssh_key2]
+    """
+    _url = '{}/settings/ssh_keys.json'.format(ONAPP_CP_URL)
+    logs.info("{}-- OnApp: Get User SSH keys --   \n".format(SPACES), separator=True)
+    logs.info('GET {url}'.format(url=_url))
+    _ssh_keys = []
+    response = requests.get(_url, auth=AUTH)
+    for ssh_key in response.json():
+        if ssh_key['ssh_key']['user_id'] != user_data['id']:
+            continue
+
+        _ssh_keys.append(ssh_key['ssh_key']['key'])
+    logs.info('Response [{}]: {}'.format(response.status_code, _ssh_keys))
+    return _ssh_keys
+
+
+def get_user_data(url, get_type, value_to_search=None):
+    """
+    Get users data from OnApp platform
+    :param url: /users.json or /users/1.json
+    :param get_type: ID or any value in user obj
+    :param value_to_search: value based on what we will find user
+    :return:
+    """
+    logs.info("{}-- OnApp: Get User information --   \n".format(SPACES), separator=True)
+    logs.info('GET {url}'.format(url=url))
+    response = requests.get(url, auth=AUTH)
+    if response.status_code != 200:
+        logs.error(response.content)
+        logs.error('Credentials you are using: {creds}'.format(creds=AUTH))
+        exit(1)
+
+    if get_type == 'ID':
+        return response.json()['user'], response
+
+    for _user in response.json():
+        if value_to_search in list(_user['user'].values()):
+            return _user['user'], response

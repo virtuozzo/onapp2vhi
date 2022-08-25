@@ -146,14 +146,20 @@ def vm(idn='', vhip='', verb=''):
     # --OnApp: Run scp--#
     NOTE = """ -- Copy drivers and scripts -- """
 
-    CMD = "scp -r  ~/vz-guest-tools-win.tar  root@{hv_ip}:/mnt/prepare_win/vz-guest-tools-win.tar".format(
-        hv_ip=VM_OHV_IP)
+    # FILES TO COPY SHOULD BE LOCATED IN PROJECT FOLDER
+    cloudbase_init = os.path.join(os.getcwd(), "CloudbaseInitSetup_Stable_x64.msi")
+    vz_guest_tools = os.path.join(os.getcwd(), "vz-guest-tools-win.tar")
+    logs.info('File path: {}'.format(cloudbase_init))
+    logs.info('File path: {}'.format(vz_guest_tools))
+
+    CMD = "scp -r  {path}  root@{hv_ip}:/mnt/prepare_win/vz-guest-tools-win.tar".format(
+        path=vz_guest_tools, hv_ip=VM_OHV_IP)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
     if rc != 0:
         logs.info(bcolors.FAIL + "Something went wrong. Couldn't transfer vz-guest-tools-win into VM \n" + bcolors.ENDC)
 
-    CMD = "scp -r  ~/CloudbaseInitSetup_Stable_x64.msi  root@{hv_ip}:/mnt/prepare_win/CloudbaseInitSetup_Stable_x64.msi".format(
-        hv_ip=VM_OHV_IP)
+    CMD = "scp -r  {path}  root@{hv_ip}:/mnt/prepare_win/CloudbaseInitSetup_Stable_x64.msi".format(
+        path=cloudbase_init, hv_ip=VM_OHV_IP)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
     if rc != 0:
         logs.info(bcolors.FAIL + "Something went wrong. Couldn't transfer CloudbaseInitSetup into VM \n" + bcolors.ENDC)

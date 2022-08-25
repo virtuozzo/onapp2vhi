@@ -48,8 +48,11 @@ def run_command(CMD, verbose=1, interactive=1, comment=''):
         exit_code = subprocess.call(CMD, shell=True)
 
     if verbose >= 8:
-        logs.info("Result[" + str(exit_code) + "]: " + str(cmd_output))
+        if exit_code == 0:
+            logs.info("Result[{}]: {}".format(str(exit_code), str(cmd_output)))
+        else:
+            logs.warn("Result[{}]: {}".format(str(exit_code), str(cmd_output)))
     elif verbose >= 1 and exit_code >= 1:
-        logs.info(exit_code)
+        logs.error(exit_code)
 
     return [exit_code, cmd_output]

@@ -17,7 +17,7 @@ sys.path.append(plug_path + '/inc')
 from o2v_config import *
 from functions import *
 from onapp_helpers import *
-
+from vhi_helpers import Vhi
 
 class bcolors:
     HEADER = '\033[95m'
@@ -94,6 +94,11 @@ def vm(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', verb=''):
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -r -c --arg vm_idn {vm_idn} '.[] | select(.virtual_machine.identifier==$vm_idn) | [ .virtual_machine.identifier, .virtual_machine.hypervisor_id, .virtual_machine.ip_addresses[0][\"ip_address\"][\"address\"], .virtual_machine.operating_system, .virtual_machine.allowed_hot_migrate] '".format(
         user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, vm_idn=VM_IDn)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
+    vm_list = [a.replace('[', '').replace(']', '').replace('\"', '').split(',') for a in ou.splitlines()][0]
+    vhi = Vhi()
+    _on_app_flavor = get_onapp_vm_flavor(vm_list[0])
+    vhi.create_object(_on_app_flavor, 'flavor')
+    _flavour = vhi.flavor_name
     OVM_IDENTIFIER = str(json.loads(ou)[0]).encode('ascii')
     OVM_HV_ID = int(json.loads(ou)[1])
     OVM_OS = str(json.loads(ou)[3]).encode('ascii')
@@ -219,7 +224,7 @@ def vm(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', verb=''):
         CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server create onapp2vhi_vm_{vm_idn} --description 'onapp_vm_{vm_idn}' --network id=public,fixed-ip={vm_ip},mac={vm_mac},spoofing-protection-disable --volume source=image,id={image},size={disk_size} --flavor {vhi_flavor} -f json | jq -r \".id\"' 2>/dev/null ".format(
             ssh_port=VHI_SSH_PORT, sshopt=SSH_OPTS, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER, vhipass=VHIPASS,
             vhi_cp=VHI_CP_IP, vm_idn=VM_IDn, vm_ip=ONAPPVM_PRI_IP, vm_mac=ONAPPVM_PRI_MAC, vhi_sg=VHI_SG_ID,
-            image=VHI_IMAGE, disk_size=ONAPPVM_DISKS[0]['size'], vhi_flavor=VHI_FLAVOR)
+            image=VHI_IMAGE, disk_size=ONAPPVM_DISKS[0]['size'], vhi_flavor=_flavour)
         (rc, ou) = run_command(CMD, verbosity, 0)
         if rc == 0 and ou != '':
             VHI_VM_ID = str(ou).strip("\n")

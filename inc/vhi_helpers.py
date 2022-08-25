@@ -5,7 +5,7 @@ from functions import logs
 
 
 # ToDo:
-#  password generation + email notification
+#  email notification
 
 
 class Vhi:
@@ -21,7 +21,9 @@ class Vhi:
         self._cookie = ""
         self.project_id = ""
         self.user_id = ""
+        self.flavor_name = ""
         self.projects_url = "{url}/projects".format(url=self._VHI_DOMAIN_API)
+        self.flavors_url = "{url}/compute/flavors".format(url=self._URL)
         self.users_url = "{url}/users".format(url=self._VHI_DOMAIN_API)
         self._login_url = "{url}/login".format(url=self._URL)
         self._creds = {"username": VHI_LOGIN, "password": VINFRA_PASS}
@@ -111,6 +113,13 @@ class Vhi:
         ]})
         return json.dumps(vhi_user)
 
+    @staticmethod
+    def _vhi_flavor_payload(vm_data):
+        return json.dumps({"name": vm_data['name'],
+                           "vcpus": vm_data['vcpus'],
+                           "ram": vm_data['ram'],
+                           "disk": 0})
+
     def _define_object_type(self, obj_data, object_type):
         if object_type == 'user':
             exist, name = self.verify_object_on_vhi_side(obj_data['user_email'],
@@ -131,6 +140,16 @@ class Vhi:
                     "name": name,
                     "payload": payload,
                     "url": self.projects_url}
+
+        elif object_type == 'flavor':
+            exist, name = self.verify_object_on_vhi_side(obj_data['name'],
+                                                         'name',
+                                                         self.flavors_url)
+            payload = self._vhi_flavor_payload(obj_data)
+            return {"exist": exist,
+                    "name": name,
+                    "payload": payload,
+                    "url": self.flavors_url}
 
     def _get_objects_list(self, object_url):
         """
@@ -161,6 +180,8 @@ class Vhi:
                         self.user_id = _obj['id']
                     elif _name_object in self.projects_url:
                         self.project_id = _obj['id']
+                    elif _name_object in self.flavors_url:
+                        self.flavor_name = _obj['name']
                     return True, _name_object.capitalize()
 
         return False, _name_object.capitalize()
@@ -189,9 +210,10 @@ class Vhi:
                                                                            object_properties['name'],
                                                                            response.content))
         logs.info('Response [{}]: {}'.format(response.status_code, response.content))
-        object_id = response.json()['id']
         if object_type == "user":
-            self.user_id = object_id
+            self.user_id = response.json()['id']
         elif object_type == "project":
-            self.project_id = object_id
+            self.project_id = response.json()['id']
+        elif object_type == "flavor":
+            self.flavor_name = response.json()['name']
         return True
