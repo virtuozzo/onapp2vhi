@@ -21,7 +21,7 @@ AUTH = (OnAppAPICredentials.ONAPP_USER_EMAIL.value, OnAppAPICredentials.ONAPP_US
 ##---list_onapp_vms---##
  ######################
 def list_onapp_vms(vals='',by='',url='',verbosity=8):
-    _default_jqexp = ('[ .virtual_machine.id , .virtual_machine.identifier ,'
+    _default_jqexp = ('[ .virtual_machine.id , .virtual_machine.label, .virtual_machine.identifier ,'
                       ' .virtual_machine.template_label , .virtual_machine.booted, .virtual_machine.user_id ]')
     URL = OnAppAPICredentials.ONAPP_CP_URL.value + '/virtual_machines.json'
     if verbosity > 7:
@@ -69,7 +69,7 @@ def list_onapp_vms(vals='',by='',url='',verbosity=8):
     logs.info('{} -- LIST ONAPP VIRTUAL MACHINES --'.format(Helper.SPACES.value))
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {res_url}".format(user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value, res_url=URL) + " | {jqex}".format(jqex=jqexp)
     (rc,ou) = run_command(CMD,verbosity,0,'')
-    default_vals = ['id', 'identifier', 'template_label', 'booted', 'user_id']
+    default_vals = ['id', 'label', 'identifier', 'template_label', 'booted', 'user_id']
     if vals:
         default_vals = vals.split(",")
     vm_list = [a.replace('[', '').replace(']', '').replace('\"', '').split(',') for a in ou.splitlines()]
