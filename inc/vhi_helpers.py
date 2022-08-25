@@ -115,8 +115,7 @@ class Vhi:
         ]})
         return json.dumps(vhi_user)
 
-    @staticmethod
-    def _vhi_flavor_payload(vm_data):
+    def _vhi_flavor_payload(self, vm_data):
         return json.dumps({"name": vm_data['name'],
                            "vcpus": vm_data['vcpus'],
                            "ram": vm_data['ram'],

@@ -26,16 +26,16 @@ def cli():
               help="Select specific params with --select=a,b,c option.")
 @click.option('--by', '--where', '--where-arg', default='',
               help="Select by specific params with --where='id=13' option.")
-@click.option('--verb', '-v', '--v', '--verbosity', default='', help="Verbolity level of values between 0 and 8")
+@click.option('--verb', '-v', '--v', '--verbosity', default='', help="Verbosity level of values between 0 and 8")
 # click.argument('name',default='') - not used
 def users(vals='', by='', verb=''):
     if not verb:
         verb = "0"
     if not str(verb).isdigit():
-        logs.info("Effor: '--verbosity' parameter should be a number")
+        logs.error("'--verbosity' parameter should be a number")
         exit(11)
     if int(verb) < 0 or int(verb) > 8:
-        logs.info("Effor: '--verbosity' parameter should be a number between 0 and 8")
+        logs.error("'--verbosity' parameter should be a number between 0 and 8")
         exit(12)
     if verb:
         verbosity = int(verb)

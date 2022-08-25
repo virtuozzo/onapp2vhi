@@ -37,10 +37,10 @@ def vm(idn='', vhip='', verb=''):
     if not verb:
         verb = str(Helper.VERBOSITY.value)
     if not str(verb).isdigit():
-        logs.info("Effor: '--Helper.VERBOSITY.value' parameter should be a number")
+        logs.error("'--Helper.VERBOSITY.value' parameter should be a number")
         exit(11)
     if int(verb) < 0 or int(verb) > 8:
-        logs.info("Effor: '--Helper.VERBOSITY.value' parameter should be a number between 0 and 8")
+        logs.error("'--Helper.VERBOSITY.value' parameter should be a number between 0 and 8")
         exit(12)
     if verb:
         Helper.VERBOSITY.value = int(verb)

@@ -29,8 +29,8 @@ def cli():
 @click.option('--idn', '--user', '--email', '--user-id', '--login', default='', help="OnApp User identifier.")
 def user(idn=''):
     if not idn:
-        print('You need to pass OnApp User ID value through --user-identifier=? parameter ')
-        exit(17)
+        logs.error('You need to pass OnApp User ID value through --user-identifier=? parameter ')
+        exit(1)
 
     user_property = idn
     # OnApp URLS:

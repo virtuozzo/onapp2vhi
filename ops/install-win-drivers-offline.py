@@ -42,7 +42,7 @@ def cli():
 # click.argument('name',default='') - not used
 def vm(idn='', vhip='', verb=''):
     if not idn:
-        logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
+        logs.warn('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         exit(17)
     #    if vhip == '':
     #       logs.info ('You need to pass VHI hypervisor IP address through --vhi-ip=? parameter ')
@@ -51,10 +51,10 @@ def vm(idn='', vhip='', verb=''):
     if not verb:
         verb = str(Helper.VERBOSITY.value)
     if not str(verb).isdigit():
-        logs.info("Effor: '--verbosity' parameter should be a number")
+        logs.error("'--verbosity' parameter should be a number")
         exit(11)
     if int(verb) < 0 or int(verb) > 8:
-        logs.info("Effor: '--verbosity' parameter should be a number between 0 and 8")
+        logs.error("'--verbosity' parameter should be a number between 0 and 8")
         exit(12)
     if verb:
         verbosity = int(verb)
