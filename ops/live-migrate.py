@@ -7,7 +7,7 @@ from click_default_group import DefaultGroup
 from inc.functions import run_command
 from inc.onapp_helpers import get_onapp_vm_flavor, get_onapp_vm_disks, get_onapp_vm_nics
 from inc.vhi_helpers import Vhi
-from .. import logs
+from inc.logger import logs
 from cfg.o2v_config import Helper, OnAppAPICredentials, VHICLoudDefaults
 
 

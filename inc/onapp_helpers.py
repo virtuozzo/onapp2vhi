@@ -1,17 +1,11 @@
-import os
-import sys
 import json
 from collections import defaultdict
-from .. import logs
 import requests
 from cfg.o2v_config import OnAppAPICredentials, Helper
 from functions import run_command
+from inc.logger import logs
 from utils import parse_matrix
 
-
-plug_path = os.getcwd()
-sys.path.append(plug_path)
-sys.path.append(plug_path+'inc')
 
 AUTH = (OnAppAPICredentials.ONAPP_USER_EMAIL.value, OnAppAPICredentials.ONAPP_USER_APIKEY.value)
 

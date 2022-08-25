@@ -2,7 +2,7 @@
 from inc.onapp_helpers import list_onapp_users
 import click
 from click_default_group import DefaultGroup
-from .. import logs
+from inc.logger import logs
 from cfg.o2v_config import Helper
 
 

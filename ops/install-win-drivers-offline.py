@@ -5,7 +5,7 @@ from inc.onapp_helpers import get_onapp_vm_primary_disk
 import click
 import time
 from click_default_group import DefaultGroup
-from .. import logs
+from inc.logger import logs
 from cfg.o2v_config import OnAppAPICredentials, Helper
 from inc.functions import run_command
 import json

@@ -3,7 +3,7 @@ import os
 import json
 import click
 from click_default_group import DefaultGroup
-from .. import logs
+from inc.logger import logs
 from cfg.o2v_config import OnAppAPICredentials, Helper
 from inc.functions import run_command
 

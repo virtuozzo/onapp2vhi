@@ -7,7 +7,7 @@ from click_default_group import DefaultGroup
 from cfg.o2v_config import OnAppAPICredentials, Helper
 from inc.functions import run_command
 import json
-from .. import logs
+from inc.logger import logs
 
 
 @click.group(cls=DefaultGroup, default='vm', invoke_without_command=True, default_if_no_args=True)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 import json
 import click
-from .. import logs
+from inc.logger import logs
 from click_default_group import DefaultGroup
 from cfg.o2v_config import OnAppAPICredentials, Helper
 from inc.functions import run_command

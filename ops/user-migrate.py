@@ -4,7 +4,7 @@ from click_default_group import DefaultGroup
 from inc.vhi_ssh_keys import VhiSshKeys
 from inc.vhi_helpers import Vhi
 from inc.utils import generate_random_password
-from .. import logs
+from inc.logger import logs
 from cfg.o2v_config import Helper, OnAppAPICredentials
 from inc.onapp_helpers import get_user_ssh_keys, get_user_data
 

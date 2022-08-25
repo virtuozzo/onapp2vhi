@@ -5,7 +5,7 @@ import time
 import xml.etree.ElementTree as KVMxml
 from click_default_group import DefaultGroup
 from inc.functions import run_command
-from .. import logs
+from inc.logger import logs
 from cfg.o2v_config import Helper, OnAppAPICredentials, VHICLoudDefaults
 
 

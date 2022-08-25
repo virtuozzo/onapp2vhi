@@ -1,11 +1,4 @@
 import subprocess
-import os
-import sys
-from .. import logs
-
-
-plug_path = os.getcwd()
-sys.path.append(plug_path)
 
 
 ######################
