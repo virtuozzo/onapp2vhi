@@ -274,8 +274,8 @@ def get_onapp_vm_flavor(vm_identifier):
 
 def _get_onapp_bucket_access_controls(bucket_id):
     """
-        Blah blah blah
-        :param bucket_id:
+        Get access controls from the users bucket
+        :param bucket_id: "1", "1000"
         :return: json of access controls
     """
     _url = '{url}/billing/buckets/{bucket_id}/access_controls.json'.format(
