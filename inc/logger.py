@@ -30,9 +30,9 @@ class OnAppVHILogger:
     This module is use for showing logs in console
     You just need to specify what lvl of logs you need and as input data give string message
     INPUT:
-    OmdbLogger().info("This is test message")
+    Logger().info("This is test message")
     OUTPUT:
-    [2021-02-09 13:25:06,248] INFO     GET - https://www.omdbapi.com/?apikey=dc09b45f&s=stem&page=6
+    [2021-02-09 13:25:06,248] INFO     GET - https://www.google.com/
     """
     def __init__(self):
         self._logger = setup_logger()
@@ -52,3 +52,5 @@ class OnAppVHILogger:
             self._logger.info('- - - '*15)
         self._logger.warning("{msg}".format(msg=msg))
 
+
+logs = OnAppVHILogger()

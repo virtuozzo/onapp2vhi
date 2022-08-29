@@ -49,32 +49,34 @@ Just a JSON pretty-printer
 '''
 pp = pprint.PrettyPrinter(indent=4)
 
-'''
-Get a list of users from the keystone service endpoint.
-'''
+
 def list_users():
+    '''
+    Get a list of users from the keystone service endpoint.
+    '''
     users = ks.users.list()
     print pp.pprint(users)
 
-'''
-Get a list of instances from the nova service endpoint.
-'''
+
 def list_instances():
+    '''
+    Get a list of instances from the nova service endpoint.
+    '''
     instances = nova.servers.list()
     print pp.pprint(instances)
 
-'''
-Get a list of plugins from the sahara service endpoint.
-'''
+
 def list_plugins():
+    '''
+    Get a list of plugins from the sahara service endpoint.
+    '''
     plugins = sahara.plugins.list()
     print pp.pprint(plugins)
 
-'''
-Get a list of services from the heat/orchestration service endpoint.
-'''
+
 def list_heat_services():
+    '''
+    Get a list of services from the heat/orchestration service endpoint.
+    '''
     services = heat.services.list()
     print pp.pprint(services)
-
-

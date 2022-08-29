@@ -1,7 +1,7 @@
 import requests
 import json
-from o2v_config import *
-from functions import logs
+from cfg.o2v_config import VHICLoudDefaults, Helper
+from inc.logger import logs
 
 
 class VhiSshKeys:
@@ -9,8 +9,10 @@ class VhiSshKeys:
     Object is used to migrate User SSH Keys from OnApp platform to VHI platform.
     It takes as input arguments user object and list of ssh keys
     """
-    _URL = "{vhi_url}{vhi_api}".format(vhi_url=VHI_CP_URL, vhi_api=VHI_API_PATH)
-    _PANEL_URL = "{vhi_url}{vhi_api}".format(vhi_url=VHI_PANEL_URL, vhi_api=VHI_API_PATH)
+    _URL = "{vhi_url}{vhi_api}".format(vhi_url=VHICLoudDefaults.VHI_CP_URL.value,
+                                       vhi_api=VHICLoudDefaults.VHI_API_PATH.value)
+    _PANEL_URL = "{vhi_url}{vhi_api}".format(vhi_url=VHICLoudDefaults.VHI_PANEL_URL.value,
+                                             vhi_api=VHICLoudDefaults.VHI_API_PATH.value)
 
     def __init__(self, user_obj, ssh_keys):
         self._user = user_obj
@@ -21,17 +23,18 @@ class VhiSshKeys:
         self._proj_name = self._user['project_name']
         self._ssh_keys = ssh_keys
         self._headers = ''
-        self._creds = {"domain": VINFRA_DOMAIN,
+        self._creds = {"domain": VHICLoudDefaults.VINFRA_DOMAIN.value,
                        "domainAdminStartPageEnabled": False,
                        "username": self._login,
                        "password": self._pwd}
         self._login_url = "{url}/login".format(url=self._URL)
         self._panel_login_url = "{url}/login".format(url=self._PANEL_URL)
         self._auth_endpoint = "{}/accounts/projects/{}/auth/"
-        self._projects_url = "{url}/domains/{dom_id}/projects".format(url=self._URL, dom_id=VHI_DOMAIN_ID)
+        self._projects_url = "{url}/domains/{dom_id}/projects".format(url=self._URL,
+                                                                      dom_id=VHICLoudDefaults.VHI_DOMAIN_ID.value)
         self.ssh_keys_url = "{url}/compute/keys".format(url=self._PANEL_URL)
         self._proj_auth_url = ''
-        logs.info('{}-- VHI: Creating SSH keys --'.format(SPACES), separator=True)
+        logs.info('{}-- VHI: Creating SSH keys --'.format(Helper.SPACES.value), separator=True)
 
     @property
     def headers(self):
@@ -147,5 +150,5 @@ class VhiSshKeys:
                 self._log_response(url_data=('POST', self.ssh_keys_url, self._headers, payload))
                 response = requests.post(self.ssh_keys_url, headers=self._headers, data=payload)
                 self._log_response(response=response)
-        logs.info('{} -- VHI: User SSH Keys has been migrated successfully --'.format(SPACES))
+        logs.info('{} -- VHI: User SSH Keys has been migrated successfully --'.format(Helper.SPACES.value))
         logs.info('')

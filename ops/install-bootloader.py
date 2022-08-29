@@ -1,20 +1,10 @@
 #!/usr/bin/env python2
-
-import os
-import sys
 import json
 import click
-import xml.etree.ElementTree as KVMxml
+from inc.logger import logs
 from click_default_group import DefaultGroup
-
-plug_path = os.getcwd()
-# logs.info plug_path
-sys.path.append(plug_path)
-sys.path.append(plug_path + '/cfg')
-sys.path.append(plug_path + '/inc')
-
-from o2v_config import *
-from functions import *
+from cfg.o2v_config import OnAppAPICredentials, Helper
+from inc.functions import run_command
 
 
 @click.group(cls=DefaultGroup, default='vm', invoke_without_command=True, default_if_no_args=True)
@@ -25,27 +15,29 @@ def cli():
 @click.command()
 @click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
 @click.option('--vhip', '--vhi-ip', '--vhi-hypervisor-ip', default='', help="VHI destination HV IP address.")
-@click.option('--verb', '-v', '--v', '--verbosity', default='', help="Verbolity level of values between 0 and 8")
+@click.option('--verb', '-v', '--v', '--verbosity', default='',
+              help="Verbolity level of values between 0 and 8")
 # click.argument('name',default='') - not used
 def vm(idn='', vhip='', verb=''):
-    if idn == '':
+    if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         exit(17)
     #    if vhip == '':
     #       logs.info ('You need to pass VHI hypervisor IP address through --vhi-ip=? parameter ')
     #       exit(18)
 
-    if verb == '': verb = str(VERBOSITY)
+    if not verb:
+        verb = str(Helper.VERBOSITY.value)
     if not str(verb).isdigit():
-        logs.info("Effor: '--verbosity' parameter should be a number")
+        logs.error("'--Helper.VERBOSITY.value' parameter should be a number")
         exit(11)
     if int(verb) < 0 or int(verb) > 8:
-        logs.info("Effor: '--verbosity' parameter should be a number between 0 and 8")
+        logs.error("'--Helper.VERBOSITY.value' parameter should be a number between 0 and 8")
         exit(12)
-    if verb != '':
+    if verb:
         verbosity = int(verb)
     else:
-        verbosity = int(VERBOSITY)
+        verbosity = int(Helper.VERBOSITY.value)
 
     click.echo('...VM migration from OnApp to VHI...')
 
@@ -56,9 +48,10 @@ def vm(idn='', vhip='', verb=''):
 
     NOTE = """ -- OnApp: get source VM parameters -- """
 
-    URL = ONAPP_CP_URL + "/virtual_machines.json"
+    URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/virtual_machines.json"
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c --arg vm_idn {vm_idn} '.[] | select(.virtual_machine.identifier==$vm_idn) | [ .virtual_machine.identifier, .virtual_machine.hypervisor_id, .virtual_machine.ip_addresses[0][\"ip_address\"][\"address\"] ] '".format(
-        user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, vm_idn=VM_IDn)
+        user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value,
+        full_url=URL, vm_idn=VM_IDn)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
     VM_OHV_ID = int(json.loads(ou)[1])
     logs.info("HV_ID: " + str(VM_OHV_ID))
@@ -69,9 +62,10 @@ def vm(idn='', vhip='', verb=''):
 
     NOTE = """ -- OnApp: get VM's {hypervisor_ip} by {hypervisor_id} -- """
 
-    URL = ONAPP_CP_URL + "/hypervisors.json"
+    URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/hypervisors.json"
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | select(.hypervisor.id=={hv_id}) | .hypervisor.ip_address '".format(
-        user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL, hv_id=VM_OHV_ID)
+        user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value,
+        full_url=URL, hv_id=VM_OHV_ID)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
     VM_OHV_IP = str(ou).strip("\n")
     # --VM_OHV_IP--#
@@ -81,9 +75,10 @@ def vm(idn='', vhip='', verb=''):
 
     NOTE = """ -- OnApp: get VM's {ip_address} by {identifier} -- """
 
-    URL = ONAPP_CP_URL + "/virtual_machines/{}/ip_addresses.json".format(VM_IDn)
+    URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/virtual_machines/{}/ip_addresses.json".format(VM_IDn)
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[0] | .ip_address_join.ip_address.address' ".format(
-        user_email=ONAPP_USER_EMAIL, user_apikey=ONAPP_USER_APIKEY, full_url=URL)
+        user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value,
+        full_url=URL)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
     VM_SRC_IP = str(ou).strip("\n")
     # --VM_SRC_IP--#

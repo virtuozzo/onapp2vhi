@@ -1,15 +1,6 @@
-import collections
-import shlex, subprocess
-import os
-import sys
+import subprocess
+from inc.logger import logs
 
-plug_path = os.getcwd()
-sys.path.append(plug_path)
-
-from o2v_config import *
-from logger import OnAppVHILogger
-
-logs = OnAppVHILogger()
 
 ######################
 ##-----FUNCTION-------##

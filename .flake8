@@ -1,0 +1,30 @@
+[flake8]
+exclude =
+    venv
+    .venv
+    __pycache__
+ignore =
+        # E501 line too long (324 > 79 characters)
+        E501,
+        # E201-202 whitespace after '[' ']'
+        E201,
+        E202,
+        # E225 missing whitespace around operator
+        E225
+        #  W605 invalid escape sequence '\.' '\d' etc.
+        W605,
+        # W291 trailing whitespace
+        W291
+        #  E231 missing whitespace after ','
+        E231
+        # E251 unexpected spaces around keyword / parameter equals
+        E251,
+        # E265 block comment should start with '# '
+        E265,
+        # E226 missing whitespace around arithmetic operator
+        E226,
+        # F522 '...'.format(...) has unused named argument(s):
+        F522,
+        # E731 do not assign a lambda expression, use a def
+        E731
+       # E402, E265, E114, E231, E226, E231, E116

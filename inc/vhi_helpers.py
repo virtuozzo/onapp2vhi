@@ -1,7 +1,7 @@
 import requests
 import json
-from o2v_config import *
-from functions import logs
+from cfg.o2v_config import VHICLoudDefaults, Helper
+from inc.logger import logs
 
 
 # ToDo:
@@ -14,8 +14,9 @@ class Vhi:
     VHI_PROJECT_MEMBER = "project_admin"
 
     # API URL
-    _URL = "{vhi_url}{vhi_api}".format(vhi_url=VHI_CP_URL, vhi_api=VHI_API_PATH)
-    _VHI_DOMAIN_API = "{url}/domains/{domain_id}".format(url=_URL, domain_id=VHI_DOMAIN_ID)
+    _URL = "{vhi_url}{vhi_api}".format(vhi_url=VHICLoudDefaults.VHI_CP_URL.value,
+                                       vhi_api=VHICLoudDefaults.VHI_API_PATH.value)
+    _VHI_DOMAIN_API = "{url}/domains/{domain_id}".format(url=_URL, domain_id=VHICLoudDefaults.VHI_DOMAIN_ID.value)
 
     def __init__(self):
         self._cookie = ""
@@ -26,7 +27,8 @@ class Vhi:
         self.flavors_url = "{url}/compute/flavors".format(url=self._URL)
         self.users_url = "{url}/users".format(url=self._VHI_DOMAIN_API)
         self._login_url = "{url}/login".format(url=self._URL)
-        self._creds = {"username": VHI_LOGIN, "password": VINFRA_PASS}
+        self._creds = {"username": VHICLoudDefaults.VHI_LOGIN.value,
+                       "password": VHICLoudDefaults.VINFRA_PASS.value}
 
         if not self._cookie:
             logs.info('POST {}'.format(self._login_url))
@@ -113,8 +115,7 @@ class Vhi:
         ]})
         return json.dumps(vhi_user)
 
-    @staticmethod
-    def _vhi_flavor_payload(vm_data):
+    def _vhi_flavor_payload(self, vm_data):
         return json.dumps({"name": vm_data['name'],
                            "vcpus": vm_data['vcpus'],
                            "ram": vm_data['ram'],
@@ -157,10 +158,9 @@ class Vhi:
         :return: list object with project data
         """
         _object_name = object_url.split('/')[-1]
-        logs.info("{}-- VHI: Get VHI {} --   \n".format(SPACES, _object_name.capitalize()), separator=True)
+        logs.info("{}-- VHI: Get VHI {} --   \n".format(Helper.SPACES.value, _object_name.capitalize()), separator=True)
         logs.info('GET {}'.format(object_url))
-        projects_list = requests.get(object_url,
-                                     headers=self.headers)
+        projects_list = requests.get(object_url, headers=self.headers)
         logs.info('Response [{}]: {}'.format(projects_list.status_code, projects_list.content))
         return projects_list.json()['data']
 
@@ -198,7 +198,7 @@ class Vhi:
         if object_properties['exist']:
             return False
 
-        logs.info('{}-- VHI: Create new {} --'.format(SPACES, object_properties['name']), separator=True)
+        logs.info('{}-- VHI: Create new {} --'.format(Helper.SPACES.value, object_properties['name']), separator=True)
         logs.info('POST {}'.format(object_properties['url']))
         logs.info('Headers: {}'.format(self.headers))
         logs.info('Payload: {}'.format(object_properties['payload']))
