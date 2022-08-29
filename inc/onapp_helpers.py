@@ -272,7 +272,7 @@ def get_onapp_vm_flavor(vm_identifier):
             'name': 'onapp_flavor_{}_{}'.format(vm_props['cpus'], vm_props['memory'])}
 
 
-def get_onapp_bucket_access_controls(bucket_id):
+def _get_onapp_bucket_access_controls(bucket_id):
     """
         Blah blah blah
         :param bucket_id:
@@ -334,3 +334,39 @@ def get_user_data(url, get_type, value_to_search=None):
     for _user in response.json():
         if value_to_search in list(_user['user'].values()):
             return _user['user'], response
+
+
+def get_bucket_limits(bucket_id):
+
+    compute_zones_in_bucket, datastore_zones_in_bucket = [], []
+    ComputeZone = namedtuple('ComputeZone', 'name cpu ram')
+    DataStoreZone = namedtuple('DataStoreZone', 'name storage_policy')
+    access_controls = _get_onapp_bucket_access_controls("{}".format(bucket_id))
+
+    for _ in access_controls:
+        if _['access_control']['type'] == 'compute_zone_resource' \
+                and _['access_control']['server_type'] == 'virtual':
+            # float("inf") represents infinity
+            ram_quota = float("inf") if _['access_control']['limits']['limit_memory'] is None\
+                else int(_['access_control']['limits']['limit_memory'])
+            cpu_quota = float("inf") if _['access_control']['limits']['limit_cpu'] is None\
+                else int(_['access_control']['limits']['limit_cpu'])
+
+            compute_zones_in_bucket.append(ComputeZone(name=_['access_control']['target_name'],
+                                                       cpu=cpu_quota,
+                                                       ram=ram_quota))
+        elif _['access_control']['type'] == 'data_store_zone_resource':
+            # float("inf") represents infinity
+            quota = float("inf") if _['access_control']['limits']['limit'] is None \
+                else int(_['access_control']['limits']['limit'])
+            datastore_zones_in_bucket.append(DataStoreZone(name=_['access_control']['target_name'],
+                                                           storage_policy=quota))
+        else:
+            continue
+
+    max_vCPUs = max([v.cpu for v in compute_zones_in_bucket])
+    max_RAM = max([v.ram for v in compute_zones_in_bucket])
+    max_storage_policy = max([v.storage_policy for v in datastore_zones_in_bucket])
+    return {"cores": max_vCPUs,
+            "RAM": max_RAM,
+            "storage": max_storage_policy}
