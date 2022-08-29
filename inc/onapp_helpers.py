@@ -367,6 +367,6 @@ def get_bucket_limits(bucket_id):
     max_vCPUs = max([v.cpu for v in compute_zones_in_bucket])
     max_RAM = max([v.ram for v in compute_zones_in_bucket])
     max_storage_policy = max([v.storage_policy for v in datastore_zones_in_bucket])
-    return {"cores": max_vCPUs,
-            "RAM": max_RAM,
-            "storage": max_storage_policy}
+    return {"cores": -1 if max_vCPUs == float("inf") else max_vCPUs,
+            "RAM": -1 if max_RAM == float("inf") else max_RAM,
+            "storage": -1 if max_storage_policy == float("inf") else max_storage_policy}

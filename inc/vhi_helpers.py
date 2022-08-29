@@ -73,12 +73,12 @@ class Vhi:
                            "enabled": True,
                            "policiesEnabled": ["default", "default"],
                            "traitsEnabled": [],
-                           "compute": {"cores": {"limit": -1 if project_data['quotas']['cores'] == float("inf") else project_data['quotas']['cores']},
-                                       "ram": {"limit": -1 if project_data['quotas']['RAM'] == float("inf") else project_data['quotas']['RAM']}},
+                           "compute": {"cores": {"limit": project_data['quotas']['cores']},
+                                       "ram": {"limit": project_data['quotas']['RAM']}},
                            "network": {"floatingip": {"limit": -1}, "ipsec_site_connection": {"limit": -1}},
                            "storage": {"storage_policies": {"dbb9d4b4-be5f-4f5b-9014-9264ec1cdd2f": {
                                "name": "default",
-                               "limit": -1 if project_data['quotas']['storage'] == float("inf") else project_data['quotas']['storage']}}},
+                               "limit": project_data['quotas']['storage']}}},
                            "lbaas": {"loadbalancer": {"limit": -1}},
                            "k8saas": {"cluster": {"limit": 20}},
                            "placement": {}})
