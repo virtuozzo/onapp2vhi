@@ -337,6 +337,11 @@ def get_user_data(url, get_type, value_to_search=None):
 
 
 def get_bucket_limits(bucket_id):
+    """
+        Get Compute Zone and Data Store Zone limitations from the specific bucket
+        :param bucket_id: "1", "1000"
+        :return: peaks of the limits
+    """
 
     compute_zones_in_bucket, datastore_zones_in_bucket = [], []
     ComputeZone = namedtuple('ComputeZone', 'name cpu ram')
@@ -367,6 +372,7 @@ def get_bucket_limits(bucket_id):
     max_vCPUs = max([v.cpu for v in compute_zones_in_bucket])
     max_RAM = max([v.ram for v in compute_zones_in_bucket])
     max_storage_policy = max([v.storage_policy for v in datastore_zones_in_bucket])
+    # -1 represents infinity on the VHI side
     return {"cores": -1 if max_vCPUs == float("inf") else max_vCPUs,
             "RAM": -1 if max_RAM == float("inf") else max_RAM,
             "storage": -1 if max_storage_policy == float("inf") else max_storage_policy}
