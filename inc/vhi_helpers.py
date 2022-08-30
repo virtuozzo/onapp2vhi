@@ -27,11 +27,16 @@ class Vhi:
         self.flavors_url = "{url}/compute/flavors".format(url=self._URL)
         self.users_url = "{url}/users".format(url=self._VHI_DOMAIN_API)
         self._login_url = "{url}/login".format(url=self._URL)
+        self._storage_policies_url = "{url}/storage_policies".format(url=self._URL)
+        self._quotas_url = "{}/compute/quotas/{}"
+        self._auth_endpoint = "{}/accounts/projects/{}/auth/"
+        self._storage_id = ""
+        self._storage_name = ""
         self._creds = {"username": VHICLoudDefaults.VHI_LOGIN.value,
                        "password": VHICLoudDefaults.VINFRA_PASS.value}
 
         if not self._cookie:
-            logs.info('POST {}'.format(self._login_url))
+            logs.info('POST {}'.format(self._login_url), separator=True)
             self._auth()
 
     @property
@@ -41,7 +46,10 @@ class Vhi:
         :return:
         """
         _headers = {'Content-type': 'application/json',
-                    'x-requested-with': 'XMLHttpRequest'}
+                    'x-requested-with': 'XMLHttpRequest',
+                    'accept': 'application/json, text/plain, */*',
+                    'User-Agent': 'Mozilla/5.0',
+                    'Connection': 'keep-alive'}
         if self._cookie:
             _headers.update({'Cookie': 'session={}'.format(self._cookie)})
         return _headers
@@ -66,6 +74,12 @@ class Vhi:
         :param project_data: {'project_name': 'name', . . .}
         :return: payload
         """
+        logs.info('GET {}'.format(self._storage_policies_url), separator=True)
+        response = requests.get(self._storage_policies_url, headers=self.headers)
+        logs.info('Response [{}]: {}'.format(response.status_code, response.content))
+        _storage = response.json()['data'][0]
+        self._storage_id = _storage['id']
+        self._storage_name = _storage['name']
         return json.dumps({"name": project_data['project_name'],
                            "description": "OnApp User {first_name} {last_name}".format(
                                first_name=project_data['first_name'],
@@ -73,15 +87,30 @@ class Vhi:
                            "enabled": True,
                            "policiesEnabled": ["default", "default"],
                            "traitsEnabled": [],
-                           "compute": {"cores": {"limit": project_data['quotas']['cores']},
-                                       "ram": {"limit": project_data['quotas']['RAM']}},
-                           "network": {"floatingip": {"limit": -1}, "ipsec_site_connection": {"limit": -1}},
-                           "storage": {"storage_policies": {"dbb9d4b4-be5f-4f5b-9014-9264ec1cdd2f": {
-                               "name": "default",
-                               "limit": project_data['quotas']['storage']}}},
-                           "lbaas": {"loadbalancer": {"limit": -1}},
-                           "k8saas": {"cluster": {"limit": 20}},
-                           "placement": {}})
+                           "compute": {"cores": {"limit": -1},
+                                       "ram": {"limit": -1},
+                                       "network": {"floatingip": {"limit": -1}, "ipsec_site_connection": {"limit": -1}},
+                                       "storage": {"storage_policies": {self._storage_id: {
+                                           "name": self._storage_name,
+                                           "limit": -1}}},
+                                       "lbaas": {"loadbalancer": {"limit": -1}},
+                                       "k8saas": {"cluster": {"limit": 20}},
+                                       "placement": {}}})
+
+    def _vhi_quotas(self, quotas):
+        logs.info('{}-- VHI: Set Quotas to project "{}" --'.format(Helper.SPACES.value, self.project_id),
+                  separator=True)
+        _quotas_url = self._quotas_url.format(self._URL, self.project_id)
+        quotas_payload = json.dumps({"compute": {"cores": {"limit": quotas['cores']},
+                                                 "ram": {"limit": quotas['RAM']}},
+                                     "storage": {
+                                         "storage_policies": {self._storage_name: {"limit": quotas['storage']}}}})
+        logs.info('POST {}'.format(_quotas_url), separator=True)
+        logs.info('Payload {}'.format(quotas_payload))
+        logs.info('Headers {}'.format(self.headers))
+        response = requests.post(_quotas_url, headers=self.headers, data=quotas_payload)
+        logs.info('Response [{}]. {}'.format(response.status_code, response.content))
+        return
 
     def _vhi_user_payload(self, user_data):
         """
@@ -158,8 +187,8 @@ class Vhi:
         :return: list object with project data
         """
         _object_name = object_url.split('/')[-1]
-        logs.info("{}-- VHI: Get VHI {} --   \n".format(Helper.SPACES.value, _object_name.capitalize()), separator=True)
-        logs.info('GET {}'.format(object_url))
+        logs.info("{}-- VHI: Get VHI {} --   ".format(Helper.SPACES.value, _object_name.capitalize()), separator=True)
+        logs.info('GET {}'.format(object_url), separator=True)
         projects_list = requests.get(object_url, headers=self.headers)
         logs.info('Response [{}]: {}'.format(projects_list.status_code, projects_list.content))
         return projects_list.json()['data']
@@ -199,7 +228,7 @@ class Vhi:
             return False
 
         logs.info('{}-- VHI: Create new {} --'.format(Helper.SPACES.value, object_properties['name']), separator=True)
-        logs.info('POST {}'.format(object_properties['url']))
+        logs.info('POST {}'.format(object_properties['url']), separator=True)
         logs.info('Headers: {}'.format(self.headers))
         logs.info('Payload: {}'.format(object_properties['payload']))
         response = requests.post(object_properties['url'],
@@ -208,12 +237,13 @@ class Vhi:
         assert response.status_code in (200, 201), logs.error(
             'Response [{}]. {} has not been created.\nResponse: {}'.format(response.status_code,
                                                                            object_properties['name'],
-                                                                           response.content))
+                                                                           response.content), separator=True)
         logs.info('Response [{}]: {}'.format(response.status_code, response.content))
         if object_type == "user":
             self.user_id = response.json()['id']
         elif object_type == "project":
             self.project_id = response.json()['id']
+            self._vhi_quotas(proj_data['quotas'])
         elif object_type == "flavor":
             self.flavor_name = response.json()['name']
         return True

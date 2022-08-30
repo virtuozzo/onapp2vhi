@@ -62,7 +62,7 @@ class VhiSshKeys:
         """
         if url_data:
             _method = url_data[0]
-            logs.info('{} {}'.format(url_data[0], url_data[1]))
+            logs.info('{} {}'.format(url_data[0], url_data[1]), separator=True)
             logs.info('Headers: {}'.format(url_data[2]))
             if _method in ('POST', 'PUT', 'PATCH'):
                 logs.info('Payload: {}'.format(url_data[3]))
@@ -73,7 +73,7 @@ class VhiSshKeys:
                 logs.error('Response [{}]: {}'.format(response.status_code, response.content))
                 exit(1)
 
-            logs.info('Response [{}]: {}'.format(response.status_code, response.content), separator=True)
+            logs.info('Response [{}]: {}'.format(response.status_code, response.content))
 
     def _auth(self):
         """

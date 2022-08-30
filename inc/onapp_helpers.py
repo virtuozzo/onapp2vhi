@@ -263,7 +263,7 @@ def get_onapp_vm_flavor(vm_identifier):
     :return:
     """
     _url = '{}/virtual_machines/{}.json'.format(OnAppAPICredentials.ONAPP_CP_URL.value, vm_identifier)
-    logs.info('GET {}'.format(_url))
+    logs.info('GET {}'.format(_url), separator=True)
     response = requests.get(_url, auth=AUTH)
     logs.info('Response [{}]: {}'.format(response.status_code, response.json()))
     vm_props = response.json()['virtual_machine']
@@ -281,7 +281,7 @@ def _get_onapp_bucket_access_controls(bucket_id):
     _url = '{url}/billing/buckets/{bucket_id}/access_controls.json'.format(
         url=OnAppAPICredentials.ONAPP_CP_URL.value, bucket_id=bucket_id)
     logs.info("{}-- OnApp: Get User Bucket Rate Card --   \n".format(Helper.SPACES.value), separator=True)
-    logs.info('GET {url}'.format(url=_url))
+    logs.info('GET {url}'.format(url=_url), separator=True)
     response = requests.get(_url, auth=AUTH)
     _access_controls = response.json() if response.status_code == 200 else False
     if _access_controls:
@@ -299,8 +299,8 @@ def get_user_ssh_keys(user_data):
     :return: [ssh_key1, ssh_key2]
     """
     _url = '{}/settings/ssh_keys.json'.format(OnAppAPICredentials.ONAPP_CP_URL.value)
-    logs.info("{}-- OnApp: Get User SSH keys --   \n".format(Helper.SPACES.value), separator=True)
-    logs.info('GET {url}'.format(url=_url))
+    logs.info("{}-- OnApp: Get User SSH keys --  ".format(Helper.SPACES.value), separator=True)
+    logs.info('GET {url}'.format(url=_url), separator=True)
     _ssh_keys = []
     response = requests.get(_url, auth=AUTH)
     for ssh_key in response.json():
@@ -321,7 +321,7 @@ def get_user_data(url, get_type, value_to_search=None):
     :return:
     """
     logs.info("{}-- OnApp: Get User information --   \n".format(Helper.SPACES.value), separator=True)
-    logs.info('GET {url}'.format(url=url))
+    logs.info('GET {url}'.format(url=url), separator=True)
     response = requests.get(url, auth=AUTH)
     if response.status_code != 200:
         logs.error(response.content)
@@ -374,5 +374,5 @@ def get_bucket_limits(bucket_id):
     max_storage_policy = max([v.storage_policy for v in datastore_zones_in_bucket])
     # -1 represents infinity on the VHI side
     return {"cores": -1 if max_vCPUs == float("inf") else max_vCPUs,
-            "RAM": -1 if max_RAM == float("inf") else max_RAM,
-            "storage": -1 if max_storage_policy == float("inf") else max_storage_policy}
+            "RAM": -1 if max_RAM == float("inf") else max_RAM * (1024 ** 3),
+            "storage": -1 if max_storage_policy == float("inf") else max_storage_policy * (1024 ** 3)}
