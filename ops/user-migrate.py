@@ -6,8 +6,7 @@ from inc.vhi_helpers import Vhi
 from inc.utils import generate_random_password
 from inc.logger import logs
 from cfg.o2v_config import Helper, OnAppAPICredentials
-from inc.onapp_helpers import get_user_ssh_keys, get_user_data
-
+from inc.onapp_helpers import get_user_ssh_keys, get_user_data, get_bucket_limits
 
 USER_PASSWORD = generate_random_password()
 
@@ -43,7 +42,8 @@ def user(idn=''):
                      'password': USER_PASSWORD,
                      'roles': _user_data['roles'],
                      'user_login': 'onapp_{}'.format(_user_data['login']),
-                     'project_name': "onapp_project_{}".format(_user_data['email'])}
+                     'project_name': "onapp_project_{}".format(_user_data['email']),
+                     'quotas': get_bucket_limits(bucket_id=_user_data["bucket_id"])}
     logs.info('Response [{}] email: {}| login: {}| first_name: {}| last_name: {}'.format(
         response.status_code,
         vhi_user_data['user_email'],

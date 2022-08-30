@@ -5,6 +5,7 @@ from cfg.o2v_config import OnAppAPICredentials, Helper
 from functions import run_command
 from inc.logger import logs
 from utils import parse_matrix
+from collections import namedtuple
 
 
 AUTH = (OnAppAPICredentials.ONAPP_USER_EMAIL.value, OnAppAPICredentials.ONAPP_USER_APIKEY.value)
@@ -262,13 +263,33 @@ def get_onapp_vm_flavor(vm_identifier):
     :return:
     """
     _url = '{}/virtual_machines/{}.json'.format(OnAppAPICredentials.ONAPP_CP_URL.value, vm_identifier)
-    logs.info('GET {}'.format(_url))
+    logs.info('GET {}'.format(_url), separator=True)
     response = requests.get(_url, auth=AUTH)
     logs.info('Response [{}]: {}'.format(response.status_code, response.json()))
     vm_props = response.json()['virtual_machine']
     return {'vcpus': vm_props['cpus'],
             'ram': vm_props['memory'],
             'name': 'onapp_flavor_{}_{}'.format(vm_props['cpus'], vm_props['memory'])}
+
+
+def _get_onapp_bucket_access_controls(bucket_id):
+    """
+        Get access controls from the users bucket
+        :param bucket_id: "1", "1000"
+        :return: json of access controls
+    """
+    _url = '{url}/billing/buckets/{bucket_id}/access_controls.json'.format(
+        url=OnAppAPICredentials.ONAPP_CP_URL.value, bucket_id=bucket_id)
+    logs.info("{}-- OnApp: Get User Bucket Rate Card --   \n".format(Helper.SPACES.value), separator=True)
+    logs.info('GET {url}'.format(url=_url), separator=True)
+    response = requests.get(_url, auth=AUTH)
+    _access_controls = response.json() if response.status_code == 200 else False
+    if _access_controls:
+        logs.info('Response [{}]: {}'.format(response.status_code, _access_controls))
+        return _access_controls
+    else:
+        logs.error('Response is wrong [{}]'.format(response.status_code))
+        return _access_controls
 
 
 def get_user_ssh_keys(user_data):
@@ -278,8 +299,8 @@ def get_user_ssh_keys(user_data):
     :return: [ssh_key1, ssh_key2]
     """
     _url = '{}/settings/ssh_keys.json'.format(OnAppAPICredentials.ONAPP_CP_URL.value)
-    logs.info("{}-- OnApp: Get User SSH keys --   \n".format(Helper.SPACES.value), separator=True)
-    logs.info('GET {url}'.format(url=_url))
+    logs.info("{}-- OnApp: Get User SSH keys --  ".format(Helper.SPACES.value), separator=True)
+    logs.info('GET {url}'.format(url=_url), separator=True)
     _ssh_keys = []
     response = requests.get(_url, auth=AUTH)
     for ssh_key in response.json():
@@ -300,7 +321,7 @@ def get_user_data(url, get_type, value_to_search=None):
     :return:
     """
     logs.info("{}-- OnApp: Get User information --   \n".format(Helper.SPACES.value), separator=True)
-    logs.info('GET {url}'.format(url=url))
+    logs.info('GET {url}'.format(url=url), separator=True)
     response = requests.get(url, auth=AUTH)
     if response.status_code != 200:
         logs.error(response.content)
@@ -313,3 +334,45 @@ def get_user_data(url, get_type, value_to_search=None):
     for _user in response.json():
         if value_to_search in list(_user['user'].values()):
             return _user['user'], response
+
+
+def get_bucket_limits(bucket_id):
+    """
+        Get Compute Zone and Data Store Zone limitations from the specific bucket
+        :param bucket_id: "1", "1000"
+        :return: peaks of the limits
+    """
+
+    compute_zones_in_bucket, datastore_zones_in_bucket = [], []
+    ComputeZone = namedtuple('ComputeZone', 'name cpu ram')
+    DataStoreZone = namedtuple('DataStoreZone', 'name storage_policy')
+    access_controls = _get_onapp_bucket_access_controls("{}".format(bucket_id))
+
+    for _ in access_controls:
+        if _['access_control']['type'] == 'compute_zone_resource' \
+                and _['access_control']['server_type'] == 'virtual':
+            # float("inf") represents infinity
+            ram_quota = float("inf") if _['access_control']['limits']['limit_memory'] is None\
+                else int(_['access_control']['limits']['limit_memory'])
+            cpu_quota = float("inf") if _['access_control']['limits']['limit_cpu'] is None\
+                else int(_['access_control']['limits']['limit_cpu'])
+
+            compute_zones_in_bucket.append(ComputeZone(name=_['access_control']['target_name'],
+                                                       cpu=cpu_quota,
+                                                       ram=ram_quota))
+        elif _['access_control']['type'] == 'data_store_zone_resource':
+            # float("inf") represents infinity
+            quota = float("inf") if _['access_control']['limits']['limit'] is None \
+                else int(_['access_control']['limits']['limit'])
+            datastore_zones_in_bucket.append(DataStoreZone(name=_['access_control']['target_name'],
+                                                           storage_policy=quota))
+        else:
+            continue
+
+    max_vCPUs = max([v.cpu for v in compute_zones_in_bucket])
+    max_RAM = max([v.ram for v in compute_zones_in_bucket])
+    max_storage_policy = max([v.storage_policy for v in datastore_zones_in_bucket])
+    # -1 represents infinity on the VHI side
+    return {"cores": -1 if max_vCPUs == float("inf") else max_vCPUs,
+            "RAM": -1 if max_RAM == float("inf") else max_RAM * (1024 ** 3),
+            "storage": -1 if max_storage_policy == float("inf") else max_storage_policy * (1024 ** 3)}
