@@ -7,18 +7,7 @@ from cfg.o2v_config import OnAppAPICredentials, Helper
 from inc.functions import run_command
 
 
-@click.group(cls=DefaultGroup, default='vm', invoke_without_command=True, default_if_no_args=True)
-def cli():
-    pass
-
-
-@click.command()
-@click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-@click.option('--vhip', '--vhi-ip', '--vhi-hypervisor-ip', default='', help="VHI destination HV IP address.")
-@click.option('--verb', '-v', '--v', '--verbosity', default='',
-              help="Verbolity level of values between 0 and 8")
-# click.argument('name',default='') - not used
-def vm(idn='', vhip='', verb=''):
+def vm_install_bootloader(idn, vhip, verb):
     if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         exit(17)
@@ -38,8 +27,6 @@ def vm(idn='', vhip='', verb=''):
         verbosity = int(verb)
     else:
         verbosity = int(Helper.VERBOSITY.value)
-
-    click.echo('...VM migration from OnApp to VHI...')
 
     VM_IDn = idn
 
@@ -134,9 +121,21 @@ def vm(idn='', vhip='', verb=''):
     CMD = "ssh root@{vm_ip} -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' 'grub-mkconfig -o /boot/grub/grub.cfg || grub2-mkconfig -o /boot/grub2/grub.cfg'".format(
         vm_ip=VM_SRC_IP)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
-    # if vm not booted -> then EXIT
 
 
-# --is_VM_Online--#
+@click.group(cls=DefaultGroup, default='installbootloader', invoke_without_command=True, default_if_no_args=True)
+def cli():
+    pass
 
-cli.add_command(vm)
+
+@click.command()
+@click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
+@click.option('--vhip', '--vhi-ip', '--vhi-hypervisor-ip', default='', help="VHI destination HV IP address.")
+@click.option('--verb', '-v', '--v', '--verbosity', default='',
+              help="Verbolity level of values between 0 and 8")
+# click.argument('name',default='') - not used
+def installbootloader(idn='', vhip='', verb=''):
+    vm_install_bootloader(idn, vhip, verb)
+
+
+cli.add_command(installbootloader)

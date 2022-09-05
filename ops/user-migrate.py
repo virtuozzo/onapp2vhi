@@ -6,7 +6,12 @@ from inc.vhi_helpers import Vhi
 from inc.utils import generate_random_password
 from inc.logger import logs
 from cfg.o2v_config import Helper, OnAppAPICredentials
-from inc.onapp_helpers import get_user_ssh_keys, get_user_data, get_bucket_limits
+from inc.onapp_helpers import (
+    get_user_ssh_keys,
+    get_user_data,
+    get_bucket_limits,
+    check_user_role
+)
 
 USER_PASSWORD = generate_random_password()
 
@@ -24,6 +29,7 @@ def user(idn=''):
         exit(1)
 
     user_property = idn
+    _default_project = True
     # OnApp URLS:
     if idn.isdigit():
         _type = 'ID'
@@ -52,10 +58,13 @@ def user(idn=''):
         vhi_user_data['last_name'])
     )
     vhi = Vhi()
-    vhi.create_object(vhi_user_data, 'project')
-    vhi.create_object(vhi_user_data, 'user')
-    _ssh_key = VhiSshKeys(vhi_user_data, get_user_ssh_keys(_user_data))
-    _ssh_key.create_vhi_ssh_keys()
+    if not check_user_role(vhi_user_data):
+        vhi.create_object(vhi_user_data, 'project')
+        _default_project = False
+    result = vhi.create_object(vhi_user_data, 'user')
+    if result:
+        _ssh_key = VhiSshKeys(vhi_user_data, get_user_ssh_keys(_user_data), default_project=_default_project)
+        _ssh_key.create_vhi_ssh_keys()
     logs.info('{} -- VHI: User has been migrated successfully --'.format(Helper.SPACES.value))
 
 

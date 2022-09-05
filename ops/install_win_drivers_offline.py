@@ -11,7 +11,7 @@ from inc.functions import run_command
 import json
 
 
-class bcolors:
+class Bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     OKCYAN = '\033[96m'
@@ -23,17 +23,7 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
-@click.group(cls=DefaultGroup, default='vm', invoke_without_command=True, default_if_no_args=True)
-def cli():
-    pass
-
-
-@click.command()
-@click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-@click.option('--vhip', '--vhi-ip', '--vhi-hypervisor-ip', default='', help="VHI destination HV IP address.")
-@click.option('--verb', '-v', '--v', '--verbosity', default='', help="Verbosity level of values between 0 and 8")
-# click.argument('name',default='') - not used
-def vm(idn='', vhip='', verb=''):
+def vm_install_win_drivers_offline(idn='', vhip='', verb=''):
     if not idn:
         logs.warn('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         exit(17)
@@ -53,8 +43,6 @@ def vm(idn='', vhip='', verb=''):
         verbosity = int(verb)
     else:
         verbosity = int(Helper.VERBOSITY.value)
-
-    click.echo('...VM migration from OnApp to VHI...')
 
     VM_IDn = idn
 
@@ -151,18 +139,18 @@ def vm(idn='', vhip='', verb=''):
         path=vz_guest_tools, hv_ip=VM_OHV_IP)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
     if rc != 0:
-        logs.info(bcolors.FAIL + "Something went wrong. Couldn't transfer vz-guest-tools-win into VM \n" + bcolors.ENDC)
+        logs.info(Bcolors.FAIL + "Something went wrong. Couldn't transfer vz-guest-tools-win into VM \n" + Bcolors.ENDC)
 
     CMD = "scp -r  {path}  root@{hv_ip}:/mnt/prepare_win/CloudbaseInitSetup_Stable_x64.msi".format(
         path=cloudbase_init, hv_ip=VM_OHV_IP)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
     if rc != 0:
-        logs.info(bcolors.FAIL + "Something went wrong. Couldn't transfer CloudbaseInitSetup into VM \n" + bcolors.ENDC)
+        logs.info(Bcolors.FAIL + "Something went wrong. Couldn't transfer CloudbaseInitSetup into VM \n" + Bcolors.ENDC)
 
     CMD = "scp -r  scripts/onapp.bat  root@{hv_ip}:/mnt/prepare_win/onapp.bat".format(hv_ip=VM_OHV_IP)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
     if rc != 0:
-        logs.info(bcolors.FAIL + "Something went wrong. Couldn't transfer onapp.bat into VM \n" + bcolors.ENDC)
+        logs.info(Bcolors.FAIL + "Something went wrong. Couldn't transfer onapp.bat into VM \n" + Bcolors.ENDC)
 
     # --step_8--#
     # --OnApp: Run kpartx and mount disk --#
@@ -176,4 +164,18 @@ def vm(idn='', vhip='', verb=''):
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
 
 
-cli.add_command(vm)
+@click.group(cls=DefaultGroup, default='driversoffline', invoke_without_command=True, default_if_no_args=True)
+def cli():
+    pass
+
+
+@click.command()
+@click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
+@click.option('--vhip', '--vhi-ip', '--vhi-hypervisor-ip', default='', help="VHI destination HV IP address.")
+@click.option('--verb', '-v', '--v', '--verbosity', default='', help="Verbosity level of values between 0 and 8")
+# click.argument('name',default='') - not used
+def driversoffline(idn='', vhip='', verb=''):
+    vm_install_win_drivers_offline(idn, vhip, verb)
+
+
+cli.add_command(driversoffline)

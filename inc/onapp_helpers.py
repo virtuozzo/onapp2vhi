@@ -204,7 +204,7 @@ def get_onapp_vm_disks(vm_idn='',verbosity=8):
         logs.info("ONAPP_DATASTORES: \n" + str(API_DS))
         logs.info("")
 
-#--OnApp: get source VM disks --#
+    #--OnApp: get source VM disks --#
 
     NOTE = """ -- OnApp: get VM's disks by {identifier} -- """
 
@@ -227,7 +227,7 @@ def get_onapp_vm_primary_disk(vm_idn='',verbosity=8):
 
     VM_IDn = vm_idn
 
-#--OnApp: get source VM data_stores --#
+    #--OnApp: get source VM data_stores --#
 
     NOTE = """ -- OnApp: get OnApp datastores -- """
 
@@ -280,15 +280,15 @@ def _get_onapp_bucket_access_controls(bucket_id):
     """
     _url = '{url}/billing/buckets/{bucket_id}/access_controls.json'.format(
         url=OnAppAPICredentials.ONAPP_CP_URL.value, bucket_id=bucket_id)
-    logs.info("{}-- OnApp: Get User Bucket Rate Card --   \n".format(Helper.SPACES.value), separator=True)
+    logs.info("{}-- OnApp: Get User Bucket Access Controls --   ".format(Helper.SPACES.value), separator=True)
     logs.info('GET {url}'.format(url=_url), separator=True)
     response = requests.get(_url, auth=AUTH)
     _access_controls = response.json() if response.status_code == 200 else False
     if _access_controls:
-        logs.info('Response [{}]: {}'.format(response.status_code, _access_controls))
+        logs.info('Response [{}]'.format(response.status_code))
         return _access_controls
     else:
-        logs.error('Response is wrong [{}]'.format(response.status_code))
+        logs.error('Response [{}]: {}'.format(response.status_code, response.content))
         return _access_controls
 
 
@@ -312,15 +312,16 @@ def get_user_ssh_keys(user_data):
     return _ssh_keys
 
 
-def get_user_data(url, get_type, value_to_search=None):
+def get_user_data(url, get_type, value_to_search=None, all_users=False):
     """
     Get users data from OnApp platform
     :param url: /users.json or /users/1.json
     :param get_type: ID or any value in user obj
     :param value_to_search: value based on what we will find user
+    :param all_users: bool True or False
     :return:
     """
-    logs.info("{}-- OnApp: Get User information --   \n".format(Helper.SPACES.value), separator=True)
+    logs.info("{}-- OnApp: Get User information --  ".format(Helper.SPACES.value), separator=True)
     logs.info('GET {url}'.format(url=url), separator=True)
     response = requests.get(url, auth=AUTH)
     if response.status_code != 200:
@@ -331,9 +332,36 @@ def get_user_data(url, get_type, value_to_search=None):
     if get_type == 'ID':
         return response.json()['user'], response
 
+    if all_users:
+        return response.json(), response
+
     for _user in response.json():
         if value_to_search in list(_user['user'].values()):
             return _user['user'], response
+
+
+def get_all_virtual_machines():
+    """
+    Get list of all virtual machines and sort them by user ID
+    :return: list of VMs
+    """
+    logs.info("{}-- OnApp: Get All Virtual Machines information --  ".format(Helper.SPACES.value), separator=True)
+    _url = '{}/virtual_machines.json'.format(OnAppAPICredentials.ONAPP_CP_URL.value)
+    logs.info('GET {}'.format(_url), separator=True)
+    response = requests.get(_url, auth=AUTH)
+    logs.info('Response [{}]'.format(response.status_code))
+
+    from collections import defaultdict
+    vms_dict = defaultdict(list)
+    for _vm in response.json():
+        vm = _vm['virtual_machine']
+        if vm["vip"]:
+            continue
+
+        vms_dict[vm['user_id']].append({'id': vm['identifier'],
+                                        'booted': vm['booted'],
+                                        'operating_system': vm['operating_system']})
+    return dict(vms_dict)
 
 
 def get_bucket_limits(bucket_id):
@@ -376,3 +404,50 @@ def get_bucket_limits(bucket_id):
     return {"cores": -1 if max_vCPUs == float("inf") else max_vCPUs,
             "RAM": -1 if max_RAM == float("inf") else max_RAM * (1024 ** 3),
             "storage": -1 if max_storage_policy == float("inf") else max_storage_policy * (1024 ** 3)}
+
+
+def check_user_role(user_data):
+    """
+    Check whether user has admin role or not
+    :param user_data:
+    :return:
+    """
+    admin_role = ''
+    for role in user_data['roles']:
+        if role['role']['identifier'] == "admin" or len(role['role']['permissions']) >= 162:
+            admin_role = True
+            break
+        else:
+            admin_role = False
+    return admin_role
+
+
+class VmHandler:
+    WINDOWS_OS = 'windows'
+    LINUX_OS = 'linux'
+
+    def __init__(self, **kwargs):
+        self._booted = kwargs.get("booted", "")
+        self._os = kwargs.get("operating_system", "")
+
+    def vm_handler(self):
+        """
+        Handle virtual machine status whether it booted or not, and check OS
+        :return:
+        """
+        from ops.cold_migrate import vm_cold_migrate
+        from ops.live_migrate import vm_live_migrate
+        from ops.install_bootloader import vm_install_bootloader
+        from ops.install_bootloader_offline import vm_install_bootloader_offline
+        from ops.install_win_drivers import vm_install_win_drivers
+        from ops.install_win_drivers_offline import vm_install_win_drivers_offline
+        if self._booted:
+            if self._os == self.WINDOWS_OS:
+                return vm_install_win_drivers, vm_live_migrate
+            else:
+                return vm_install_bootloader, vm_live_migrate
+        else:
+            if self._os == self.WINDOWS_OS:
+                return vm_install_win_drivers_offline, vm_cold_migrate
+            else:
+                return vm_install_bootloader_offline, vm_cold_migrate

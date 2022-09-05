@@ -48,6 +48,7 @@ class Helper(Enum):
     IMG_SPARSING = False
 
     SPACES = ' ' * 15
+    EQUAL = '=' * 18
 
     # VERBOSITY_LEVEL
     VERBOSITY = 8

@@ -6,7 +6,7 @@ from inc.logger import logs
 from cfg.o2v_config import Helper
 
 
-@click.group(cls=DefaultGroup, default='vms', invoke_without_command=True, default_if_no_args=True)
+@click.group(cls=DefaultGroup, default='listonappvms', invoke_without_command=True, default_if_no_args=True)
 def cli():
     pass
 
@@ -18,7 +18,7 @@ def cli():
               help="Select by specific params with --where='id=13' option.")
 @click.option('--verb', '-v', '--v', '--verbosity', default='', help="Verbosity level of values between 0 and 8")
 # click.argument('name',default='') - not used
-def vms(vals='', by='', verb=''):
+def listonappvms(vals='', by='', verb=''):
     if not verb:
         verb = "0"
     if not str(verb).isdigit():
@@ -37,4 +37,4 @@ def vms(vals='', by='', verb=''):
     list_onapp_vms(vals, by, URL, verbosity)
 
 
-cli.add_command(vms)
+cli.add_command(listonappvms)

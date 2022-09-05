@@ -11,7 +11,7 @@ from inc.logger import logs
 from cfg.o2v_config import Helper, OnAppAPICredentials, VHICLoudDefaults
 
 
-class bcolors:
+class Bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     OKCYAN = '\033[96m'
@@ -23,24 +23,10 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
-@click.group(cls=DefaultGroup, default='vm', invoke_without_command=True, default_if_no_args=True)
-def cli():
-    pass
-
-
-@click.command()
-@click.option('--vdom', '--vhi-domain', default='', help="VHI Domain.")
-@click.option('--vproj', '--vhi-project', default='', help="VHI Project.")
-@click.option('--vuser', '--vhi-user', default='', help="VHI User.")
-@click.option('--vpass', '--vhi-pass', '--vhi-password', default='', help="VHI Password.")
-@click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-@click.option('--vhip', '--vhi-ip', '--vhi-hypervisor-ip', default='', help="VHI destination HV IP address.")
-@click.option('--verb', '-v', '--v', '--verbosity', default='', help="Verbosity level of values between 0 and 8")
-# click.argument('name',default='') - not used
-def vm(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', verb=''):
+def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc='', verb=''):
     if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
-        exit(17)
+        return False
     #    if vhip == '':
     #       logs.info ('You need to pass VHI hypervisor IP address through --vhi-ip=? parameter ')
     #       exit(18)
@@ -66,10 +52,12 @@ def vm(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', verb=''):
         verb = str(Helper.VERBOSITY.value)
     if not str(verb).isdigit():
         logs.error("'--verbosity' parameter should be a number")
-        exit(11)
+        return False
+
     if int(verb) < 0 or int(verb) > 8:
         logs.error("'--verbosity' parameter should be a number between 0 and 8")
-        exit(12)
+        return False
+
     if verb:
         verbosity = int(verb)
     else:
@@ -98,10 +86,10 @@ def vm(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', verb=''):
     OVM_HOT_MIGRATE = str(json.loads(ou)[4]).encode('ascii')
 
     if OVM_HOT_MIGRATE == 'False':
-        logs.info(bcolors.WARNING + "ATENTION hot_migrate is not allowed for VM \n" + bcolors.ENDC)
+        logs.info(Bcolors.WARNING + "ATENTION hot_migrate is not allowed for VM \n" + Bcolors.ENDC)
 
     if OVM_HOT_MIGRATE == 'True':
-        logs.info(bcolors.OKGREEN + "HOT migrate is  allowed for VM \n" + bcolors.ENDC)
+        logs.info(Bcolors.OKGREEN + "HOT migrate is  allowed for VM \n" + Bcolors.ENDC)
 
     # --step_2--#
     # --OnApp: get source VM hypervisor IP address --#
@@ -145,15 +133,14 @@ def vm(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', verb=''):
     # --OnApp: Check if VM is running at OnApp hypervisor --#
 
     NOTE = """ -- OnApp: check if VM is running on HV -- """
-
     CMD = "ssh -p{ssh_port} {sshopt} root@{hv_ip} 'virsh list | grep {vm_idn}' 2>/dev/null ".format(hv_ip=VM_OHV_IP,
                                                                                                     ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value,
                                                                                                     sshopt=Helper.SSH_OPTS.value,
                                                                                                     vm_idn=VM_IDn)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
     if not ou:
-        logs.info("VM IS NOT RUNNING.\n PLEASE, START VM OR USE COLD-MIGRATE OPTION.")
-        exit(11)
+        logs.error("VM IS NOT RUNNING. PLEASE, START VM OR USE ``cold_migrate`` OPTION.")
+        return False
 
     # --step_6--#
     # --OnApp: get VM's XML config from OnApp hypervisor --#
@@ -171,8 +158,8 @@ def vm(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', verb=''):
     if verbosity >= 7:
         logs.info("[...result output is too big...]\n")
     if int(rc):
-        logs.info("ERROR: Can't find VM running on Hypervisor. \n" + VM_XML_CFG)
-        exit(14)
+        logs.error("ERROR: Can't find VM running on Hypervisor. \n" + VM_XML_CFG)
+        return False
 
     vmxml = KVMxml.fromstring(VM_XML_CFG)
 
@@ -263,9 +250,9 @@ def vm(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', verb=''):
         logs.info("Destination VHI VM with IP/MAC ALREADY EXISTS:")
         logs.info(ou)
         VHI_VM_ID = str(json.loads(ou)[0])
-        logs.info("...please, remove the target VM on VHI or remove conflicting network interface of it...\n")
-        logs.info(VHICLoudDefaults.VHI_CP_URL.value + "/compute/servers/instances/" + json.loads(ou)[0] + "/ \n")
-        # exit(13)
+        logs.error("...please, remove the target VM on VHI or remove conflicting network interface of it...\n")
+        logs.error(VHICLoudDefaults.VHI_CP_URL.value + "/compute/servers/instances/" + json.loads(ou)[0] + "/ \n")
+        return False
 
     # --step_9--#
     # --VHI: define VM's hypervisor vinfra host and DISKS --#
@@ -280,8 +267,8 @@ def vm(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', verb=''):
         VHI_HV_IP = str(ou).strip("\n")
         logs.info("VMs_HV_IP: {}".format(VHI_HV_IP))
     else:
-        logs.info("Error: VM's VHI hypervisor IP address is invalid: {hv_ip}".format(hv_ip=ou))
-        exit(23)
+        logs.error("Error: VM's VHI hypervisor IP address is invalid: {hv_ip}".format(hv_ip=ou))
+        return False
     CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_hv} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server volume list --server {vm_id} -f json | jq -c' 2>/dev/null ".format(
         ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER, vhipass=VHIPASS,
         vhi_hv=VHI_HV_IP, vm_id=VHI_VM_ID)
@@ -434,6 +421,25 @@ def vm(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', verb=''):
         vhiproj=VHIPROJ, vhiuser=VHIUSER, vhipass=VHIPASS, vhi_hv=VHI_HV_IP, vm_id=VHI_VM_ID)
     # logs.info(CMD)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
+    return True
 
 
-cli.add_command(vm)
+@click.group(cls=DefaultGroup, default='livemigrate', invoke_without_command=True, default_if_no_args=True)
+def cli():
+    pass
+
+
+@click.command()
+@click.option('--vdom', '--vhi-domain', default='', help="VHI Domain.")
+@click.option('--vproj', '--vhi-project', default='', help="VHI Project.")
+@click.option('--vuser', '--vhi-user', default='', help="VHI User.")
+@click.option('--vpass', '--vhi-pass', '--vhi-password', default='', help="VHI Password.")
+@click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
+@click.option('--vhip', '--vhi-ip', '--vhi-hypervisor-ip', default='', help="VHI destination HV IP address.")
+@click.option('--verb', '-v', '--v', '--verbosity', default='', help="Verbosity level of values between 0 and 8")
+# click.argument('name',default='') - not used
+def livemigrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', verb=''):
+    vm_live_migrate(vdom=vdom, vproj=vproj, vuser=vuser, vpass=vpass, idn=idn, vhip=vhip, snc='', verb=verb)
+
+
+cli.add_command(livemigrate)

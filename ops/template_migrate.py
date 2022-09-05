@@ -67,18 +67,19 @@ def vm(idn='', vhip='', verb=''):
     NOTE = """ -- Deploy QCOW disk from template at OnApp hypervisor -- """
 
     CMD = """ssh -p{ssh_port} {sshopt} root@{hv_ip} "
-guestfish <<EOF
-add /tmp/{disk_name}.qcow2
-run
-part-disk /dev/sda mbr
-mke2fs /dev/sda1 fstype:ext4
-mount /dev/sda1 /
-copy-in /onapp/backups/templates/{disk_name} /
-rename /{disk_name} /tmplroot
-umount /
-exit
-EOF" """.format(hv_ip=OnAppAPICredentials.ONAPP_HV_IP.value, ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value,
-                sshopt=Helper.SSH_OPTS.value, disk_name=TMPL_file_name)
+            guestfish <<EOF
+            add /tmp/{disk_name}.qcow2
+            run
+            part-disk /dev/sda mbr
+            mke2fs /dev/sda1 fstype:ext4
+            mount /dev/sda1 /
+            copy-in /onapp/backups/templates/{disk_name} /
+            rename /{disk_name} /tmplroot
+            umount /
+            exit
+            EOF" """.format(hv_ip=OnAppAPICredentials.ONAPP_HV_IP.value,
+                            ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value,
+                            sshopt=Helper.SSH_OPTS.value, disk_name=TMPL_file_name)
     (rc, ou) = run_command(CMD, verbosity, 0)
 
     # Generate recovery config xml

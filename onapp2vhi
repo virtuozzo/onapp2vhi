@@ -35,7 +35,7 @@ if str(sys.argv[1]) in ("--help", "help", "man", "--h"):
 
         _str_prov = _str_prov + provider + '\n    '
     print("Providers:\n {prov}".format(prov=_str_prov))
-    exit(13)
+    exit(1)
 
 
 class MyCLI(click.MultiCommand):

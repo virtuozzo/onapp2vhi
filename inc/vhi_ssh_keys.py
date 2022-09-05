@@ -2,6 +2,7 @@ import requests
 import json
 from cfg.o2v_config import VHICLoudDefaults, Helper
 from inc.logger import logs
+from inc.onapp_helpers import check_user_role
 
 
 class VhiSshKeys:
@@ -14,13 +15,15 @@ class VhiSshKeys:
     _PANEL_URL = "{vhi_url}{vhi_api}".format(vhi_url=VHICLoudDefaults.VHI_PANEL_URL.value,
                                              vhi_api=VHICLoudDefaults.VHI_API_PATH.value)
 
-    def __init__(self, user_obj, ssh_keys):
+    def __init__(self, user_obj, ssh_keys, default_project=False):
         self._user = user_obj
         self._login = self._user['user_login']
         self._first_name = self._user['first_name']
         self._last_name = self._user['last_name']
         self._pwd = self._user['password']
         self._proj_name = self._user['project_name']
+        if default_project:
+            self._proj_name = VHICLoudDefaults.VINFRA_PROJECT.value
         self._ssh_keys = ssh_keys
         self._headers = ''
         self._creds = {"domain": VHICLoudDefaults.VINFRA_DOMAIN.value,
@@ -30,6 +33,7 @@ class VhiSshKeys:
         self._login_url = "{url}/login".format(url=self._URL)
         self._panel_login_url = "{url}/login".format(url=self._PANEL_URL)
         self._auth_endpoint = "{}/accounts/projects/{}/auth/"
+        self._user_projects_url = "{}/accounts/projects".format(self._URL)
         self._projects_url = "{url}/domains/{dom_id}/projects".format(url=self._URL,
                                                                       dom_id=VHICLoudDefaults.VHI_DOMAIN_ID.value)
         self.ssh_keys_url = "{url}/compute/keys".format(url=self._PANEL_URL)
@@ -88,8 +92,14 @@ class VhiSshKeys:
                                  data=json.dumps(self._creds))
         self._log_response(response=response)
         _headers.update({'Cookie': 'session1={}'.format(response.cookies['session1'])})
-        self._log_response(url_data=('GET', self._projects_url, _headers))
-        response_2 = requests.get(self._projects_url, headers=_headers)
+        _proj_url = ""
+        if not check_user_role(self._user):
+            _proj_url = self._user_projects_url
+            self._log_response(url_data=('GET', _proj_url, _headers))
+        else:
+            _proj_url = self._projects_url
+            self._log_response(url_data=('GET', _proj_url, _headers))
+        response_2 = requests.get(_proj_url, headers=_headers)
         self._log_response(response=response_2)
         proj_id = [proj['id'] for proj in response_2.json()['data'] if proj['name'] == self._proj_name][0]
         auth_url = self._auth_endpoint.format(self._PANEL_URL, proj_id)
@@ -144,11 +154,11 @@ class VhiSshKeys:
 
         # VHI API works strange, before each action via API we should trigger accounts/projects/{proj_id}/auth/
         requests.post(self._proj_auth_url, headers=self._headers, data={})
-        if ssh_keys:
-            for idn, ssh_key in enumerate(ssh_keys):
-                payload = self._vhi_ssh_keys_payload(idn, ssh_key)
-                self._log_response(url_data=('POST', self.ssh_keys_url, self._headers, payload))
-                response = requests.post(self.ssh_keys_url, headers=self._headers, data=payload)
-                self._log_response(response=response)
+        for idn, ssh_key in enumerate(ssh_keys):
+            payload = self._vhi_ssh_keys_payload(idn, ssh_key)
+            self._log_response(url_data=('POST', self.ssh_keys_url, self._headers, payload))
+            response = requests.post(self.ssh_keys_url, headers=self._headers, data=payload)
+            self._log_response(response=response)
         logs.info('{} -- VHI: User SSH Keys has been migrated successfully --'.format(Helper.SPACES.value))
         logs.info('')
+        return True

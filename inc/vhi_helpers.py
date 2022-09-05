@@ -21,6 +21,7 @@ class Vhi:
     def __init__(self):
         self._cookie = ""
         self.project_id = ""
+        self.project_name = VHICLoudDefaults.VINFRA_PROJECT.value
         self.user_id = ""
         self.flavor_name = ""
         self.projects_url = "{url}/projects".format(url=self._VHI_DOMAIN_API)
@@ -243,6 +244,7 @@ class Vhi:
             self.user_id = response.json()['id']
         elif object_type == "project":
             self.project_id = response.json()['id']
+            self.project_name = response.json()['name']
             self._vhi_quotas(proj_data['quotas'])
         elif object_type == "flavor":
             self.flavor_name = response.json()['name']

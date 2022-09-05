@@ -49,18 +49,18 @@
 ---
   - ### Get all Virtual servers:
     ```
-    ./onapp2vhi list-onapp-vms
+    ./onapp2vhi list_onapp_vms
     ```
     
   * By specifying "_by=_" or "_vals=_" parameter to get what you want:
     * command will show you all VM's related to user with ID=7
       ```
-      ./onapp2vhi list-onapp-vms --by="user_id=7"
+      ./onapp2vhi list_onapp_vms --by="user_id=7"
       ```
     * command will show you all VM's related to user with ID=7 and columns you specified in "vals":
       ```
-      ./onapp2vhi list-onapp-vms --by="user_id=7" --vals=identifier,hostname,memory,cpus,user_id,template_label,total_disk_size
-      ./onapp2vhi list-onapp-vms --by="identifier=lidqtfwggohyzk" --vals=identifier,hostname,memory,cpus,user_id,template_label,total_disk_size
+      ./onapp2vhi list_onapp_vms --by="user_id=7" --vals=identifier,hostname,memory,cpus,user_id,template_label,total_disk_size
+      ./onapp2vhi list_onapp_vms --by="identifier=lidqtfwggohyzk" --vals=identifier,hostname,memory,cpus,user_id,template_label,total_disk_size
       ```
 ---
   - ### Get all Users:
@@ -68,15 +68,15 @@
     - the same logic is using for users:
       - command will show you only user with id=7, login=admin or email=admin@example.com
           ```
-          ./onapp2vhi list-onapp-users --by="id=7" 
+          ./onapp2vhi list_onapp_users --by="id=7" 
         OR
-          ./onapp2vhi list-onapp-users --by="login=admin"
+          ./onapp2vhi list_onapp_users --by="login=admin"
         OR 
-          ./onapp2vhi list-onapp-users --by="email=admin@example.com" 
+          ./onapp2vhi list_onapp_users --by="email=admin@example.com" 
           ```
         * command will show you all VM's related to user with ID=7 and columns you specified in "vals":
           ```
-          ./onapp2vhi list-onapp-users --by="login=admin" --vals=id,email,login,roles,first_name,last_name
+          ./onapp2vhi list_onapp_users --by="login=admin" --vals=id,email,login,roles,first_name,last_name
           ```
 ---
   - ### User migration:
@@ -97,25 +97,39 @@
   - ### Linux based VM's:
     - First step is to install bootloader into VM on OnApp side:
       ```
-      ./onapp2vhi install-bootloader --vm=lidqtfwggohyzk
+      ./onapp2vhi install_bootloader --vm=lidqtfwggohyzk
       OR
-      ./onapp2vhi install-bootloader-offline --vm=lidqtfwggohyzk
+      ./onapp2vhi install_bootloader-offline --vm=lidqtfwggohyzk
       ```
     - Then you can migrate that VM:
       ```
-      ./onapp2vhi live-migrate --vm=lidqtfwggohyzk
+      ./onapp2vhi live_migrate --vm=lidqtfwggohyzk
       ```
 ---
   - ### Windows based VM's:
     - First step is to install bootloader into VM on OnApp side:
         ```
-        ./onapp2vhi install-win-drivers --vm-identifier=qsykamkqqlpjbd
+        ./onapp2vhi install_win_drivers --vm-identifier=qsykamkqqlpjbd
       OR
-        ./onapp2vhi install-win-drivers-offline --vm-identifier=qsykamkqqlpjbd
+        ./onapp2vhi install_win_drivers_offline --vm-identifier=qsykamkqqlpjbd
         ```
     - Then you can migrate that VM:
       ```
-      ./onapp2vhi live-migrate --vm=lidqtfwggohyzk
+      ./onapp2vhi live_migrate --vm=lidqtfwggohyzk
+      ```
+---
+  - ### Run whole migration process:
+    - Just type command:
+        ```
+        ./onapp2vhi migrate-all
+      ```
+    - If you want to migrate only one user and his VM's:
+      ```
+      ./onapp2vhi migrate-all --user=7
+      ```
+    - After script finished, please take a look in logs file:
+      ```
+      ~/onapp2vhi/migration_logs/
       ```
 ---
   - ### Deactivate environment:
