@@ -9,20 +9,17 @@ from inc.functions import run_command
 
 def vm_install_bootloader(idn, vhip, verb):
     if not idn:
-        logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
-        exit(17)
-    #    if vhip == '':
-    #       logs.info ('You need to pass VHI hypervisor IP address through --vhi-ip=? parameter ')
-    #       exit(18)
+        logs.error('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
+        exit(1)
 
     if not verb:
         verb = str(Helper.VERBOSITY.value)
     if not str(verb).isdigit():
         logs.error("'--Helper.VERBOSITY.value' parameter should be a number")
-        exit(11)
+        exit(1)
     if int(verb) < 0 or int(verb) > 8:
         logs.error("'--Helper.VERBOSITY.value' parameter should be a number between 0 and 8")
-        exit(12)
+        exit(1)
     if verb:
         verbosity = int(verb)
     else:

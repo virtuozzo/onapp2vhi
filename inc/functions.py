@@ -21,7 +21,7 @@ def run_command(CMD, verbose=1, interactive=1, comment=''):
             logs.info(str(comment).strip())
         logs.info("----")
         logs.info("Running: " + CMD)
-        logs.info("---")
+        logs.info("----")
 
     if interactive <= 0:
         cmd_process = subprocess.Popen(
@@ -40,9 +40,9 @@ def run_command(CMD, verbose=1, interactive=1, comment=''):
 
     if verbose >= 8:
         if exit_code == 0:
-            logs.info("Result[{}]: {}".format(str(exit_code), str(cmd_output)))
+            logs.info("Result [exit code: {}]: {}".format(str(exit_code), str(cmd_output).strip('\n')))
         else:
-            logs.warn("Result[{}]: {}".format(str(exit_code), str(cmd_output)))
+            logs.warn("Result [exit code: {}]: {}".format(str(exit_code), str(cmd_output).strip('\n')))
     elif verbose >= 1 and exit_code >= 1:
         logs.error(exit_code)
 

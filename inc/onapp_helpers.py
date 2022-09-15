@@ -2,6 +2,7 @@ import json
 from collections import defaultdict
 import requests
 from cfg.o2v_config import OnAppAPICredentials, Helper
+import xml.etree.ElementTree as KVMxml
 from functions import run_command
 from inc.logger import logs
 from utils import parse_matrix
@@ -185,14 +186,10 @@ def get_onapp_vm_nics(vm_idn='',verbosity=8):
 ##------- FUNCTION -------##
 ##---get_onapp_vm_disks---##
 ##########################
-def get_onapp_vm_disks(vm_idn='',verbosity=8):
-
+def get_onapp_vm_disks(vm_idn='', verbosity=8):
     VM_IDn = vm_idn
-
-#--OnApp: get source VM data_stores --#
-
+    #--OnApp: get source VM data_stores --#
     NOTE = """ -- OnApp: get OnApp datastores -- """
-
     URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/settings/data_stores.json"
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | [ .data_store.id , .data_store.identifier ] '".format(user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value, full_url=URL)
     (rc,ou) = run_command(CMD,verbosity,0,NOTE)
@@ -203,11 +200,8 @@ def get_onapp_vm_disks(vm_idn='',verbosity=8):
     if verbosity >= 7:
         logs.info("ONAPP_DATASTORES: \n" + str(API_DS))
         logs.info("")
-
-    #--OnApp: get source VM disks --#
-
+    # --OnApp: get source VM disks --#
     NOTE = """ -- OnApp: get VM's disks by {identifier} -- """
-
     URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/virtual_machines/{}/disks.json".format(VM_IDn)
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | [ .disk.identifier,.disk.data_store_id,.disk.disk_size,.disk.disk_vm_number,.disk.primary,.disk.is_swap ] '".format(user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value, full_url=URL)
     (rc, ou) = run_command(CMD,verbosity,0,NOTE)
@@ -223,37 +217,28 @@ def get_onapp_vm_disks(vm_idn='',verbosity=8):
 ##------- FUNCTION -------##
 ##---get_onapp_vm_primary_disk---##
 ##########################
-def get_onapp_vm_primary_disk(vm_idn='',verbosity=8):
-
+def get_onapp_vm_primary_disk(vm_idn='', verbosity=8):
     VM_IDn = vm_idn
-
-    #--OnApp: get source VM data_stores --#
-
-    NOTE = """ -- OnApp: get OnApp datastores -- """
-
+    # --OnApp: get source VM data_stores --#
     URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/settings/data_stores.json"
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | [ .data_store.id , .data_store.identifier ] '".format(user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value, full_url=URL)
-    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
-    API_DS = {}
+    (rc, ou) = run_command(CMD, verbosity, 0)
+    api_ds = {}
     for line in ou.splitlines():
         ds = json.loads(line)
-        API_DS[ ds[0] ] = ds[1].encode('ascii')
-    if verbosity >= 7:
-        logs.info("ONAPP_DATASTORES: \n" + str(API_DS))
-
-#--OnApp: get source VM disks --#
-
+        api_ds[ds[0]] = ds[1].encode('ascii')
+    logs.info("ONAPP_DATASTORES: \n" + str(api_ds))
+    # --OnApp: get source VM disks --#
     NOTE = """ -- OnApp: get VM's disks by {identifier} -- """
-
     URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/virtual_machines/{}/disks.json".format(VM_IDn)
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | select(.disk.primary==true) | [ .disk.identifier,.disk.data_store_id ] '".format(user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value, full_url=URL )
-    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
-    API_VM_PRIMARY_DISK = []
+    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
+    api_vm_primary_disk = []
     for line in ou.splitlines():
         dsk = json.loads(line)
-        API_VM_PRIMARY_DISK.append( { 'path': "/dev/"+str(API_DS[dsk[1]])+"/"+str(dsk[0]) } )
+        api_vm_primary_disk.append({'path': "/dev/"+str(api_ds[dsk[1]])+"/"+str(dsk[0])})
 
-    return API_VM_PRIMARY_DISK
+    return api_vm_primary_disk
 
 
 def get_onapp_vm_flavor(vm_identifier):
@@ -442,12 +427,87 @@ class VmHandler:
         from ops.install_win_drivers import vm_install_win_drivers
         from ops.install_win_drivers_offline import vm_install_win_drivers_offline
         if self._booted:
+            logs.info('{}-- LIVE MIGRATION --'.format(Helper.SPACES.value))
             if self._os == self.WINDOWS_OS:
                 return vm_install_win_drivers, vm_live_migrate
             else:
                 return vm_install_bootloader, vm_live_migrate
         else:
+            logs.info('{}-- COLD MIGRATION --'.format(Helper.SPACES.value))
             if self._os == self.WINDOWS_OS:
                 return vm_install_win_drivers_offline, vm_cold_migrate
             else:
                 return vm_install_bootloader_offline, vm_cold_migrate
+
+
+class GenerateXmlConfig:
+
+    RECOVERY_TEMPLATE = "ssh root@{hv_ip} 'ls /onapp/tools/recovery/recovery-centos-7.*.{file} | tail -1'"
+
+    def __init__(self, vm_idn, hv_ip):
+        self._vm_idn = vm_idn
+        self._hv_ip = hv_ip
+        self._verbosity = 8
+        self._kernel = 'kernel'
+        self._iso = 'iso'
+        self._initrd = 'initrd'
+        self._recovery_mg_file = 'scripts/recovery.xml.mg'
+        self._recovery_xml = 'scripts/recovery.xml'
+
+    def shut_down_vm(self):
+        """
+        Shut down VM and save original xml and remove cdrom
+        :return:
+        """
+        cmd_1 = "ssh root@{hv_ip} 'virsh dumpxml {vm_idn} 2>/dev/null > /tmp/{vm_idn}.xml ;" \
+                " cat /tmp/{vm_idn}.xml' 2>/dev/null".format(vm_idn=self._vm_idn, hv_ip=self._hv_ip)
+        (rc, vm_xml_cfg) = run_command(cmd_1, 1, 0)
+        vm_xml = KVMxml.fromstring(vm_xml_cfg)
+        for device in vm_xml.findall("devices"):
+            for disk in device.findall("disk"):
+                if disk.attrib['device'] == "cdrom":
+                    device.remove(disk)
+        xmltree = KVMxml.ElementTree(vm_xml)
+        _file = "scripts/{}.xml".format(self._vm_idn)
+        logs.info("Writing config into {}".format(_file), separator=True)
+        xmltree.write(_file)
+        cmd_2 = "ssh root@{hv_ip} 'virsh shutdown {vm_idn}'".format(hv_ip=self._hv_ip, vm_idn=self._vm_idn)
+        (rc, ou) = run_command(cmd_2, self._verbosity, 0)
+        from time import sleep
+        for i in range(0, 100):
+            if rc != 1:
+                break
+
+            sleep(10)
+            cmd_3 = "ssh root@{hv_ip} 'virsh dominfo {vm_idn}'".format(hv_ip=self._hv_ip, vm_idn=self._vm_idn)
+            (rc, ou) = run_command(cmd_3, self._verbosity, 0)
+
+    def generate_recovery_xml_config(self, primary_disk):
+        """
+        Generate recovery config xml based on HV parameters
+        Grep .iso, .kernel, .initrd files and set them into recovery file on the fly
+        :param primary_disk: string
+        :return:
+        """
+        logs.info("{}-- OnApp: Get Hypervisor Recovery Info --".format(Helper.SPACES.value), separator=True)
+        (rc, iso) = run_command(self.RECOVERY_TEMPLATE.format(hv_ip=self._hv_ip, file=self._iso), self._verbosity, 0)
+        (rc, kernel) = run_command(self.RECOVERY_TEMPLATE.format(hv_ip=self._hv_ip, file=self._kernel),
+                                   self._verbosity, 0)
+        (rc, initrd) = run_command(self.RECOVERY_TEMPLATE.format(hv_ip=self._hv_ip, file=self._initrd),
+                                   self._verbosity, 0)
+        tree = KVMxml.parse(self._recovery_xml)
+        root = tree.getroot()
+        for device in root.findall("devices"):
+            for disk in device.findall("disk"):
+                if disk.attrib['type'] == "block":
+                    for source in disk.findall('source'):
+                        source.attrib['dev'] = primary_disk
+                elif disk.attrib['type'] == "file":
+                    source = disk.findall('source')
+                    if 'recovery-centos-7.' in source[0].attrib['file']:
+                        source[0].attrib['file'] = iso.strip('\n')
+        if root[8][1].tag == 'kernel':
+            root[8][1].text = kernel.strip('\n')
+        if root[8][2].tag == 'initrd':
+            root[8][2].text = initrd.strip('\n')
+        tree.write(self._recovery_mg_file)

@@ -4,7 +4,7 @@
 ------
 ---
 ## Setup local environment
-#### Please provide SSH KEYS to VHI(HV, CP) and OnApp(HV, CP, DS) from machine you are going to run migration.
+#### Please provide SSH KEYS to VHI(HV, CP) and OnApp(HV, CP, BS) from machine you are going to run migration.
   - Before running "./onapp2vhi" command please do next steps:
     - you should be in onapp2vhi project `[~/onapp2vhi] $ `
     - RUN `sudo yum update`

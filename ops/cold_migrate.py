@@ -43,11 +43,11 @@ def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
         verb = str(Helper.VERBOSITY.value)
 
     if not str(verb).isdigit():
-        logs.info("Effor: '--verbosity' parameter should be a number")
+        logs.info("Error: '--verbosity' parameter should be a number")
         return False
 
     if int(verb) < 0 or int(verb) > 8:
-        logs.info("Effor: '--verbosity' parameter should be a number between 0 and 8")
+        logs.info("Error: '--verbosity' parameter should be a number between 0 and 8")
         return False
 
     if verb:
@@ -111,10 +111,8 @@ def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
 
     ONAPPVM_DISKS = get_onapp_vm_disks(idn, verbosity)
 
-    print ("OnApp_VM_DISKS:")
     for disk_data in ONAPPVM_DISKS:
-        logs.info(str(disk_data))
-    logs.info("")
+        logs.info("OnApp_VM_DISKS: {}".format(str(disk_data)))
 
     # --ONAPPVM_DISKS--#
 
@@ -154,7 +152,6 @@ def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
         VHI_IMAGE = VHICLoudDefaults.VHI_LINUX_IMAGE.value
 
     if not ou:
-        # logs.info("LETS CREATE TARGET VM: ")
         CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server create onapp2vhi_vm_{vm_idn} --description 'onapp_vm_{vm_idn}' --network id=public,fixed-ip={vm_ip},mac={vm_mac},spoofing-protection-disable --volume source=image,id={image},size={disk_size} --flavor {vhi_flavor} -f json | jq -r \".id\"' 2>/dev/null ".format(
             ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhidom=VHIDOM, vhiproj=VHIPROJ,
             vhiuser=VHIUSER, vhipass=VHIPASS, vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, vm_idn=VM_IDn,
@@ -165,10 +162,10 @@ def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
             VHI_VM_ID = str(ou).strip("\n")
             logs.info("NEW VHI VM CREATED: " + VHICLoudDefaults.VHI_CP_URL.value + "/compute/servers/instances/" + VHI_VM_ID)
             logs.info("...STOPPING VM BEFORE MIGRATION...")
-            CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'while true; do vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server stop {vm_id} --hard --wait --timeout 15 -f json | jq -r -c [.name,.id,.vm_state,.power_state,.status] ;  pwstate=\"`vinfra service compute server show {vm_id} -f json | jq -r .power_state `\" ; echo \"$pwstate\" ; if [[ \"$pwstate\" == \"SHUTDOWN\" ]]; then break; fi ; sleep 1; done' 2>/dev/null ".format(
+            CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'for ((i=1;i<=100;i++)); do vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server stop {vm_id} --hard --wait --timeout 15 -f json | jq -r -c [.name,.id,.vm_state,.power_state,.status] ;  pwstate=\"`vinfra service compute server show {vm_id} -f json | jq -r .power_state `\" ; echo \"$pwstate\" ; if [[ \"$pwstate\" == \"SHUTDOWN\" ]]; then break; fi ; sleep 1; done' 2>/dev/null ".format(
                 ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER,
                 vhipass=VHIPASS, vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, vm_id=VHI_VM_ID)
-            run_command(CMD, verbosity, 1)
+            (rc, ou) = run_command(CMD, verbosity, 1)
         # ---
         logs.info('-------')
         logs.info("-- VHI: create and attach extra VHI VM's disks --")
