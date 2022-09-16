@@ -2,7 +2,7 @@
 import os
 import click
 from click_default_group import DefaultGroup
-from cfg.o2v_config import Helper, OnAppAPICredentials
+from cfg.o2v_config import Helper, OnAppAPICredentials, VHICLoudDefaults
 from inc.vhi_ssh_keys import VhiSshKeys
 from inc.vhi_helpers import Vhi
 from inc.utils import generate_random_password
@@ -27,7 +27,8 @@ DEFAULT_ONAPP_USER_NAMES = ('system_owner', 'cloud_locations_manager')
 
 @click.command()
 @click.option('--user', default='', help="OnApp User, VM identifier.")
-def migrate_all(user='',):
+@click.option('--network', default='', help="Network to be used")
+def migrate_all(user='', network=''):
     """
     Migrate all resources from OnApp to VHI:
         - OnApp Users to VHI users
@@ -50,7 +51,8 @@ def migrate_all(user='',):
             Migrate User Virtual Machines depends on Booted Status and OS
         Step 5:
             Finishing script and write down logs into files
-    :param user:
+    :param user: 4
+    :param network: public2
     :return:
     """
     # Arrange
@@ -60,6 +62,10 @@ def migrate_all(user='',):
     _path = os.getcwd()
     _file_name = os.path.join(_path, 'migration_logs/migration')
     user_idn = ''
+    if not network:
+        _network = VHICLoudDefaults.VHI_NETWORK.value
+    else:
+        _network = network
     url_user = "{onapp_url}/users.json".format(onapp_url=OnAppAPICredentials.ONAPP_CP_URL.value)
     if user:
         if not user.isdigit():
@@ -121,6 +127,8 @@ def migrate_all(user='',):
             _ssh_result = _ssh_key.create_vhi_ssh_keys()
         elif not _user_result:
             user['password'] = ''
+            # ToDo - password reader
+
         logs.info("{}-- VHI: Migrate User {} Virtual Machines--".format(Helper.SPACES.value, full_name), separator=True)
 
         # --Step 4 -- #
@@ -134,14 +142,17 @@ def migrate_all(user='',):
             logs.info("")
             bootloader_drivers, vm_migrate = vh.vm_handler()
             bootloader_drivers(idn=_idn, vhip='', verb='')
+            # ToDo
+            #  Create user handler
             result_vm = vm_migrate(idn=_idn,
                                    vproj=vhi.project_name,
                                    vuser=user['user_login'],
                                    vdom='',
-                                   vpass='',
+                                   vpass=user['password'],
                                    vhip='',
                                    snc='',
-                                   verb='')
+                                   verb='',
+                                   network=network)
             vm_msg += "    {}. VM identifier [{}]: Migrated [{}]\n".format(str(_num+1), _idn, result_vm)
 
         # --Step 5 -- #

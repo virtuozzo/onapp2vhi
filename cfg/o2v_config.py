@@ -26,6 +26,7 @@ class VHICLoudDefaults(Enum):
     VHI_CP_IP = '10.63.0.63'
     VHI_LOGIN = 'admin'
     VHI_HV_IP = '10.63.0.64'
+    VHI_NETWORK = 'public1'
 
     VHI_SSH_PORT = 2222
     VHI_LINUX_IMAGE = 'cirros'

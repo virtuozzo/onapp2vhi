@@ -23,7 +23,7 @@ class Bcolors:
     UNDERLINE = '\033[4m'
 
 
-def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc='', verb=''):
+def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc='', verb='', network=''):
     if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -31,6 +31,10 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
     #       logs.info ('You need to pass VHI hypervisor IP address through --vhi-ip=? parameter ')
     #       exit(18)
 
+    if not network:
+        _network = VHICLoudDefaults.VHI_NETWORK.value
+    else:
+        _network = network
     if not vdom:
         VHIDOM = VHICLoudDefaults.VINFRA_DOMAIN.value
     else:
@@ -202,10 +206,10 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
 
     if not ou:
         # logs.info("LETS CREATE TARGET VM: ")
-        CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server create onapp2vhi_vm_{vm_idn} --description 'onapp_vm_{vm_idn}' --network id=public,fixed-ip={vm_ip},mac={vm_mac},spoofing-protection-disable --volume source=image,id={image},size={disk_size} --flavor {vhi_flavor} -f json | jq -r \".id\"' 2>/dev/null ".format(
+        CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server create onapp2vhi_vm_{vm_idn} --description 'onapp_vm_{vm_idn}' --network id={network},fixed-ip={vm_ip},mac={vm_mac},spoofing-protection-disable --volume source=image,id={image},size={disk_size} --flavor {vhi_flavor} -f json | jq -r \".id\"' 2>/dev/null ".format(
             ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER, vhipass=VHIPASS,
             vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, vm_idn=VM_IDn, vm_ip=ONAPPVM_PRI_IP, vm_mac=ONAPPVM_PRI_MAC, vhi_sg=VHICLoudDefaults.VHI_SG_ID.value,
-            image=VHI_IMAGE, disk_size=ONAPPVM_DISKS[0]['size'], vhi_flavor=_flavour)
+            image=VHI_IMAGE, disk_size=ONAPPVM_DISKS[0]['size'], vhi_flavor=_flavour, network=_network)
         (rc, ou) = run_command(CMD, verbosity, 0)
         if not rc and ou:
             VHI_VM_ID = str(ou).strip("\n")
@@ -437,9 +441,18 @@ def cli():
 @click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
 @click.option('--vhip', '--vhi-ip', '--vhi-hypervisor-ip', default='', help="VHI destination HV IP address.")
 @click.option('--verb', '-v', '--v', '--verbosity', default='', help="Verbosity level of values between 0 and 8")
+@click.option('--network', default='', help="Set network id")
 # click.argument('name',default='') - not used
-def livemigrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', verb=''):
-    vm_live_migrate(vdom=vdom, vproj=vproj, vuser=vuser, vpass=vpass, idn=idn, vhip=vhip, snc='', verb=verb)
+def livemigrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', verb='', network=''):
+    vm_live_migrate(vdom=vdom,
+                    vproj=vproj,
+                    vuser=vuser,
+                    vpass=vpass,
+                    idn=idn,
+                    vhip=vhip,
+                    snc='',
+                    verb=verb,
+                    network=network)
 
 
 cli.add_command(livemigrate)

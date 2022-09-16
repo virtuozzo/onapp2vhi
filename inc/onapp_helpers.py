@@ -26,8 +26,8 @@ def list_onapp_vms(vals='',by='',url='',verbosity=8):
     if not vals and not by:
         jqexp = "jq -c '.[] | {}'".format(_default_jqexp)
     elif not vals and by:
-        by_arg=by.split("=")[0]
-        by_val=by.split("=")[1]
+        by_arg = by.split("=")[0]
+        by_val = by.split("=")[1]
         if by_val.isdigit():
             jqexp = "jq -c '.[] | select(.virtual_machine.{by_a}=={by_v}) | {jqpex}'".format(by_a=by_arg,
                                                                                              by_v=by_val,
@@ -41,12 +41,12 @@ def list_onapp_vms(vals='',by='',url='',verbosity=8):
                                                                                                  by_v=by_val,
                                                                                                  jqpex=_default_jqexp)
     elif vals and by:
-        by_arg=by.split("=")[0]
-        by_val=by.split("=")[1]
-        vals_list = [ ".virtual_machine.{}".format(x) for x in vals.split(",") ]
+        by_arg = by.split("=")[0]
+        by_val = by.split("=")[1]
+        vals_list = [".virtual_machine.{}".format(x) for x in vals.split(",")]
         if len(vals_list) == 1:
             vals_list = vals_list[0]
-        vals_str = str( vals_list ).replace("'",'')
+        vals_str = str(vals_list).replace("'", '')
         if by_val.isdigit():
             jqexp = "jq -c '.[] | select(.virtual_machine.{by_a}=={by_v}) | {jqpex}'".format(by_a=by_arg,
                                                                                              by_v=by_val,
@@ -56,22 +56,23 @@ def list_onapp_vms(vals='',by='',url='',verbosity=8):
                                                                                                  by_v=by_val,
                                                                                                  jqpex=vals_str)
     else:
-        vals_list = [ ".virtual_machine.{}".format(x) for x in vals.split(",") ]
+        vals_list = [".virtual_machine.{}".format(x) for x in vals.split(",")]
+        vals_str = str(vals_list).replace("'", '')
         if len(vals_list) == 1:
             vals_list = vals_list[0]
-            vals_str = str( vals_list ).replace("'", '')
+            vals_str = str(vals_list).replace("'", '')
         jqexp = "jq -c '.[] | {vls}'".format(vls=vals_str)
 
     logs.info('{} -- LIST ONAPP VIRTUAL MACHINES --'.format(Helper.SPACES.value))
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {res_url}".format(user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value, res_url=URL) + " | {jqex}".format(jqex=jqexp)
-    (rc,ou) = run_command(CMD,verbosity,0,'')
+    (rc, ou) = run_command(CMD, verbosity, 0, '')
     default_vals = ['id', 'label', 'identifier', 'template_label', 'booted', 'user_id']
     if vals:
         default_vals = vals.split(",")
     vm_list = [a.replace('[', '').replace(']', '').replace('\"', '').split(',') for a in ou.splitlines()]
     vms = parse_matrix(default_vals, vm_list)
     logs.info("\n{}".format(vms))
-    return (rc,ou.decode('ascii'))
+    return rc, ou.decode('ascii')
 
 
 ######################
@@ -119,15 +120,15 @@ def list_onapp_users(vals='',by='',url='',verbosity=8):
     else:
         if 'roles' in vals:
             vals = vals.replace('roles', 'roles[0].role.label')
-        vals_list = [ ".user.{}".format(x) for x in vals.split(",") ]
+        vals_list = [".user.{}".format(x) for x in vals.split(",")]
         if len(vals_list) == 1:
             vals_list = vals_list[0]
-        vals_str = str( vals_list ).replace("'",'')
+        vals_str = str(vals_list).replace("'", '')
         jqexp = "jq -c '.[] | {vls}'".format(vls=vals_str)
 
     logs.info('{} -- LIST ONAPP USERS --'.format(Helper.SPACES.value))
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {res_url}".format(user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value, res_url=URL) + " | {jqex}".format(jqex=jqexp)
-    (rc,ou) = run_command(CMD,verbosity,0,'')
+    (rc, ou) = run_command(CMD, verbosity, 0, '')
     default_vals = ['id', 'email', 'login', 'roles']
     if vals:
         default_vals = vals.split(",")
@@ -136,7 +137,7 @@ def list_onapp_users(vals='',by='',url='',verbosity=8):
     user_list = [a.replace('[', '').replace(']', '').replace('\"', '').split(',') for a in ou.splitlines()]
     users = parse_matrix(default_vals, user_list)
     logs.info("\n{}".format(users))
-    return (rc,ou.decode('ascii'))
+    return rc, ou.decode('ascii')
 
 
 ######################
