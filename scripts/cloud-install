@@ -1,0 +1,125 @@
+#!/bin/bash
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+
+# Check OS version
+function checkOS() {
+        if [[ -e /etc/debian_version ]]; then
+                source /etc/os-release
+                OS="${ID}" # debian or ubuntu
+        elif [[ -e /etc/centos-release ]]; then
+                source /etc/os-release
+                OS=centos
+	elif [[ -e /etc/rocky-release ]]; then
+		source /etc/os-release
+		OS=centos
+	elif [[ -e /etc/almalinux-release ]]; then
+		source /etc/os-release
+		OS=centos
+        else
+                echo "Looks like you aren't running this installer on a Debian, Ubuntu or CentOS system"
+                rm -rf /etc/cron.d/cron-cloud-install
+                exit 1
+        fi
+}
+
+# Check VM networking
+function checkNetwork() {
+	ping -c5 -q 8.8.8.8
+
+	if [ $? -ne 0 ]; then
+		echo -e "\n Please check network configuration"
+		exit 1
+	fi
+
+	getent ahosts google.com
+
+	if [ $? -ne 0 ]; then
+		echo -e "\n Please check DNS configuration"
+		exit 1
+	fi
+}
+
+# Install Cloudinit and qemu-guest-agent
+function installCloudinit() {
+        if [[ ${OS} == 'ubuntu' ]]; then
+                apt-get update
+                apt-get install -y cloud-init cloud-guest-utils qemu-guest-agent
+		if dpkg -l $pkg
+		then
+			echo "$pkg installed"
+			rm -rf /etc/cron.d/cron-cloud-install
+		else
+			echo "$pkg NOT installed"
+		fi
+        elif [[ ${OS} == 'debian' ]]; then
+                apt update
+                apt-get install -y cloud-init cloud-guest-utils qemu-guest-agent
+                if dpkg -l $pkg
+                then
+                        echo "$pkg installed"
+                        rm -rf /etc/cron.d/cron-cloud-install
+                else
+                        echo "$pkg NOT installed"
+                fi
+        elif [[ ${OS} == 'centos' ]]; then
+                yum -y install cloud-init cloud-utils-growpart qemu-guest-agent
+                if rpm -q $pkg
+                then
+                        echo "$pkg installed"
+                        rm -rf /etc/cron.d/cron-cloud-install
+                else
+                        echo "$pkg NOT installed"
+                fi
+
+        fi
+}
+
+# Set DHCP for primary NIC
+function reconfigureNetwork() {
+        if [[ ${OS} == 'ubuntu' ]]; then
+                mv /etc/network/interfaces /etc/network/interfaces.onapp2vhi
+                cat << EOF > /etc/network/interfaces
+# The loopback network interface
+auto lo
+iface lo inet loopback
+# The primary network interface
+auto eth0
+iface eth0 inet dhcp
+EOF
+        elif [[ ${OS} == 'debian' ]]; then
+                mv /etc/network/interfaces /etc/network/interfaces.onapp2vhi
+                cat << EOF > /etc/network/interfaces
+# The loopback network interface
+auto lo
+iface lo inet loopback
+# The primary network interface
+auto eth0
+iface eth0 inet dhcp
+EOF
+        elif [[ ${OS} == 'centos' ]]; then
+                mv /etc/sysconfig/network-scripts/ifcfg-eth0 /etc/sysconfig/network-scripts/ifcfg-eth0.onapp2vhi
+                cat << EOF > /etc/sysconfig/network-scripts/ifcfg-eth0
+DEVICE=eth0
+BOOTPROTO=dhcp
+ONBOOT=yes
+EOF
+        fi
+}
+
+if [[ ! "$(dmidecode -s system-manufacturer)" == "Virtuozzo" ]]; then
+        echo "system-manufacturer type must be Virtuozzo"
+        exit 1
+fi
+
+pkg="cloud-init"
+
+checkOS
+checkNetwork
+installCloudinit
+reconfigureNetwork
+
+systemctl enable cloud-init-local.service 
+systemctl enable cloud-init.service
+systemctl enable cloud-config.service
+systemctl enable cloud-final.service
+systemctl enable qemu-guest-agent
