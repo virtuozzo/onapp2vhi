@@ -43,17 +43,12 @@ def vm_install_bootloader(idn, vhip, verb):
 
     # --step_2--#
     # --OnApp: get source VM hypervisor IP address --#
-
-    NOTE = """ -- OnApp: get VM's {hypervisor_ip} by {hypervisor_id} -- """
-
     URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/hypervisors.json"
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | select(.hypervisor.id=={hv_id}) | .hypervisor.ip_address '".format(
         user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value,
         full_url=URL, hv_id=VM_OHV_ID)
-    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
+    (rc, ou) = run_command(CMD, verbosity, 0)
     VM_OHV_IP = str(ou).strip("\n")
-    # --VM_OHV_IP--#
-
     # --step_3--#
     # --OnApp: get source VM IP address --#
 

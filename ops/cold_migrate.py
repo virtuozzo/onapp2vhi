@@ -1,23 +1,27 @@
 #!/usr/bin/env python2
 import re
 import click
+import json
 import xml.etree.ElementTree as KVMxml
 from click_default_group import DefaultGroup
-from inc.onapp_helpers import get_onapp_vm_flavor, get_onapp_vm_nics, get_onapp_vm_disks
 from inc.vhi_helpers import Vhi
 from cfg.o2v_config import OnAppAPICredentials, VHICLoudDefaults, Helper
 from inc.functions import run_command
 from inc.logger import logs
-import json
+from inc.onapp_helpers import (
+    get_onapp_vm_flavor,
+    get_onapp_vm_nics,
+    get_onapp_vm_disks,
+    get_vm_hypervisor_ip,
+    activate_disk,
+)
 
 
-def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc='', verb='', network=''):
+def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', verb='', network=''):
     if idn == '':
         print ('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
-    #    if vhip == '':
-    #       print ('You need to pass VHI hypervisor IP address through --vhi-ip=? parameter ')
-    #       exit(18)
+
     if not network:
         _network = VHICLoudDefaults.VHI_NETWORK.value
     else:
@@ -59,11 +63,10 @@ def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
         verbosity = int(Helper.VERBOSITY.value)
 
     VM_IDn = idn
-
     # --step_1--#
     # --OnApp: get source VM parameters--#
-    logs.info('-------')
-    logs.info("-- OnApp: get source VM parameters --")
+    _onapp_hv_ip = get_vm_hypervisor_ip(vm_idn=VM_IDn)
+    logs.info("-- STEP 1 -- OnApp: get source VM parameters --", separator=True)
     URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/virtual_machines.json"
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -r -c --arg vm_idn {vm_idn} '.[] | select(.virtual_machine.identifier==$vm_idn) | [ .virtual_machine.identifier, .virtual_machine.hypervisor_id, .virtual_machine.ip_addresses[0][\"ip_address\"][\"address\"], .virtual_machine.operating_system ] '".format(
         user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value,
@@ -75,15 +78,13 @@ def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
     _on_app_flavor = get_onapp_vm_flavor(vm_list[0])
     vhi.create_object(_on_app_flavor, 'flavor')
     _flavour = vhi.flavor_name
-    # OVM_IDENTIFIER = str(json.loads(ou)[0]).encode('ascii')
     OVM_HV_ID = int(json.loads(ou)[1])
     OVM_OS = str(json.loads(ou)[3]).encode('ascii')
     # --OVM_HV_ID--#
 
     # --step_2--#
     # --OnApp: get source VM hypervisor IP address --#
-    logs.info('-------')
-    logs.info("-- OnApp: get VM's {hypervisor_ip} by {hypervisor_id} --")
+    logs.info("-- STEP 2 -- OnApp: get VM's {hypervisor_ip} by {hypervisor_id} --", separator=True)
     URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/hypervisors.json"
     CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -r -c '.[] | select(.hypervisor.id=={hv_id}) | .hypervisor.ip_address '".format(
         user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value,
@@ -95,36 +96,25 @@ def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
 
     # --step_3--#
     # --OnApp: get source VM NICs' params --#
-    logs.info('-------')
-    logs.info("-- OnApp: get VM's NICs' params --")
-
-    ONAPPVM_NICS = get_onapp_vm_nics(idn, verbosity)
-
+    logs.info("-- STEP 3 -- OnApp: get VM's NICs' params --", separator=True)
+    _onapp_nics = get_onapp_vm_nics(idn, verbosity)
     logs.info("OnApp_VM_NICs: ")
-    for nic in ONAPPVM_NICS:
+    for nic in _onapp_nics:
         logs.info(nic)
     logs.info("\n")
 
-    # --ONAPPVM_NICS--#
-
     # --step_4--#
     # --OnApp: get OnApp VM disk info --#
-    logs.info('-------')
-    logs.info("-- OnApp: get VM's disk info --")
-
-    ONAPPVM_DISKS = get_onapp_vm_disks(idn, verbosity)
-
-    for disk_data in ONAPPVM_DISKS:
-        logs.info("OnApp_VM_DISKS: {}".format(str(disk_data)))
-
-    # --ONAPPVM_DISKS--#
+    logs.info("-- STEP 4 -- OnApp: get VM's disk info --", separator=True)
+    _onapp_disks = get_onapp_vm_disks(idn)
 
     # --step_5--#
     # --OnApp: Check if VM is running at OnApp hypervisor --#
-    logs.info('-------')
-    logs.info("-- OnApp: check if VM [{vm_idn}] is running on HV [{hv_ip}] --".format(vm_idn=VM_IDn, hv_ip=VM_OHV_IP))
+    logs.info("-- STEP 5 -- OnApp: check if VM [{vm_idn}] is running on HV [{hv_ip}] --".format(
+        vm_idn=VM_IDn,
+        hv_ip=VM_OHV_IP), separator=True)
     CMD = "ssh -p{ssh_port} {sshopt} root@{hv_ip} 'virsh list | grep {vm_idn}' 2>/dev/null ".format(hv_ip=VM_OHV_IP,
-                                                                                                    ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value,
+                                                                                                    ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value,
                                                                                                     sshopt=Helper.SSH_OPTS.value,
                                                                                                     vm_idn=VM_IDn)
     (rc, ou) = run_command(CMD, verbosity, 0)
@@ -132,23 +122,18 @@ def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
         logs.warn("VM IS RUNNING.\n PLEASE, STOP THE VM BEFORE ITS OFFLINE MIGRATION.", separator=True)
         return False
 
-    # --is_VM_Offline--#
-
-    # --step_8--#
+    # --step_6--#
     # --OnApp: create similar VM on VHI side --#
-    logs.info('-------')
-    logs.info("-- VHI: create similar to OnApp VM [{vm_idn}] on VHI side --".format(vm_idn=VM_IDn))
-    logs.info('---')
-    ONAPPVM_PRI_IP = ONAPPVM_NICS[0]['ips'][0]
-    ONAPPVM_PRI_MAC = ONAPPVM_NICS[0]['mac']
+    logs.info("-- STEP 6 -- VHI: create similar to OnApp VM [{vm_idn}] on VHI side --".format(vm_idn=VM_IDn),
+              separator=True)
+    onappvm_pri_ip = _onapp_nics[0]['ips'][0]
+    onappvm_pri_mac = _onapp_nics[0]['mac']
     CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'for vmid in `vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server list -f json | jq -r \".[] | .id \"`; do echo \"[\\\"$vmid\\\",\" `vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server iface list --server $vmid -f json | jq -c \".[] | [ .fixed_ips, .mac_addr ]\"` \"]\" | egrep -e \"{vm_ip}|{vm_mac}\"; done' 2>/dev/null ".format(
         ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhidom=VHIDOM,
         vhiproj=VHIPROJ, vhiuser=VHIUSER, vhipass=VHIPASS,
-        vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, vm_ip=ONAPPVM_PRI_IP, vm_mac=ONAPPVM_PRI_MAC)
+        vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, vm_ip=onappvm_pri_ip, vm_mac=onappvm_pri_mac)
     (rc, ou) = run_command(CMD, verbosity, 0)
-
     VHI_VM_ID = ''
-
     if OVM_OS == 'windows':
         VHI_IMAGE = VHICLoudDefaults.VHI_WINDOWS_IMAGE.value
     else:
@@ -158,8 +143,8 @@ def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
         CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server create onapp2vhi_vm_{vm_idn} --description 'onapp_vm_{vm_idn}' --network id={network},fixed-ip={vm_ip},mac={vm_mac},spoofing-protection-disable --volume source=image,id={image},size={disk_size} --flavor {vhi_flavor} -f json | jq -r \".id\"' 2>/dev/null ".format(
             ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhidom=VHIDOM, vhiproj=VHIPROJ,
             vhiuser=VHIUSER, vhipass=VHIPASS, vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, vm_idn=VM_IDn,
-            vm_ip=ONAPPVM_PRI_IP, vm_mac=ONAPPVM_PRI_MAC, vhi_sg=VHICLoudDefaults.VHI_SG_ID.value,
-            image=VHI_IMAGE, disk_size=ONAPPVM_DISKS[0]['size'], vhi_flavor=_flavour, network=_network)
+            vm_ip=onappvm_pri_ip, vm_mac=onappvm_pri_mac, vhi_sg=VHICLoudDefaults.VHI_SG_ID.value,
+            image=VHI_IMAGE, disk_size=_onapp_disks[0]['size'], vhi_flavor=_flavour, network=_network)
         (rc, ou) = run_command(CMD, verbosity, 0)
         if not rc and ou:
             VHI_VM_ID = str(ou).strip("\n")
@@ -173,8 +158,8 @@ def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
         logs.info('-------')
         logs.info("-- VHI: create and attach extra VHI VM's disks --")
         logs.info('---')
-        if len(ONAPPVM_DISKS) > 1:
-            for idx, dsk in enumerate(ONAPPVM_DISKS):
+        if len(_onapp_disks) > 1:
+            for idx, dsk in enumerate(_onapp_disks):
                 if idx >= 1:
                     CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute volume create --size {disk_size} onapp-{vm_id} --storage-policy default -f json | jq -c -r \".id\"' 2>/dev/null ".format(
                         ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER,
@@ -190,9 +175,9 @@ def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
         logs.info('-------')
         logs.info("-- VHI: allocate and assign extra VHI VM's IP addresses to primary NIC--")
         logs.info('---')
-        if len(ONAPPVM_NICS[0]['ips']) > 1:
+        if len(_onapp_nics[0]['ips']) > 1:
             IPS_PARAMS = ''
-            for ip in ONAPPVM_NICS[0]['ips']:
+            for ip in _onapp_nics[0]['ips']:
                 IPS_PARAMS += "--fixed-ip ip-address={} ".format(ip)
             CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server iface list --server {vm_id} -f json | jq -c -r .[0].id' 2>/dev/null".format(
                 ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value,
@@ -208,18 +193,16 @@ def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
             (rc, ou) = run_command(CMD, verbosity, 0)
         # ---
     else:
-        logs.info("Destination VHI VM with IP/MAC ALREADY EXISTS:")
-        logs.info(ou)
+        logs.error("Destination VHI VM with IP/MAC ALREADY EXISTS:")
+        logs.error(ou)
         VHI_VM_ID = str(json.loads(ou)[0])
         logs.error("...please, remove the target VM on VHI or remove conflicting network interface of it...\n")
         logs.error(VHICLoudDefaults.VHI_CP_URL.value + "/compute/servers/instances/" + str(VHI_VM_ID) + "/ \n")
         return False
 
-    # --step_9--#
+    # --step_7--#
     # --VHI: define VM's hypervisor vinfra host and disks--#
-    logs.info('-------')
-    logs.info("-- VHI: define VHI VM's hypervisor and disks --")
-    logs.info('---')
+    logs.info("-- STEP 7 -- VHI: define VHI VM's hypervisor and disks --", separator=True)
     CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'host `vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server show {vm_id} -f json | jq -r .host`' 2>/dev/null | awk '/ has address /{{print $NF}}' ".format(
         ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value,
         vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER, vhipass=VHIPASS,
@@ -237,9 +220,7 @@ def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
         vhi_hv=VHI_HV_IP, vm_id=VHI_VM_ID)
     (rc, ou) = run_command(CMD, verbosity, 0)
     vhivm_disks = json.loads(str(ou))
-
     VHI_VM_DISKS = {str(x['device'].split('/')[2]).encode('ascii'): str(x['id']).encode('ascii') for x in vhivm_disks}
-
     for disk_lb, disk_id in VHI_VM_DISKS.items():
         CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_hv} 'find /mnt/vstorage/vols/datastores/cinder/ -type f -name \"*volume-{disk_id}\"' 2>/dev/null".format(
             ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhi_hv=VHI_HV_IP, disk_id=disk_id)
@@ -248,11 +229,9 @@ def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
 
     logs.info("VHI_VM_DISKS: {}".format(VHI_VM_DISKS))
 
-    # --step_10--#
+    # --step_8--#
     # --VHI: define VM's hypervisor XML host and disks--#
-    logs.info('-------')
-    logs.info("-- VHI: get VHI VM XML config parameters --")
-    logs.info('---')
+    logs.info("-- STEP 8 -- VHI: get VHI VM XML config parameters --", separator=True)
     CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_hv} 'virsh dumpxml {vm_id} 2>/dev/null > /tmp/{vm_id}.xml ; cat /tmp/{vm_id}.xml' 2>/dev/null".format(
         ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhi_hv=VHI_HV_IP, vm_id=VHI_VM_ID)
 
@@ -263,13 +242,7 @@ def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
 
     VM_XML_CFG = str(ou)
     vhixml = KVMxml.fromstring(VM_XML_CFG)
-
     logs.info("---\nResult[{}]:\n".format(rc))
-
-    #    logs.info(KVMxml.tostring(vhixml))
-    #    logs.info(VM_XML_CFG)
-    logs.info('---')
-
     XML_VVM_DISKS = []
     XML_VVM_NICS = []
     vvm_mac = vvm_nic_id = vvm_tap = ''
@@ -288,62 +261,33 @@ def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
     logs.info("XML_VVM_DISKS: " + str(XML_VVM_DISKS) + "\n")
     logs.info("XML_VVM_NICS: " + str(XML_VVM_NICS) + "\n")
 
-    # --step_12--#
+    # --step_9--#
     # --OnApp: RUN O2V offline VM's disks migration from OnApp to VHI hypervisor --#
-    logs.info('-------')
-    logs.info("-- Run O2V offline VM's disks migration from OnApp to VHI hypervisor --".format(vm_idn=VM_IDn,
-                                                                                               hv_ip=VM_OHV_IP))
+    logs.info("-- STEP 9 -- Run O2V offline VM's disks migration from OnApp to VHI hypervisor --".format(
+        vm_idn=VM_IDn,
+        hv_ip=VM_OHV_IP))
     if Helper.IMG_SPARSING.value:
         sparse_opt = '-S 1M'
     else:
         sparse_opt = ''
-    if snc:
-        dsk_num = 0
-        for ovm_dsk in ONAPPVM_DISKS:
-            store_idn = ovm_dsk['datastore_idn']
-            disk_idn = ovm_dsk['disk_idn']
-            CMD = "ssh -p{ossh_port} {sshopt} root@{ocp_ip} 'curl -k -s -X PUT -d \"{{\\\"state\\\":3}}\" {ohv_ip}:8080/lvm/Datastore/{stor_idn}/VDisk/{dsk_idn}' 2>/dev/null".format(
-                ocp_ip=OnAppAPICredentials.ONAPP_CP_HOST.value, ossh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value,
-                sshopt=Helper.SSH_OPTS.value, ohv_ip=VM_OHV_IP, stor_idn=store_idn,
-                dsk_idn=disk_idn)
-            (rc, ou) = run_command(CMD, 0, 0)
-            CMD = "ssh -t -p{ossh_port} {sshopt} root@{ohv_ip} 'qemu-img convert -p -f raw -O qcow2 -o cluster_size=1048576,lazy_refcounts=on {sp_opt} /dev/{ostor_idn}/{odsk_idn} /onapp/backups/{odsk_idn}.qcow2' 2>/dev/null".format(
-                ossh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, ohv_ip=VM_OHV_IP,
-                ostor_idn=store_idn, odsk_idn=disk_idn,
-                sp_opt=sparse_opt)
-            (rc, ou) = run_command(CMD, verbosity, 1)
-            CMD = "ssh -p{ossh_port} {sshopt} root@{ocp_ip} 'curl -k -s -X PUT -d \"{{\\\"state\\\":2}}\" {ohv_ip}:8080/lvm/Datastore/{ds_idn}/VDisk/{dsk_idn}' 2>/dev/null".format(
-                ocp_ip=OnAppAPICredentials.ONAPP_CP_HOST.value, ossh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value,
-                sshopt=Helper.SSH_OPTS.value, ohv_ip=VM_OHV_IP, ds_idn=store_idn,
-                dsk_idn=disk_idn)
-            (rc, ou) = run_command(CMD, 0, 0)
-            CMD = "ssh -t -p{ossh_port} {sshopt} root@{ohv_ip} 'scp -P{vssh_port} {sshopt} /onapp/backups/{odsk_idn}.qcow2 root@{vhv_ip}:{vdsk_path}' 2>/dev/null".format(
-                ossh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value, ohv_ip=VM_OHV_IP,
-                vssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhv_ip=VHI_HV_IP,
-                odsk_idn=disk_idn, vdsk_path=XML_VVM_DISKS[dsk_num])
-            (rc, ou) = run_command(CMD, verbosity, 1)
-            dsk_num += 1
-    else:
-        dsk_num = 0
-        for ovm_dsk in ONAPPVM_DISKS:
-            store_idn = ovm_dsk['datastore_idn']
-            disk_idn = ovm_dsk['disk_idn']
-            CMD = "ssh -p{ossh_port} {sshopt} root@{ocp_ip} 'curl -k -s -X PUT -d \"{{\\\"state\\\":3}}\" {ohv_ip}:8080/lvm/Datastore/{stor_idn}/VDisk/{dsk_idn}' 2>/dev/null".format(
-                ocp_ip=OnAppAPICredentials.ONAPP_CP_HOST.value, ossh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value,
-                sshopt=Helper.SSH_OPTS.value, ohv_ip=VM_OHV_IP, stor_idn=store_idn,
-                dsk_idn=disk_idn)
-            (rc, ou) = run_command(CMD, 0, 0)
-            CMD = "ssh -p{ossh_port} {sshopt} root@{ohv_ip} 'for port in {{2048..2064}}; do nbd=`qemu-nbd -f -t --nocache --aio=native -p $port -f raw /dev/{ostor_idn}/{odsk_idn} --fork 2>&1` ; res=$? ; if [[ $res == 0 ]] && [[ $nbd == \"\" ]]; then echo $port; break; else port=$((port+1)); fi ; done' 2>/dev/null ".format(
-                ossh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, ohv_ip=VM_OHV_IP,
-                ostor_idn=store_idn, odsk_idn=disk_idn)
-            (rc, ou) = run_command(CMD, verbosity, 0)
-            nbd_port = str(ou).strip().encode('ascii')
-            CMD = "ssh -t -p{vssh_port} {sshopt} root@{vhv_ip} 'qemu-img convert -p -n -t directsync -o cluster_size=1048576,lazy_refcounts=on {sp_opt} nbd://{ohv_ip}:{nbdport} -O qcow2 {vdsk_path}' 2>/dev/null".format(
-                vssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhv_ip=VHI_HV_IP,
-                ohv_ip=VM_OHV_IP, nbdport=nbd_port,
-                vdsk_path=XML_VVM_DISKS[dsk_num], sp_opt=sparse_opt)
-            (rc, ou) = run_command(CMD, verbosity, 1)
-            dsk_num += 1
+
+    dsk_num = 0
+    for ovm_dsk in _onapp_disks:
+        store_idn = ovm_dsk['datastore_idn']
+        disk_idn = ovm_dsk['disk_idn']
+        activate_disk(vm_idn=VM_IDn, vm_ohv_ip=_onapp_hv_ip, multiply_disks=True, disk=ovm_dsk)
+
+        CMD = "ssh -p {ossh_port} {sshopt} root@{ohv_ip} 'for port in {{2048..2064}}; do nbd=`qemu-nbd -f -t --nocache --aio=native -p $port -f raw /dev/{ostor_idn}/{odsk_idn} --fork 2>&1` ; res=$? ; if [[ $res == 0 ]] && [[ $nbd == \"\" ]]; then echo $port; break; else port=$((port+1)); fi ; done' 2>/dev/null ".format(
+            ossh_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value, sshopt=Helper.SSH_OPTS.value, ohv_ip=VM_OHV_IP,
+            ostor_idn=store_idn, odsk_idn=disk_idn)
+        (rc, ou) = run_command(CMD, verbosity, 0)
+        nbd_port = str(ou).strip().encode('ascii')
+        CMD = "ssh -t -p {vssh_port} {sshopt} root@{vhv_ip} 'qemu-img convert -p -n -t directsync -o cluster_size=1048576,lazy_refcounts=on {sp_opt} nbd://{ohv_ip}:{nbdport} -O qcow2 {vdsk_path}' 2>/dev/null".format(
+            vssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhv_ip=VHI_HV_IP,
+            ohv_ip=VM_OHV_IP, nbdport=nbd_port,
+            vdsk_path=XML_VVM_DISKS[dsk_num], sp_opt=sparse_opt)
+        (rc, ou) = run_command(CMD, verbosity, 1)
+        dsk_num += 1
     return True
 
 
@@ -358,19 +302,15 @@ def cli():
 @click.option('--vuser', '--vhi-user', default='', help="VHI User.")
 @click.option('--vpass', '--vhi-pass', '--vhi-password', default='', help="VHI Password.")
 @click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-@click.option('--vhip', '--vhi-ip', '--vhi-hypervisor-ip', default='', help="VHI destination HV IP address.")
-@click.option('--snc', '--save-n-copy', is_flag=True, default=False, help="User Save-and-Copy mode.")
 @click.option('--verb', '-v', '--v', '--verbosity', default='', help="Verbosity level of values between 0 and 8")
 @click.option('--network', default='', help="Set network id")
 # click.argument('name',default='') - not used
-def coldmigrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc='', verb='', network=''):
+def coldmigrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', verb='', network=''):
     vm_cold_migrate(vdom=vdom,
                     vproj=vproj,
                     vuser=vuser,
                     vpass=vpass,
                     idn=idn,
-                    vhip=vhip,
-                    snc=snc,
                     verb=verb,
                     network=network)
 

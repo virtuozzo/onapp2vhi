@@ -7,10 +7,10 @@
 #### Please provide SSH KEYS to VHI(HV, CP) and OnApp(HV, CP, BS) from machine you are going to run migration.
   - Before running "./onapp2vhi" command please do next steps:
     - you should be in onapp2vhi project `[~/onapp2vhi] $ `
-    - RUN `sudo yum update`
-    - RUN `sudo yum –y install python2-pip`
+    - RUN `sudo -y yum update`
+    - RUN `sudo yum install python2-pip`
     - RUN `pip –V` (NOTE: you should see pip version ___pip 20.3.4 from /migrations/.venv/lib/python2.7/site-packages/pip (python 2.7)___)
-    - RUN `/usr/local/bin/python -m pip install --upgrade pip`
+    - RUN `/usr/bin/pip2.7 install --upgrade pip`
     - RUN `pip install virtualenv`
   - NOTE: path may be different, please find where python 2.7 is located (`which python2`)
     - RUN `virtualenv -p /usr/bin/python2.7 .venv`
@@ -24,6 +24,10 @@
   - Copy files into project root dir:
     - `vz-guest-tools-win.tar`
     - `CloudbaseInitSetup_Stable_x64.msi`
+  - run next commands under `onapp` user:
+    - `su - onapp`
+    - `export SSH_AUTH_SOCK=/onapp/interface/tmp/onapp-ssh-agent.socket`
+    - `echo "export SSH_AUTH_SOCK=/onapp/interface/tmp/onapp-ssh-agent.socket" >> /home/onapp/.bashrc `
   * You have installed separate __python 2.7 virtual environment__ that will not affect global python requirements.
   * You have installed all needed packages and libraries into our virtual environment. 
   * You have provided credentials to access our clouds.

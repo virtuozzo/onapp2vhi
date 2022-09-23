@@ -8,12 +8,13 @@ sys.dont_write_bytecode = True
 # - - - - - - - - - - - - - - -
 # ONAPP API CREDENTIALS ##
 class OnAppAPICredentials(Enum):
-    ONAPP_CP_HOST = "cpinv.onappdev.com"
-    ONAPP_CP_URL = "https://{}".format(ONAPP_CP_HOST)
-    ONAPP_USER_EMAIL = 'admin@example.com'
-    ONAPP_USER_APIKEY = '279041cc2507e99f54e526007b9a2c7f536c4cdc'
-    ONAPP_SSH_PORT = 22
-    ONAPP_HV_IP = '10.63.0.5'
+    ONAPP_CP_HOST = "69.168.239.170"
+    ONAPP_CP_URL = "http://{}".format(ONAPP_CP_HOST)
+    ONAPP_USER_EMAIL = ''
+    ONAPP_USER_APIKEY = ''
+    ONAPP_SSH_PORT_CP = 2222
+    ONAPP_SSH_PORT_HV = 22
+    ONAPP_HV_IP = '10.120.0.101'
 # - - - - - - - - - - - - - - -
 
 
@@ -29,6 +30,7 @@ class VHICLoudDefaults(Enum):
     VHI_NETWORK = 'public1'
 
     VHI_SSH_PORT = 2222
+    VHI_SSH_PORT_HV = 22
     VHI_LINUX_IMAGE = 'cirros'
     VHI_WINDOWS_IMAGE = 'windows2012'
     VHI_FLAVOR = 'small'
@@ -37,15 +39,15 @@ class VHICLoudDefaults(Enum):
     VHI_DOMAIN_ID = '58fa18b2cefc4bad8a52f11008dfbf72'
     VINFRA_DOMAIN = 'Migration'
     VINFRA_PROJECT = 'migproj'
-    VINFRA_USER = 'onapp2'
-    VINFRA_PASS = '4OnApp13777'
+    VINFRA_USER = ''
+    VINFRA_PASS = ''
 # - - - - - - - - - - - - - - -
 
 
 # - - - - - - - - - - - - - - -
 # General options
 class Helper(Enum):
-    SSH_OPTS = "-o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no'"
+    SSH_OPTS = "-A -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no'"
     IMG_SPARSING = False
 
     SPACES = ' ' * 15

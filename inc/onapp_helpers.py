@@ -183,35 +183,45 @@ def get_onapp_vm_nics(vm_idn='',verbosity=8):
     return API_VM_NICS
 
 
-##########################
-##------- FUNCTION -------##
-##---get_onapp_vm_disks---##
-##########################
-def get_onapp_vm_disks(vm_idn='', verbosity=8):
-    VM_IDn = vm_idn
-    #--OnApp: get source VM data_stores --#
-    NOTE = """ -- OnApp: get OnApp datastores -- """
-    URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/settings/data_stores.json"
-    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | [ .data_store.id , .data_store.identifier ] '".format(user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value, full_url=URL)
-    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
-    API_DS = {}
-    for line in ou.splitlines():
-        ds = json.loads(line)
-        API_DS[ ds[0] ] = ds[1].encode('ascii')
-    if verbosity >= 7:
-        logs.info("ONAPP_DATASTORES: \n" + str(API_DS))
-        logs.info("")
-    # --OnApp: get source VM disks --#
-    NOTE = """ -- OnApp: get VM's disks by {identifier} -- """
-    URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/virtual_machines/{}/disks.json".format(VM_IDn)
-    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | [ .disk.identifier,.disk.data_store_id,.disk.disk_size,.disk.disk_vm_number,.disk.primary,.disk.is_swap ] '".format(user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value, full_url=URL)
-    (rc, ou) = run_command(CMD,verbosity,0,NOTE)
-    API_VM_DISKS = []
-    for line in ou.splitlines():
-        dsk = json.loads(line)
-        API_VM_DISKS.append( { 'disk_idn': dsk[0].encode('ascii'),'ds_id':dsk[1], 'size': dsk[2], 'number': dsk[3], 'primary': dsk[4], "is_swap": dsk[5],'path': "/dev/"+str(API_DS[dsk[1]])+"/"+str(dsk[0]),'datastore_idn': str(API_DS[dsk[1]]) } )
+def get_onapp_vm_disks(vm_idn):
+    """
+    Get Virtual Machine disks and specify Data Stores
+    :param vm_idn: str
+    :return:
+    """
+    api_ds = {}
+    api_vm_disks = []
+    _cp_url = OnAppAPICredentials.ONAPP_CP_URL.value
+    _data_store_url = "{cp}/settings/data_stores.json".format(cp=_cp_url)
+    _disks_url = "{cp}/virtual_machines/{idn}/disks.json".format(cp=_cp_url, idn=vm_idn)
+    logs.info('GET {}'.format(_data_store_url), separator=True)
+    data_stores_response = requests.get(_data_store_url, auth=AUTH)
+    logs.info('Response [{}]: {}'.format(data_stores_response.status_code, data_stores_response.json()))
+    for d_store in data_stores_response.json():
+        _ds = d_store['data_store']
+        api_ds[_ds['id']] = {'id': _ds['identifier'], 'type': _ds['data_store_type']}
 
-    return API_VM_DISKS
+    logs.info("ONAPP_DATASTORES: {}".format(api_ds), separator=True)
+    logs.info(" -- OnApp: get VM's disks by ID={identifier} -- ".format(identifier=vm_idn), separator=True)
+    logs.info('GET {}'.format(_disks_url), separator=True)
+    disks_response = requests.get(_disks_url, auth=AUTH)
+    logs.info('Response [{}]: {}'.format(disks_response.status_code, disks_response.json()))
+    for _disk in disks_response.json():
+        disk = _disk['disk']
+        ds = api_ds[disk['data_store_id']]
+        api_vm_disks.append({'datastore_idn': ds['id'],
+                             'number': disk['disk_vm_number'],
+                             'is_swap': disk['is_swap'],
+                             'primary': disk['primary'],
+                             'path': '/dev/{}/{}'.format(ds['id'], disk['identifier']),
+                             'ds_id': disk['id'],
+                             'disk_idn': disk['identifier'],
+                             'size': disk['disk_size'],
+                             'datastore_type': ds['type']})
+    logs.info("OnApp_VM_DISKS:")
+    for disk_data in api_vm_disks:
+        logs.info("{}".format(disk_data))
+    return api_vm_disks
 
 
 #########################
@@ -326,6 +336,15 @@ def get_user_data(url, get_type, value_to_search=None, all_users=False):
             return _user['user'], response
 
 
+def _get_primary_vm_ip(vm):
+    for ip_address in vm['ip_addresses']:
+        ip = ip_address['ip_address']
+        if not ip['primary']:
+            continue
+
+        return ip['address']
+
+
 def get_all_virtual_machines():
     """
     Get list of all virtual machines and sort them by user ID
@@ -346,8 +365,26 @@ def get_all_virtual_machines():
 
         vms_dict[vm['user_id']].append({'id': vm['identifier'],
                                         'booted': vm['booted'],
+                                        'ip_addr': _get_primary_vm_ip(vm),
                                         'operating_system': vm['operating_system']})
     return dict(vms_dict)
+
+
+def get_vm_hypervisor_ip(vm_idn):
+    logs.info("{}-- OnApp: Get VM HV IP address --".format(Helper.SPACES.value), separator=True)
+    _url = '{url}/virtual_machines/{vm_idn}.json'.format(url=OnAppAPICredentials.ONAPP_CP_URL.value,
+                                                         vm_idn=vm_idn)
+    logs.info('GET {}'.format(_url), separator=True)
+    response_1 = requests.get(_url, auth=AUTH)
+    logs.info('Response [{}]'.format(response_1.status_code))
+    _hv_id = response_1.json()['virtual_machine']['hypervisor_id']
+    logs.info('HV ID: {}'.format(_hv_id))
+    _hv_url = '{url}/settings/hypervisors/{hv_id}.json'.format(url=OnAppAPICredentials.ONAPP_CP_URL.value,
+                                                               hv_id=_hv_id)
+    logs.info('GET {}'.format(_hv_url), separator=True)
+    response_2 = requests.get(_hv_url, auth=AUTH)
+    logs.info('Response [{}]'.format(response_2.status_code))
+    return response_2.json()['hypervisor']['ip_address']
 
 
 def get_bucket_limits(bucket_id):
@@ -414,6 +451,7 @@ class VmHandler:
 
     def __init__(self, **kwargs):
         self._booted = kwargs.get("booted", "")
+        self._ip_addr = kwargs.get("ip_addr", "")
         self._os = kwargs.get("operating_system", "")
 
     def vm_handler(self):
@@ -428,11 +466,17 @@ class VmHandler:
         from ops.install_win_drivers import vm_install_win_drivers
         from ops.install_win_drivers_offline import vm_install_win_drivers_offline
         if self._booted:
-            logs.info('{}-- LIVE MIGRATION --'.format(Helper.SPACES.value))
-            if self._os == self.WINDOWS_OS:
-                return vm_install_win_drivers, vm_live_migrate
+            _cmd = 'ssh -o StrictHostKeyChecking=no -o CheckHostIP=no -p 22  root@{} -t "hostname; exit;"'.format(
+                self._ip_addr)
+            (rc, ou) = run_command(_cmd, 8)
+            if not rc:
+                logs.info('{}-- LIVE MIGRATION --'.format(Helper.SPACES.value))
+                if self._os == self.WINDOWS_OS:
+                    return vm_install_win_drivers, vm_live_migrate
+                else:
+                    return vm_install_bootloader, vm_live_migrate
             else:
-                return vm_install_bootloader, vm_live_migrate
+                return False, False
         else:
             logs.info('{}-- COLD MIGRATION --'.format(Helper.SPACES.value))
             if self._os == self.WINDOWS_OS:
@@ -512,3 +556,89 @@ class GenerateXmlConfig:
         if root[8][2].tag == 'initrd':
             root[8][2].text = initrd.strip('\n')
         tree.write(self._recovery_mg_file)
+
+
+def activate_disk(vm_idn, vm_ohv_ip, multiply_disks=False, disk=None):
+    """
+    Activate primary disk
+    :param vm_idn: 'i43oijf8sdu'
+    :param vm_ohv_ip: '10.120.0.7'
+    :param multiply_disks: True or False
+    :param disk: {disk: info}
+    :return:
+    """
+    logs.info("-- OnApp: HV activating disk --", separator=True)
+    verbosity = 8
+    ovm_dsk = disk
+    ds_type = None
+    store_idn = None
+    disk_idn = None
+    if not multiply_disks:
+        _onapp_disks = get_onapp_vm_disks(vm_idn)
+        ovm_dsk = [_disk for _disk in _onapp_disks if _disk['primary']][0]
+        store_idn = ovm_dsk['datastore_idn']
+        disk_idn = ovm_dsk['disk_idn']
+        ds_type = ovm_dsk['datastore_type']
+    elif multiply_disks:
+        store_idn = ovm_dsk['datastore_idn']
+        disk_idn = ovm_dsk['disk_idn']
+        ds_type = ovm_dsk['datastore_type']
+    _ssh_connect = 'ssh -p {hv_port} {sshopt} root@{hv_ip}'.format(
+        hv_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value,
+        sshopt=Helper.SSH_OPTS.value,
+        hv_ip=vm_ohv_ip)
+    if ds_type == 'is':
+        # Here We are working on Hypervisor side Port is 22 and HV IP
+        logs.info('-- OnApp HV: get frontend UUID', separator=True)
+        hv_cmd = _ssh_connect + " 'onappstore getid'"
+        (rc, ou) = run_command(hv_cmd, verbosity, 0)
+        frontend_uuid = ou.splitlines()[1].split(' ')[1].split('=')[1]
+
+        # Get Disk Info
+        logs.info('-- OnApp HV: Get Disk Info', separator=True)
+        _disk_info_cmd = _ssh_connect + " 'onappstore diskinfo uuid={disk_idn}'".format(disk_idn=disk_idn)
+        (rc, ou) = run_command(_disk_info_cmd, verbosity, 0)
+        disk_status = ou.splitlines()[1].split(' ')[2].split('=')[1]
+
+        # If disk is offline, activate it
+        if int(disk_status) != 1:
+            _disk_info_cmd = _ssh_connect + " 'onappstore online uuid={disk_idn} frontend_uuid={fr_id}'".format(
+                disk_idn=disk_idn,
+                fr_id=frontend_uuid
+            )
+            (rc, ou) = run_command(_disk_info_cmd, verbosity, 0)
+    elif ds_type == 'lvm':
+        _lvm_activate = _ssh_connect + " 'lvchange -ay /dev/{store_idn}/{disk_idn}'".format(
+            disk_idn=disk_idn,
+            store_idn=store_idn
+        )
+        (rc, ou) = run_command(_lvm_activate, 0, 0)
+
+
+def deactivate_disk(vm_idn, vm_ohv_ip):
+    """
+    Deactivate primary disk
+    :param vm_idn: 'i43oijf8sdu'
+    :param vm_ohv_ip: '10.120.0.7'
+    :return:
+    """
+    logs.info("-- OnApp: HV deactivating disk")
+    verbosity = 8
+    _onapp_disks = get_onapp_vm_disks(vm_idn)
+    ovm_dsk = [_disk for _disk in _onapp_disks if _disk['primary']][0]
+    disk_idn = ovm_dsk['disk_idn']
+    ds_type = ovm_dsk['datastore_type']
+    _ssh_connect = 'ssh -p {hv_port} {sshopt} root@{hv_ip}'.format(
+        hv_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value,
+        sshopt=Helper.SSH_OPTS.value,
+        hv_ip=vm_ohv_ip)
+    if ds_type == 'lvm':
+        onappvm_primary_disk = get_onapp_vm_primary_disk(vm_idn, verbosity)
+        _disk_deact_cmd = _ssh_connect + ' lvchange -an {}'.format(onappvm_primary_disk[0]['path'])
+        (rc, ou) = run_command(_disk_deact_cmd, verbosity, 0)
+        return True
+
+    elif ds_type == 'is':
+        _disk_deact_cmd = _ssh_connect + " 'onappstore offline uuid={disk_idn}'".format(disk_idn=disk_idn)
+        (rc, ou) = run_command(_disk_deact_cmd, verbosity, 0)
+        return True

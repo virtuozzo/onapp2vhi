@@ -96,7 +96,7 @@ def vm_install_win_drivers(idn='', vhip='', verb=''):
     # --step_5--#
     # --OnApp: Upload drivers image to VM--#
     logs.info('-------')
-    logs.info("-- Upload drivers to VM: {hv_ip} --".format(hv_ip=OnAppAPICredentials.ONAPP_HV_IP.value))
+    logs.info("-- Upload drivers to VM: {hv_ip} --".format(hv_ip=VM_OHV_IP))
 
     # FILES TO COPY SHOULD BE LOCATED IN PROJECT FOLDER
     cloudbase_init = os.path.join(os.getcwd(), "CloudbaseInitSetup_Stable_x64.msi")

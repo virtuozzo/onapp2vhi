@@ -23,13 +23,10 @@ class Bcolors:
     UNDERLINE = '\033[4m'
 
 
-def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc='', verb='', network=''):
+def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', verb='', network=''):
     if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
-    #    if vhip == '':
-    #       logs.info ('You need to pass VHI hypervisor IP address through --vhi-ip=? parameter ')
-    #       exit(18)
 
     if not network:
         _network = VHICLoudDefaults.VHI_NETWORK.value
@@ -125,12 +122,10 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
 
     NOTE = """ -- OnApp: get VM's disk info -- """
     logs.info(NOTE)
-    ONAPPVM_DISKS = get_onapp_vm_disks(idn, verbosity)
-
-    if verbosity >= 7:
-        logs.info("OnApp_VM_DISKS:")
-        for disk_data in ONAPPVM_DISKS:
-            logs.info(str(disk_data))
+    ONAPPVM_DISKS = get_onapp_vm_disks(idn)
+    logs.info("OnApp_VM_DISKS:")
+    for disk_data in ONAPPVM_DISKS:
+        logs.info(str(disk_data))
         logs.info("")
 
     # --step_5--#
@@ -138,7 +133,7 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
 
     NOTE = """ -- OnApp: check if VM is running on HV -- """
     CMD = "ssh -p{ssh_port} {sshopt} root@{hv_ip} 'virsh list | grep {vm_idn}' 2>/dev/null ".format(hv_ip=VM_OHV_IP,
-                                                                                                    ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value,
+                                                                                                    ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value,
                                                                                                     sshopt=Helper.SSH_OPTS.value,
                                                                                                     vm_idn=VM_IDn)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
@@ -153,7 +148,7 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
 
     URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/virtual_machines.json"
     CMD = "ssh -p{ssh_port} {sshopt} root@{hv_ip} 'virsh dumpxml {vm_idn} > /tmp/{vm_idn}.xml && cat /tmp/{vm_idn}.xml ' 2>/dev/null ".format(
-        ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
+        ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value, sshopt=Helper.SSH_OPTS.value, hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
     if not verbosity:
         (rc, ou) = run_command(CMD, 0, 0, NOTE)
     else:
@@ -166,8 +161,6 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
         return False
 
     vmxml = KVMxml.fromstring(VM_XML_CFG)
-
-    # dbg    logs.info(KVMxml.tostring(vmxml))
 
     XML_OVM_DISKS = []
     XML_OVM_MACS = []
@@ -205,8 +198,10 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
         VHI_IMAGE = VHICLoudDefaults.VHI_LINUX_IMAGE.value
 
     if not ou:
-        # logs.info("LETS CREATE TARGET VM: ")
-        CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server create onapp2vhi_vm_{vm_idn} --description 'onapp_vm_{vm_idn}' --network id={network},fixed-ip={vm_ip},mac={vm_mac},spoofing-protection-disable --volume source=image,id={image},size={disk_size} --flavor {vhi_flavor} -f json | jq -r \".id\"' 2>/dev/null ".format(
+        _cmd = ""
+        (rc, ou) = run_command(_cmd, verbosity, 0)
+
+        CMD = "ssh -p {ssh_port} {sshopt} root@{vhi_cp} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server create onapp2vhi_vm_{vm_idn} --description 'onapp_vm_{vm_idn}' --network id={network},fixed-ip={vm_ip},mac={vm_mac},spoofing-protection-disable --volume source=image,id={image},size={disk_size} --flavor {vhi_flavor} -f json | jq -r \".id\"' 2>/dev/null ".format(
             ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER, vhipass=VHIPASS,
             vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, vm_idn=VM_IDn, vm_ip=ONAPPVM_PRI_IP, vm_mac=ONAPPVM_PRI_MAC, vhi_sg=VHICLoudDefaults.VHI_SG_ID.value,
             image=VHI_IMAGE, disk_size=ONAPPVM_DISKS[0]['size'], vhi_flavor=_flavour, network=_network)
@@ -254,8 +249,8 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
         logs.info("Destination VHI VM with IP/MAC ALREADY EXISTS:")
         logs.info(ou)
         VHI_VM_ID = str(json.loads(ou)[0])
-        logs.error("...please, remove the target VM on VHI or remove conflicting network interface of it...\n")
-        logs.error(VHICLoudDefaults.VHI_CP_URL.value + "/compute/servers/instances/" + json.loads(ou)[0] + "/ \n")
+        logs.error("...please remove the target VM on VHI or remove conflicting network interface of it...\n")
+        logs.error(VHICLoudDefaults.VHI_CP_URL.value + "/compute/servers/instances/" + VHI_VM_ID + "/ \n")
         return False
 
     # --step_9--#
@@ -264,8 +259,14 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
     NOTE = """ -- VHI: define VHI VM's hypervisor and disks -- """
 
     CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'host `vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server show {vm_id} -f json | jq -r .host`' 2>/dev/null | awk '/ has address /{{print $NF}}' ".format(
-        ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER, vhipass=VHIPASS,
-        vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, vm_id=VHI_VM_ID)
+        ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value,
+        sshopt=Helper.SSH_OPTS.value,
+        vhidom=VHIDOM,
+        vhiproj=VHIPROJ,
+        vhiuser=VHIUSER,
+        vhipass=VHIPASS,
+        vhi_cp=VHICLoudDefaults.VHI_CP_IP.value,
+        vm_id=VHI_VM_ID)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
     if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', ou) is not None:
         VHI_HV_IP = str(ou).strip("\n")
@@ -308,9 +309,6 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
     if verbosity == 8:
         logs.info("---\nResult[{}]:\n".format(rc))
 
-    #    logs.info(KVMxml.tostring(vhixml))
-    #    logs.info(VM_XML_CFG)
-
     XML_VVM_DISKS = []
     XML_VVM_NICS = []
     vvm_mac = vvm_nic_id = vvm_tap = ''
@@ -330,10 +328,10 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
         logs.info("XML_VVM_DISKS: " + str(XML_VVM_DISKS) + "\n")
         logs.info("XML_VVM_NICS: " + str(XML_VVM_NICS) + "\n")
 
-    # --step_10--#
+    # --step_11--#
     # --OnApp: edit VM's XML config for VHI --#
 
-    NOTE = """ STEPx: Process and upload VM's XML config """
+    NOTE = """ STEP 11: Process and upload VM's XML config """
 
     global disk_num
     global nic_num
@@ -354,7 +352,7 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
                 cdrom_file = disk.find('source').attrib['file']
                 disk.find('source').attrib['file'] = '/tmp/grub2.img'
                 CMD = "ssh -p{ssh_port} {sshopt} root@{ohv_ip} 'scp -P{ssh_port} {sshopt} {cd_file} root@{vhv_ip}:/tmp/ 2>/dev/null ' 2>/dev/null ; ssh -p{ssh_port} root@{vhv_ip} 'ls /tmp/grub2*' 2>/dev/null ".format(
-                    ohv_ip=VM_OHV_IP, vhv_ip=VHI_HV_IP, ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value,
+                    ohv_ip=VM_OHV_IP, vhv_ip=VHI_HV_IP, ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value,
                     sshopt=Helper.SSH_OPTS.value, cd_file=cdrom_file, vm_idn=VM_IDn)
                 (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
         nic_num = 0
@@ -387,8 +385,10 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
 
     NOTE = """ -- Upload OnApp2VHI VM migration XML to OnApp HV -- """
 
+
+
     CMD = "scp -P{ssh_port} {sshopt} /tmp/{vm_idn}.xml root@{hv_ip}:/tmp/ 2>/dev/null ; ssh -p{ssh_port} {sshopt} root@{hv_ip} 'ls /tmp/{vm_idn}.xml' 2>/dev/null ".format(
-        hv_ip=VM_OHV_IP, ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vm_idn=VM_IDn)
+        hv_ip=VM_OHV_IP, ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value, sshopt=Helper.SSH_OPTS.value, vm_idn=VM_IDn)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
 
     # --step_12--#
@@ -398,21 +398,20 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
 
     onappvm_disks = ",".join([str(dsk['name']) for dsk in XML_OVM_DISKS])
     CMD = "ssh -t -p{ossh_port} {sshopt} root@{ohv_ip} 'virsh migrate --live --auto-converge --unsafe --copy-storage-all --migrate-disks {vm_disks} --xml /tmp/{vm_idn}.xml --verbose {vm_idn} qemu+ssh://{vhv_ip}:{vssh_port}/system?no_verify=1 tcp:{vhv_ip}' 2>/dev/null ".format(
-        ohv_ip=VM_OHV_IP, vhv_ip=VHI_HV_IP, ossh_port=OnAppAPICredentials.ONAPP_SSH_PORT.value, vssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value,
+        ohv_ip=VM_OHV_IP, vhv_ip=VHI_HV_IP, ossh_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value, vssh_port=VHICLoudDefaults.VHI_SSH_PORT_HV.value, sshopt=Helper.SSH_OPTS.value,
         vm_disks=onappvm_disks, vm_idn=VM_IDn)
-    # logs.info(CMD)
     (rc, ou) = run_command(CMD, 8, 1, NOTE)
 
     # --step_13--#
     # --OnApp: STOP just migrated OnApp VM on VHI hypervisor --#
 
     NOTE = """ -- Stop just migrate OnApp VM on VHI hypervisor -- """
-
+    # ToDo add validation to check whether VM  is created
+    #  -----
     CMD = "ssh -p{vssh_port} {sshopt} root@{vhi_hv} 'virsh destroy {vm_idn}' 2>/dev/null ".format(vhi_hv=VHI_HV_IP,
-                                                                                                  vssh_port=VHICLoudDefaults.VHI_SSH_PORT.value,
+                                                                                                  vssh_port=VHICLoudDefaults.VHI_SSH_PORT_HV.value,
                                                                                                   sshopt=Helper.SSH_OPTS.value,
                                                                                                   vm_idn=VM_IDn)
-    # logs.info(CMD)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
 
     # --step_14--#
@@ -423,7 +422,6 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', snc=
     CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_hv} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server start {vm_id} -f json | jq -c -r \"[ .id , .power_state ]\" ' 2>/dev/null ".format(
         ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhidom=VHIDOM,
         vhiproj=VHIPROJ, vhiuser=VHIUSER, vhipass=VHIPASS, vhi_hv=VHI_HV_IP, vm_id=VHI_VM_ID)
-    # logs.info(CMD)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
     return True
 
@@ -439,18 +437,15 @@ def cli():
 @click.option('--vuser', '--vhi-user', default='', help="VHI User.")
 @click.option('--vpass', '--vhi-pass', '--vhi-password', default='', help="VHI Password.")
 @click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-@click.option('--vhip', '--vhi-ip', '--vhi-hypervisor-ip', default='', help="VHI destination HV IP address.")
 @click.option('--verb', '-v', '--v', '--verbosity', default='', help="Verbosity level of values between 0 and 8")
 @click.option('--network', default='', help="Set network id")
 # click.argument('name',default='') - not used
-def livemigrate(vdom='', vproj='', vuser='', vpass='', idn='', vhip='', verb='', network=''):
+def livemigrate(vdom='', vproj='', vuser='', vpass='', idn='', verb='', network=''):
     vm_live_migrate(vdom=vdom,
                     vproj=vproj,
                     vuser=vuser,
                     vpass=vpass,
                     idn=idn,
-                    vhip=vhip,
-                    snc='',
                     verb=verb,
                     network=network)
 

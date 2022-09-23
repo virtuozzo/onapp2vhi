@@ -141,16 +141,25 @@ def migrate_all(user='', network=''):
                       separator=True)
             logs.info("")
             bootloader_drivers, vm_migrate = vh.vm_handler()
+            if not bootloader_drivers and not vm_migrate:
+                msg_failed = 'SSH PORT "22" is not opened for VM ID: {} | IP: {}\n' \
+                             'Please install GRUB/WIN_DRIVERS via these options:' \
+                             ' "install_bootloader_offline" |' \
+                             ' "install_win_drivers_offline"'.format(_idn, _vm['ip_addr'])
+                logs.write_log(file_path="{}_user_{}_manual_migrate_vm".format(_file_name, user['id']),
+                               msg=msg_failed)
+                continue
+
             bootloader_drivers(idn=_idn, vhip='', verb='')
             # ToDo
             #  Create user handler
             result_vm = vm_migrate(idn=_idn,
                                    vproj=vhi.project_name,
-                                   vuser=user['user_login'],
+                                   # vuser=user['user_login'],
+                                   vuser=VHICLoudDefaults.VINFRA_USER.value,
                                    vdom='',
-                                   vpass=user['password'],
-                                   vhip='',
-                                   snc='',
+                                   # vpass=user['password'],
+                                   vpass=VHICLoudDefaults.VINFRA_PASS.value,
                                    verb='',
                                    network=network)
             vm_msg += "    {}. VM identifier [{}]: Migrated [{}]\n".format(str(_num+1), _idn, result_vm)
