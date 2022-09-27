@@ -28,7 +28,8 @@ DEFAULT_ONAPP_USER_NAMES = ('system_owner', 'cloud_locations_manager')
 @click.command()
 @click.option('--user', default='', help="OnApp User, VM identifier.")
 @click.option('--network', default='', help="Network to be used")
-def migrate_all(user='', network=''):
+@click.option('--vm', default='', help="VM to be migrated")
+def migrate_all(user='', network='', vm=''):
     """
     Migrate all resources from OnApp to VHI:
         - OnApp Users to VHI users
@@ -137,6 +138,11 @@ def migrate_all(user='', network=''):
         for _num, _vm in enumerate(user['virtual_machines']):
             vh = VmHandler(**_vm)
             _idn = _vm['id']
+            # Here migrate just specified Virtual Machine
+            if vm:
+                if vm != _idn:
+                    continue
+
             logs.info("{}-- VHI: Migrate VM #{} IDENTIFIER {}--".format(Helper.SPACES.value, str(_num), _idn),
                       separator=True)
             logs.info("")

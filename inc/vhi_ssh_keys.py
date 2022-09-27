@@ -3,6 +3,7 @@ import json
 from cfg.o2v_config import VHICLoudDefaults, Helper
 from inc.logger import logs
 from inc.onapp_helpers import check_user_role
+from inc.functions import run_command
 
 
 class VhiSshKeys:
@@ -38,6 +39,7 @@ class VhiSshKeys:
                                                                       dom_id=VHICLoudDefaults.VHI_DOMAIN_ID.value)
         self.ssh_keys_url = "{url}/compute/keys".format(url=self._PANEL_URL)
         self._proj_auth_url = ''
+        self._verbosity = 8
         logs.info('{}-- VHI: Creating SSH keys --'.format(Helper.SPACES.value), separator=True)
 
     @property
@@ -137,7 +139,10 @@ class VhiSshKeys:
         :param idn: 1, 2, 3
         :return:
         """
-        return json.dumps({"name": "{}_ssh_key_{}".format(self._login, idn),
+        name = "{}_ssh_key_{}".format(self._login, idn)
+        if '.' in name:
+            name = name.replace('.', '_')
+        return json.dumps({"name": name,
                            "description": "User {} {} SSH Key".format(self._first_name, self._last_name),
                            "public_key": ssh_data})
 

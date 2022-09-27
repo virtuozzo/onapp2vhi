@@ -294,15 +294,12 @@ def get_user_ssh_keys(user_data):
     :param user_data: {"id": 3, "first_name": "Test1", "last_name": "Test2", . . .}
     :return: [ssh_key1, ssh_key2]
     """
-    _url = '{}/settings/ssh_keys.json'.format(OnAppAPICredentials.ONAPP_CP_URL.value)
+    _url = '{}/users/{}/ssh_keys.json'.format(OnAppAPICredentials.ONAPP_CP_URL.value, user_data['id'])
     logs.info("{}-- OnApp: Get User SSH keys --  ".format(Helper.SPACES.value), separator=True)
     logs.info('GET {url}'.format(url=_url), separator=True)
     _ssh_keys = []
     response = requests.get(_url, auth=AUTH)
     for ssh_key in response.json():
-        if ssh_key['ssh_key']['user_id'] != user_data['id']:
-            continue
-
         _ssh_keys.append(ssh_key['ssh_key']['key'])
     logs.info('Response [{}]: {}'.format(response.status_code, _ssh_keys))
     return _ssh_keys
@@ -453,6 +450,7 @@ class VmHandler:
         self._booted = kwargs.get("booted", "")
         self._ip_addr = kwargs.get("ip_addr", "")
         self._os = kwargs.get("operating_system", "")
+        self._user = 'root' if self._os == self.LINUX_OS else 'Administrator'
 
     def vm_handler(self):
         """
@@ -466,8 +464,9 @@ class VmHandler:
         from ops.install_win_drivers import vm_install_win_drivers
         from ops.install_win_drivers_offline import vm_install_win_drivers_offline
         if self._booted:
-            _cmd = 'ssh -o StrictHostKeyChecking=no -o CheckHostIP=no -p 22  root@{} -t "hostname; exit;"'.format(
-                self._ip_addr)
+            _cmd = 'ssh -o StrictHostKeyChecking=no -o CheckHostIP=no -p 22 {user}@{ip} -t "hostname; exit;"'.format(
+                ip=self._ip_addr,
+                user=self._user)
             (rc, ou) = run_command(_cmd, 8)
             if not rc:
                 logs.info('{}-- LIVE MIGRATION --'.format(Helper.SPACES.value))
