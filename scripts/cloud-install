@@ -47,9 +47,14 @@ function installCloudinit() {
 		if dpkg -l $pkg
 		then
 			echo "$pkg installed"
+			echo 'datasource_list: [ OpenStack, None ]' | sudo -s tee /etc/cloud/cloud.cfg.d/90_dpkg.cfg
+			dpkg-reconfigure -f noninteractive cloud-init
+			cloud-init clean
+			cloud-init init
 			rm -rf /etc/cron.d/cron-cloud-install
 		else
 			echo "$pkg NOT installed"
+			exit 1
 		fi
         elif [[ ${OS} == 'debian' ]]; then
                 apt update
@@ -60,6 +65,7 @@ function installCloudinit() {
                         rm -rf /etc/cron.d/cron-cloud-install
                 else
                         echo "$pkg NOT installed"
+                        exit 1
                 fi
         elif [[ ${OS} == 'centos' ]]; then
                 yum -y install cloud-init cloud-utils-growpart qemu-guest-agent
@@ -69,6 +75,7 @@ function installCloudinit() {
                         rm -rf /etc/cron.d/cron-cloud-install
                 else
                         echo "$pkg NOT installed"
+			exit 1
                 fi
 
         fi
