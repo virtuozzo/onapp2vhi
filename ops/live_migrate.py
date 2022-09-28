@@ -272,7 +272,7 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', verb='', netw
         VHI_HV_IP = str(ou).strip("\n")
         logs.info("VMs_HV_IP: {}".format(VHI_HV_IP))
     else:
-        logs.error("Error: VM's VHI hypervisor IP address is invalid: {hv_ip}".format(hv_ip=ou))
+        logs.error("Error: Destination Appliance network is not configured properly".format(hv_ip=ou))
         return False
     CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_hv} 'vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server volume list --server {vm_id} -f json | jq -c' 2>/dev/null ".format(
         ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER, vhipass=VHIPASS,
@@ -288,8 +288,7 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', verb='', netw
         (rc, ou) = run_command(CMD, verbosity, 0)
         VHI_VM_DISKS[disk_lb] = str(ou).strip().encode('ascii')
 
-    if verbosity >= 7:
-        logs.info("VHI_VM_DISKS: {}".format(VHI_VM_DISKS))
+    logs.info("VHI VM DISKS: {}".format(VHI_VM_DISKS))
 
     # --step_10--#
     # --VHI: define VM's hypervisor XML host and disks--#
@@ -306,13 +305,11 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', verb='', netw
     VM_XML_CFG = str(ou)
     vhixml = KVMxml.fromstring(VM_XML_CFG)
 
-    if verbosity == 8:
-        logs.info("---\nResult[{}]:\n".format(rc))
+    logs.info("---\nResult[{}]:\n".format(rc))
 
     XML_VVM_DISKS = []
     XML_VVM_NICS = []
     vvm_mac = vvm_nic_id = vvm_tap = ''
-
     for device in vhixml.findall("devices"):
         for disk in device.findall("disk"):
             if disk.attrib['device'] == "disk":
@@ -324,9 +321,8 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', verb='', netw
             vvm_tap = nic.find('target').attrib['dev']
             XML_VVM_NICS.append({'mac': vvm_mac, 'id': vvm_nic_id, 'tap': vvm_tap})
 
-    if verbosity >= 7:
-        logs.info("XML_VVM_DISKS: " + str(XML_VVM_DISKS) + "\n")
-        logs.info("XML_VVM_NICS: " + str(XML_VVM_NICS) + "\n")
+    logs.info("XML_VVM_DISKS: " + str(XML_VVM_DISKS) + "\n")
+    logs.info("XML_VVM_NICS: " + str(XML_VVM_NICS) + "\n")
 
     # --step_11--#
     # --OnApp: edit VM's XML config for VHI --#
@@ -351,9 +347,9 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', verb='', netw
                 # device.remove(disk)
                 cdrom_file = disk.find('source').attrib['file']
                 disk.find('source').attrib['file'] = '/tmp/grub2.img'
-                CMD = "ssh -p{ssh_port} {sshopt} root@{ohv_ip} 'scp -P{ssh_port} {sshopt} {cd_file} root@{vhv_ip}:/tmp/ 2>/dev/null ' 2>/dev/null ; ssh -p{ssh_port} root@{vhv_ip} 'ls /tmp/grub2*' 2>/dev/null ".format(
+                CMD = "ssh -p{ssh_port} {sshopt} root@{ohv_ip} 'scp -P {ssh_port} {scpopt} {cd_file} root@{vhv_ip}:/tmp/ 2>/dev/null ' 2>/dev/null ; ssh -p{ssh_port} root@{vhv_ip} 'ls /tmp/grub2*' 2>/dev/null ".format(
                     ohv_ip=VM_OHV_IP, vhv_ip=VHI_HV_IP, ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value,
-                    sshopt=Helper.SSH_OPTS.value, cd_file=cdrom_file, vm_idn=VM_IDn)
+                    sshopt=Helper.SSH_OPTS.value, scpopt=Helper.SCP_OPTS.value, cd_file=cdrom_file, vm_idn=VM_IDn)
                 (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
         nic_num = 0
         for nic in device.findall("interface"):
@@ -375,8 +371,8 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', verb='', netw
                 device.remove(nic)
             nic_num += 1
 
-    #    logs.info(KVMxml.tostring(vmxml))
-
+    # Debug file xml
+    # logs.info(KVMxml.tostring(vmxml))
     xmltree = KVMxml.ElementTree(vmxml)
     xmltree.write("/tmp/{}.xml".format(OVM_IDENTIFIER))
 
@@ -384,11 +380,8 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', verb='', netw
     # --OnApp: Upload O2V migration XML to OnApp hypervisor --#
 
     NOTE = """ -- Upload OnApp2VHI VM migration XML to OnApp HV -- """
-
-
-
-    CMD = "scp -P{ssh_port} {sshopt} /tmp/{vm_idn}.xml root@{hv_ip}:/tmp/ 2>/dev/null ; ssh -p{ssh_port} {sshopt} root@{hv_ip} 'ls /tmp/{vm_idn}.xml' 2>/dev/null ".format(
-        hv_ip=VM_OHV_IP, ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value, sshopt=Helper.SSH_OPTS.value, vm_idn=VM_IDn)
+    CMD = "scp -P{ssh_port} {scpopt} /tmp/{vm_idn}.xml root@{hv_ip}:/tmp/ 2>/dev/null ; ssh -p{ssh_port} {sshopt} root@{hv_ip} 'ls /tmp/{vm_idn}.xml' 2>/dev/null ".format(
+        hv_ip=VM_OHV_IP, scpopt=Helper.SCP_OPTS.value, ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value, sshopt=Helper.SSH_OPTS.value, vm_idn=VM_IDn)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
 
     # --step_12--#

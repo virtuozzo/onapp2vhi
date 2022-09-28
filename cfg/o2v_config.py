@@ -27,7 +27,7 @@ class VHICLoudDefaults(Enum):
     VHI_CP_IP = '10.63.0.63'
     VHI_LOGIN = 'admin'
     VHI_HV_IP = '10.63.0.64'
-    VHI_NETWORK = 'public1'
+    VHI_NETWORK = 'public2'
 
     VHI_SSH_PORT = 2222
     VHI_SSH_PORT_HV = 22
@@ -48,6 +48,7 @@ class VHICLoudDefaults(Enum):
 # General options
 class Helper(Enum):
     SSH_OPTS = "-A -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no'"
+    SCP_OPTS = "-o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no'"
     IMG_SPARSING = False
 
     SPACES = ' ' * 15

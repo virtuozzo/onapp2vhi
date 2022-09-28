@@ -2,27 +2,18 @@
 import os
 import platform
 import sys
-import re
-import importlib
-import pip
 import click
-import click_default_group
-import colorlog
+
 
 plugin_folder = os.path.join(os.path.dirname(__file__), 'ops')
 
 os_distro = str(platform.linux_distribution()[0]).split(' ')[0]
 os_version = str(platform.linux_distribution()[1]).split('.')[0]
 
-# if os_distro != 'CentOS' or os_version < 7:
-#   print "OS: {distro} {version}".format(distro=os_distro,version=os_version)
-#   print "Operating system distro should be Centos 7 or higher!"
-#   exit(7)
-
 
 if len(sys.argv) <= 1:
-    print("Ask for help with 'onapp2vhi help' command.")
-    exit(11)
+    print("Ask for help with './onapp2vhi --help' command.")
+    exit(1)
 
 if str(sys.argv[1]) in ("--help", "help", "man", "--h"):
     _providers = sorted([filename[:-3] for filename in os.listdir(plugin_folder)

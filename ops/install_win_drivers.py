@@ -103,15 +103,14 @@ def vm_install_win_drivers(idn='', vhip='', verb=''):
     vz_guest_tools = os.path.join(os.getcwd(), "vz-guest-tools-win.tar")
     logs.info('File path: {}'.format(cloudbase_init))
     logs.info('File path: {}'.format(vz_guest_tools))
-
-    CMD = "scp -P{ssh_port} {sshopt} {init} Administrator@{vm_ip}:C:/ 2>/dev/null ".format(
-        ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value, init=cloudbase_init, sshopt=Helper.SSH_OPTS.value,
+    CMD = "scp -P{ssh_port} {scpopt} {init} Administrator@{vm_ip}:C:/ 2>/dev/null ".format(
+        ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value, init=cloudbase_init, scpopt=Helper.SCP_OPTS.value,
         vm_ip=VM_SRC_IP)
     (rc, ou) = run_command(CMD, verbosity, 0)
     if rc != 0:
         logs.info(bcolors.FAIL + "Something went wrong. Couldn't transfer CloudbaseInitSetup into VM \n" + bcolors.ENDC)
-    CMD = "scp -P{ssh_port} {sshopt} {guest_tool} Administrator@{vm_ip}:C:/ 2>/dev/null ".format(
-        ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value, guest_tool=vz_guest_tools, sshopt=Helper.SSH_OPTS.value,
+    CMD = "scp -P{ssh_port} {scpopt} {guest_tool} Administrator@{vm_ip}:C:/ 2>/dev/null ".format(
+        ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value, guest_tool=vz_guest_tools, scpopt=Helper.SCP_OPTS.value,
         vm_ip=VM_SRC_IP)
     (rc, ou) = run_command(CMD, verbosity, 0)
     if rc != 0:
