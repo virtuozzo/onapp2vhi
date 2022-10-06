@@ -32,6 +32,14 @@ send -- "mount /dev/cdrom /mnt"
 send -- "\r"
 expect -exact "\r
 \[root@recovery ~\]# "
+send -- "/bin/cp -rf /mnt/cloud-install /sysroot/usr/bin/cloud-install\r"
+send -- "\r"
+expect -exact "\r
+\[root@recovery ~\]# "
+send -- "/bin/cp -rf /mnt/cron-cloud-install /sysroot/etc/cron.d/cron-cloud-install\r"
+send -- "\r"
+expect -exact "\r
+\[root@recovery ~\]# "
 send -- "/bin/cp -rf /mnt/provisiongrub.sh /sysroot/root/ProvisionGRUB.sh\r"
 send -- "\r"
 expect -exact "\r
