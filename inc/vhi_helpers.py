@@ -2,7 +2,8 @@ import requests
 import json
 from cfg.o2v_config import VHICLoudDefaults, Helper
 from inc.logger import logs
-
+from functions import run_command
+import time
 
 # ToDo:
 #  email notification
@@ -249,3 +250,40 @@ class Vhi:
         elif object_type == "flavor":
             self.flavor_name = response.json()['name']
         return True
+
+
+def is_vm_active(
+        ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value,
+        ssh_opt=Helper.SSH_OPTS.value,
+        vhi_cp=VHICLoudDefaults.VHI_CP_IP.value,
+        vm_id=None):
+    if not vm_id:
+        logs.error("Virtual server identifier has not been set: {}".format(vm_id))
+        return False
+
+    logs.info("Make sure that VM has 'active' status")
+    CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'vinfra service compute server show {vm_id} -f json | jq -r -c [.name,.id,.vm_state,.power_state,.status];'".format(
+        ssh_port=ssh_port,
+        sshopt=ssh_opt,
+        vhi_cp=vhi_cp,
+        vm_id=vm_id
+    )
+    timeout = time.time() + 60 * 5  # 5 minutes from now
+    while True:
+        rc, ou = run_command(CMD,  Helper.VERBOSITY.value, 0)
+
+        if time.time() > timeout:
+            logs.error("The timeout exceeded... The VM is not active")
+            break
+        if "building" in ou:
+            logs.info("The VM is building...")
+        if "active" in ou:
+            logs.info("The new VM has 'active' status")
+            return True
+        elif "error" in ou:
+            logs.error(
+                "The new VM has the 'error' status on VHI side. The migrations process is terminated. " +
+                "See VM: " + VHICLoudDefaults.VHI_CP_URL.value + "/compute/servers/instances/" + vm_id
+            )
+            return False
+

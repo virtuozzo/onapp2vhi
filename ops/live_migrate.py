@@ -6,7 +6,7 @@ import xml.etree.ElementTree as KVMxml
 from click_default_group import DefaultGroup
 from inc.functions import run_command
 from inc.onapp_helpers import get_onapp_vm_flavor, get_onapp_vm_disks, get_onapp_vm_nics
-from inc.vhi_helpers import Vhi
+from inc.vhi_helpers import Vhi, is_vm_active
 from inc.logger import logs
 from cfg.o2v_config import Helper, OnAppAPICredentials, VHICLoudDefaults
 
@@ -209,11 +209,18 @@ def vm_live_migrate(vdom='', vproj='', vuser='', vpass='', idn='', verb='', netw
         if not rc and ou:
             VHI_VM_ID = str(ou).strip("\n")
             logs.info("NEW VHI VM CREATED: " + VHICLoudDefaults.VHI_CP_URL.value + "/compute/servers/instances/" + VHI_VM_ID)
+
+            if not is_vm_active(vm_id=VHI_VM_ID):
+                exit(1)
+                    
             logs.info("...stopping target VHI VM before migration...")
             CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'while true; do vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server stop {vm_id} --hard --wait --timeout 15 -f json | jq -c [.name,.id,.vm_state,.power_state,.status] ;  pwstate=\"`vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server show {vm_id} -f json | jq -r .power_state `\" ; echo \"$pwstate\" ; if [[ \"$pwstate\" == \"SHUTDOWN\" ]]; then break; fi ; sleep 1; done' 2>/dev/null ".format(
                 ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER,
                 vhipass=VHIPASS, vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, vm_id=VHI_VM_ID)
             run_command(CMD, verbosity, 1)
+        else:
+            logs.error("The new vm was not created on VHI side. The migrations process is terminated".upper()+"\n"+CMD)
+            exit(1)
 
         NOTE = """ -- VHI: create and attach extra VHI VM's disks -- """
 

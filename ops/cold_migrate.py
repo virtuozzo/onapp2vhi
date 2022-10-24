@@ -15,7 +15,7 @@ from inc.onapp_helpers import (
     get_vm_hypervisor_ip,
     activate_disk,
 )
-
+from inc.vhi_helpers import is_vm_active
 
 def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', verb='', network=''):
     if idn == '':
@@ -113,10 +113,12 @@ def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', verb='', netw
     logs.info("-- STEP 5 -- OnApp: check if VM [{vm_idn}] is running on HV [{hv_ip}] --".format(
         vm_idn=VM_IDn,
         hv_ip=VM_OHV_IP), separator=True)
-    CMD = "ssh -p{ssh_port} {sshopt} root@{hv_ip} 'virsh list | grep {vm_idn}' 2>/dev/null ".format(hv_ip=VM_OHV_IP,
-                                                                                                    ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value,
-                                                                                                    sshopt=Helper.SSH_OPTS.value,
-                                                                                                    vm_idn=VM_IDn)
+    CMD = "ssh -p{ssh_port} {sshopt} root@{hv_ip} 'virsh list | grep {vm_idn}' 2>/dev/null ".format(
+        hv_ip=VM_OHV_IP,
+        ssh_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value,
+        sshopt=Helper.SSH_OPTS.value,
+        vm_idn=VM_IDn
+    )
     (rc, ou) = run_command(CMD, verbosity, 0)
     if ou:
         logs.warn("VM IS RUNNING.\n PLEASE, STOP THE VM BEFORE ITS OFFLINE MIGRATION.", separator=True)
@@ -149,11 +151,16 @@ def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', verb='', netw
         if not rc and ou:
             VHI_VM_ID = str(ou).strip("\n")
             logs.info("NEW VHI VM CREATED: " + VHICLoudDefaults.VHI_CP_URL.value + "/compute/servers/instances/" + VHI_VM_ID)
-            logs.info("...STOPPING VM BEFORE MIGRATION...")
+            if not is_vm_active(vm_id=VHI_VM_ID):
+                exit(1)
+            logs.info("...stopping VM before migration...")
             CMD = "ssh -p{ssh_port} {sshopt} root@{vhi_cp} 'for ((i=1;i<=100;i++)); do vinfra --vinfra-domain=\"{vhidom}\" --vinfra-project=\"{vhiproj}\" --vinfra-username=\"{vhiuser}\" --vinfra-password=\"{vhipass}\" service compute server stop {vm_id} --hard --wait --timeout 15 -f json | jq -r -c [.name,.id,.vm_state,.power_state,.status] ;  pwstate=\"`vinfra service compute server show {vm_id} -f json | jq -r .power_state `\" ; echo \"$pwstate\" ; if [[ \"$pwstate\" == \"SHUTDOWN\" ]]; then break; fi ; sleep 1; done' 2>/dev/null ".format(
-                ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER,
-                vhipass=VHIPASS, vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, vm_id=VHI_VM_ID)
+              ssh_port=VHICLoudDefaults.VHI_SSH_PORT.value, sshopt=Helper.SSH_OPTS.value, vhidom=VHIDOM, vhiproj=VHIPROJ, vhiuser=VHIUSER,
+                    vhipass=VHIPASS, vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, vm_id=VHI_VM_ID)
             (rc, ou) = run_command(CMD, verbosity, 1)
+        else:
+            logs.error("The new vm was not created on VHI side. The migrations process is terminated".upper()+"\n"+CMD)
+            exit(1)
         # ---
         logs.info('-------')
         logs.info("-- VHI: create and attach extra VHI VM's disks --")
