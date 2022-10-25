@@ -114,6 +114,11 @@ def vm_install_bootloader(idn, vhip, verb):
         vm_ip=VM_SRC_IP)
     (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
 
+    _cmd_1 = "scp scripts/cron-cloud-install root@{vm_ip}:/etc/cron.d/cron-cloud-install".format(vm_ip=VM_SRC_IP)
+    _cmd_2 = "scp scripts/cloud-install root@{vm_ip}:/usr/bin/cloud-install".format(vm_ip=VM_SRC_IP)
+    (rc, ou) = run_command(_cmd_1, verbosity, 0)
+    (rc, ou) = run_command(_cmd_2, verbosity, 0)
+
 
 @click.group(cls=DefaultGroup, default='installbootloader', invoke_without_command=True, default_if_no_args=True)
 def cli():

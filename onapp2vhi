@@ -16,8 +16,7 @@ if len(sys.argv) <= 1:
     exit(1)
 
 if str(sys.argv[1]) in ("--help", "help", "man", "--h"):
-    _providers = sorted([filename[:-3] for filename in os.listdir(plugin_folder)
-                         if filename.endswith('.py') and not filename.startswith('__')])
+    _providers = sorted([filename[:-3] for filename in os.listdir(plugin_folder) if filename.endswith('.py') and not filename.startswith('__') and not 'template' in filename])
     _str_prov = ''
     for i, provider in enumerate(_providers):
         if i == 0:

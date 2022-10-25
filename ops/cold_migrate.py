@@ -135,6 +135,8 @@ def vm_cold_migrate(vdom='', vproj='', vuser='', vpass='', idn='', verb='', netw
         vhiproj=VHIPROJ, vhiuser=VHIUSER, vhipass=VHIPASS,
         vhi_cp=VHICLoudDefaults.VHI_CP_IP.value, vm_ip=onappvm_pri_ip, vm_mac=onappvm_pri_mac)
     (rc, ou) = run_command(CMD, verbosity, 0)
+    # logs.error(ou)
+    # exit(1)
     VHI_VM_ID = ''
     if OVM_OS == 'windows':
         VHI_IMAGE = VHICLoudDefaults.VHI_WINDOWS_IMAGE.value
