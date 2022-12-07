@@ -1,14 +1,12 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 import os
-import platform
 import sys
 import click
+import warnings
+warnings.filterwarnings(action='ignore', module='.*paramiko.*')
 
 
 plugin_folder = os.path.join(os.path.dirname(__file__), 'ops')
-
-os_distro = str(platform.linux_distribution()[0]).split(' ')[0]
-os_version = str(platform.linux_distribution()[1]).split('.')[0]
 
 
 if len(sys.argv) <= 1:
@@ -16,7 +14,13 @@ if len(sys.argv) <= 1:
     exit(1)
 
 if str(sys.argv[1]) in ("--help", "help", "man", "--h"):
-    _providers = sorted([filename[:-3] for filename in os.listdir(plugin_folder) if filename.endswith('.py') and not filename.startswith('__') and not 'template' in filename])
+    okgreen = '\033[92m'
+    okcyan = '\033[96m'
+    bold = '\033[1m'
+    endc = '\033[0m'
+    _providers = sorted([filename[:-3] for filename in os.listdir(plugin_folder)
+                         if filename.endswith('.py') and not filename.startswith('__')
+                         and 'template' not in filename])
     _str_prov = ''
     for i, provider in enumerate(_providers):
         if i == 0:
@@ -24,7 +28,7 @@ if str(sys.argv[1]) in ("--help", "help", "man", "--h"):
             continue
 
         _str_prov = _str_prov + provider + '\n    '
-    print("Providers:\n {prov}".format(prov=_str_prov))
+    print(f"{bold}{okgreen}Providers:{endc}\n {bold}{okcyan}{_str_prov}{endc}")
     exit(1)
 
 

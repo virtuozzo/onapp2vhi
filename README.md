@@ -3,15 +3,41 @@
 ---
 ------
 ---
+
+## Setup SSH Agent Manually
+  - At OnApp side run `export SSH_AUTH_SOCK=/onapp/interface/tmp/onapp-ssh-agent.socket`
+  - At OnApp side run `ssh-add -L`
+    - if get some error, please restart onapp daemon:
+      - `service onapp status`
+      - `service onapp start`
+  - Save OnApp ssh key on VHI side on all nodes.
+
+## Setup User on VHI Side
+
+  - Login into `vinfra` on VHI side(CP, HV1, HV2) and enter password for admin
+  - Create any user that will be used for migration process on the UI side
+  - Take new user login and assign new role to him: 
+    - `vinfra domain user set {user_login} --assign-domain Default compute --domain Default`
+      - e.g.:
+      - `vinfra domain user set migration_user@onapp.test.com --assign-domain Default compute --domain=Default`
+  - next step is to provide user credentials into cfg/config.cfg file
+  - On VHI server do next steps:
+    - set into .bashrc file:
+      - `source /etc/kolla/admin-openrc.sh`
+    - take an ID all your networks and do next:
+      - `openstack --insecure network set --disable-port-security {network-id}`
+    - after migration finished revert changes:
+      - `openstack --insecure network set --enable-port-security {network-id}`
+
+
 ## Setup local environment
 #### Please provide SSH KEYS to VHI(HV, CP) and OnApp(HV, CP, BS) from machine you are going to run migration.
   - Before running "./onapp2vhi" command please do next steps:
     - you should be in onapp2vhi project `[~/onapp2vhi] $ `
-    - RUN `sudo -y yum update`
-    - RUN `sudo yum install python2-pip`
-    - RUN `pip –V` (NOTE: you should see pip version ___pip 20.3.4 from /migrations/.venv/lib/python2.7/site-packages/pip (python 2.7)___)
-    - RUN `/usr/bin/pip2.7 install --upgrade pip`
-    - RUN `pip install virtualenv`
+    - RUN `yum -y install python3-pip`
+    - RUN `pip3 –V` (NOTE: you should see pip version ___pip 20.3.4 from /migrations/.venv/lib/python2.7/site-packages/pip (python 2.7)___)
+    - RUN `/usr/bin/pip3 install --upgrade pip`
+    - RUN `pip3 install virtualenv`
   - NOTE: path may be different, please find where python 2.7 is located (`which python2`)
     - RUN `virtualenv -p /usr/bin/python2.7 .venv`
     - RUN `source .venv/bin/activate`
@@ -56,15 +82,15 @@
     ./onapp2vhi list_onapp_vms
     ```
     
-  * By specifying "_by=_" or "_vals=_" parameter to get what you want:
+  * By specifying "_find=_" or "_props=_" parameter to get what you want:
     * command will show you all VM's related to user with ID=7
       ```
-      ./onapp2vhi list_onapp_vms --by="user_id=7"
+      ./onapp2vhi list_onapp_vms --find="user_id=7"
       ```
     * command will show you all VM's related to user with ID=7 and columns you specified in "vals":
       ```
-      ./onapp2vhi list_onapp_vms --by="user_id=7" --vals=identifier,hostname,memory,cpus,user_id,template_label,total_disk_size
-      ./onapp2vhi list_onapp_vms --by="identifier=lidqtfwggohyzk" --vals=identifier,hostname,memory,cpus,user_id,template_label,total_disk_size
+      ./onapp2vhi list_onapp_vms --find="user_id=7" --props=identifier,hostname,memory,cpus,user_id,template_label,total_disk_size
+      ./onapp2vhi list_onapp_vms --find="identifier=lidqtfwggohyzk" --props=identifier,hostname,memory,cpus,user_id,template_label,total_disk_size
       ```
 ---
   - ### Get all Users:
@@ -72,15 +98,15 @@
     - the same logic is using for users:
       - command will show you only user with id=7, login=admin or email=admin@example.com
           ```
-          ./onapp2vhi list_onapp_users --by="id=7" 
+          ./onapp2vhi list_onapp_users --find="id=7" 
         OR
-          ./onapp2vhi list_onapp_users --by="login=admin"
+          ./onapp2vhi list_onapp_users --find="login=admin"
         OR 
-          ./onapp2vhi list_onapp_users --by="email=admin@example.com" 
+          ./onapp2vhi list_onapp_users --find="email=admin@example.com" 
           ```
         * command will show you all VM's related to user with ID=7 and columns you specified in "vals":
           ```
-          ./onapp2vhi list_onapp_users --by="login=admin" --vals=id,email,login,roles,first_name,last_name
+          ./onapp2vhi list_onapp_users --find="login=admin" --props=id,email,login,roles,first_name,last_name
           ```
 ---
   - ### User migration:
@@ -139,6 +165,10 @@
   - ### Deactivate environment:
     - RUN in terminal `deactivate`
 ---
+
+   - ### Logs on VHI side:
+     - Run command `rm -f ~/.vinfra/backend-api.svc.vstoragedomain/*`
+
 ---
 
 

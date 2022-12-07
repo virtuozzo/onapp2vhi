@@ -1,133 +1,63 @@
-#!/usr/bin/env python
-
 import os
-from inc.onapp_helpers import get_onapp_vm_primary_disk
 import click
 import time
+
+from inc.onapp_helpers import get_onapp_vm_disks
 from click_default_group import DefaultGroup
 from inc.logger import logs
-from cfg.o2v_config import OnAppAPICredentials, Helper
-from inc.functions import run_command
-import json
+from inc.helper import Helper
+from inc.ssh_connector import ssh_run, SSH
+from inc.onapp_helpers import get_vm_source_properties
 
 
-class Bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-
-
-def vm_install_win_drivers_offline(idn='', vhip='', verb=''):
+def vm_install_win_drivers_offline(idn: str):
     if not idn:
-        logs.warn('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
-        exit(17)
-    #    if vhip == '':
-    #       logs.info ('You need to pass VHI hypervisor IP address through --vhi-ip=? parameter ')
-    #       exit(18)
-
-    if not verb:
-        verb = str(Helper.VERBOSITY.value)
-    if not str(verb).isdigit():
-        logs.error("'--verbosity' parameter should be a number")
-        exit(11)
-    if int(verb) < 0 or int(verb) > 8:
-        logs.error("'--verbosity' parameter should be a number between 0 and 8")
-        exit(12)
-    if verb:
-        verbosity = int(verb)
-    else:
-        verbosity = int(Helper.VERBOSITY.value)
+        logs.error('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
+        return False
 
     VM_IDn = idn
+    _spaces = Helper.SPACES.value
+    _dri_msg = 'WIN DRIVERS OFFLINE -- '
+    logs.info(f'{_spaces}-- INSTALLING {_dri_msg}', header=True)
 
-    # --step_1--#
-    # --OnApp: get source VM parameters--#
-    NOTE = """ -- OnApp: get source VM parameters -- """
+    # -- STEP 1 --
+    logs.info(f'{_spaces}{_dri_msg}STEP #1 -- OnApp: get source VM properties --', header=True)
+    _vm_properties = get_vm_source_properties(vm_idn=VM_IDn)
+    _vm_hv_ip = _vm_properties['hv_ip']
 
-    URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/virtual_machines.json"
-    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c --arg vm_idn {vm_idn} '.[] | select(.virtual_machine.identifier==$vm_idn) | [ .virtual_machine.identifier, .virtual_machine.hypervisor_id, .virtual_machine.ip_addresses[0][\"ip_address\"][\"address\"] ] '".format(
-        user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value,
-        full_url=URL, vm_idn=VM_IDn)
-    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
-    VM_OHV_ID = int(json.loads(ou)[1])
-    logs.info("HV_ID: " + str(VM_OHV_ID))
-    # --VM_OHV_ID--#
-
-    # --step_2--#
-    # --OnApp: get source VM hypervisor IP address --#
-    NOTE = """ -- OnApp: get VM's hypervisor IP by hypervisor ID -- """
-
-    URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/hypervisors.json"
-    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | select(.hypervisor.id=={hv_id}) | .hypervisor.ip_address '".format(
-        user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value,
-        full_url=URL, hv_id=VM_OHV_ID)
-    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
-    VM_OHV_IP = str(ou).strip("\n")
-
-    # --step_3--#
-    # --OnApp: get OnApp VM primary disk info --#
-    NOTE = """ -- OnApp: get VM's disk info: -- """
-
-    ONAPPVM_PRIMARY_DISK = get_onapp_vm_primary_disk(idn, verbosity)
-
-    if verbosity > 5:
-        logs.info(NOTE)
-        logs.info("OnApp_VM_PRIMARY_DISK:")
-        logs.info(ONAPPVM_PRIMARY_DISK[0]['path'])
-        logs.info("")
-
-    ONAPPVM_DISK_MAPPER = ONAPPVM_PRIMARY_DISK[0]['path'].replace("onapp-", "onapp--")
+    # -- STEP 2 --
+    logs.info(f"{_spaces}{_dri_msg}STEP #2 -- OnApp: Get VM primary disk info --", header=True)
+    _onappvm_primary_disk = get_onapp_vm_disks(vm_idn=idn, primary=True)
+    logs.info(f"OnApp VM PRIMARY DISK: {_onappvm_primary_disk}")
+    ONAPPVM_DISK_MAPPER = _onappvm_primary_disk.replace("onapp-", "onapp--")
     ONAPPVM_DISK_MAPPER = ONAPPVM_DISK_MAPPER.replace("/", "-")
     ONAPPVM_DISK_MAPPER = ONAPPVM_DISK_MAPPER.replace("-dev-", "/dev/mapper/")
     ONAPPVM_DISK_PARTITION = ONAPPVM_DISK_MAPPER + 'X1'
-    logs.info("ONAPPVM_DISK_MAPPER:")
-    logs.info(ONAPPVM_DISK_MAPPER)
-    logs.info("ONAPPVM_DISK_PARTITION:")
-    logs.info(ONAPPVM_DISK_PARTITION)
+    logs.info(f"ONAPPVM DISK MAPPER: {ONAPPVM_DISK_MAPPER}")
+    logs.info(f"ONAPPVM DISK PARTITION: {ONAPPVM_DISK_PARTITION}")
 
-    # --step_4--#
-    # --OnApp: Check if VM is running at OnApp hypervisor --#
-    NOTE = """ -- OnApp: check if VM is running on Hypervisor -- """
-
-    CMD = "ssh root@{hv_ip} 'virsh dominfo {vm_idn}'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
-    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
-    if rc == 0:
+    # -- STEP 3 --
+    logs.info(f"{_spaces}{_dri_msg}STEP #3 -- OnApp: Check if VM is running on hypervisor --", header=True)
+    _hv_ssh = SSH(**{'host': _vm_hv_ip})
+    exit_status, output = _hv_ssh.execute(f'virsh dominfo {VM_IDn}')
+    if not exit_status:
         logs.info("VM IS  RUNNING.\n ")
-        CMD = "ssh root@{hv_ip} 'virsh shutdown {vm_idn}'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
-        (rc, ou) = run_command(CMD, verbosity, 0)
-        while rc != 1:
+        exit_status, output = _hv_ssh.execute(f'virsh shutdown {VM_IDn}')
+        while exit_status != 1:
             time.sleep(60)
-            CMD = "ssh root@{hv_ip} 'virsh dominfo {vm_idn}'".format(hv_ip=VM_OHV_IP, vm_idn=VM_IDn)
-            (rc, ou) = run_command(CMD, verbosity, 0)
+            exit_status, output = _hv_ssh.execute(f'virsh dominfo {VM_IDn}')
 
-    # --step_5--#
-    # --OnApp: Activate VM disk --#
-    NOTE = """ -- Activate VM disk -- """
+    # -- STEP 4 --
+    logs.info(f"{_spaces}{_dri_msg}STEP #4 -- OnApp: Activate VM disk --", header=True)
+    _hv_ssh.execute(f"lvchange -ay {_onappvm_primary_disk}")
 
-    CMD = "ssh root@{hv_ip} 'lvchange -ay {primary_disk}'".format(hv_ip=VM_OHV_IP,
-                                                                  primary_disk=ONAPPVM_PRIMARY_DISK[0]['path'])
-    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
+    # -- STEP 5 --
+    logs.info(f"{_spaces}{_dri_msg}STEP #5 -- OnApp: Add partition devmappings and mount disk --", header=True)
+    _hv_ssh.execute(f"kpartx -av -p X {_onappvm_primary_disk}")
+    _hv_ssh.execute(f"mkdir -p /mnt/prepare_win; mount {ONAPPVM_DISK_PARTITION} /mnt/prepare_win")
 
-    # --step_6--#
-    # --OnApp: Add partition devmappings and mount disk --#
-    NOTE = """ -- Add partition devmappings and mount disk -- """
-
-    CMD = "ssh root@{hv_ip} 'kpartx -av -p X {primary_disk}'".format(hv_ip=VM_OHV_IP,
-                                                                     primary_disk=ONAPPVM_PRIMARY_DISK[0]['path'])
-    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
-    CMD = "ssh root@{hv_ip} 'mkdir -p /mnt/prepare_win; mount {primary_disk_partition} /mnt/prepare_win'".format(
-        hv_ip=VM_OHV_IP, primary_disk_partition=ONAPPVM_DISK_PARTITION)
-    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
-
-    # --step_7--#
-    # --OnApp: Run scp--#
-    NOTE = """ -- Copy drivers and scripts -- """
+    # -- STEP 6 --
+    logs.info(f"{_spaces}{_dri_msg}STEP #6 -- OnApp: Copy drivers and scripts --", header=True)
 
     # FILES TO COPY SHOULD BE LOCATED IN PROJECT FOLDER
     cloudbase_init = os.path.join(os.getcwd(), "CloudbaseInitSetup_Stable_x64.msi")
@@ -135,33 +65,26 @@ def vm_install_win_drivers_offline(idn='', vhip='', verb=''):
     logs.info('File path: {}'.format(cloudbase_init))
     logs.info('File path: {}'.format(vz_guest_tools))
 
-    CMD = "scp -r  {path}  root@{hv_ip}:/mnt/prepare_win/vz-guest-tools-win.tar".format(
-        path=vz_guest_tools, hv_ip=VM_OHV_IP)
-    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
+    CMD = f"scp -r {vz_guest_tools} root@{_vm_hv_ip}:/mnt/prepare_win/vz-guest-tools-win.tar"
+    (rc, ou) = ssh_run(CMD)
     if rc != 0:
-        logs.info(Bcolors.FAIL + "Something went wrong. Couldn't transfer vz-guest-tools-win into VM \n" + Bcolors.ENDC)
+        logs.error(f"Something went wrong. Couldn't transfer vz-guest-tools-win into VM \n")
 
-    CMD = "scp -r  {path}  root@{hv_ip}:/mnt/prepare_win/CloudbaseInitSetup_Stable_x64.msi".format(
-        path=cloudbase_init, hv_ip=VM_OHV_IP)
-    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
+    CMD = f"scp -r {cloudbase_init}  root@{_vm_hv_ip}:/mnt/prepare_win/CloudbaseInitSetup_Stable_x64.msi"
+    (rc, ou) = ssh_run(CMD)
     if rc != 0:
-        logs.info(Bcolors.FAIL + "Something went wrong. Couldn't transfer CloudbaseInitSetup into VM \n" + Bcolors.ENDC)
+        logs.error(f"Something went wrong. Couldn't transfer CloudbaseInitSetup into VM \n")
 
-    CMD = "scp -r  scripts/onapp.bat  root@{hv_ip}:/mnt/prepare_win/onapp.bat".format(hv_ip=VM_OHV_IP)
-    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
+    CMD = f"scp -r scripts/onapp.bat root@{_vm_hv_ip}:/mnt/prepare_win/onapp.bat"
+    (rc, ou) = ssh_run(CMD)
     if rc != 0:
-        logs.info(Bcolors.FAIL + "Something went wrong. Couldn't transfer onapp.bat into VM \n" + Bcolors.ENDC)
+        logs.error(f"Something went wrong. Couldn't transfer onapp.bat into VM \n")
 
-    # --step_8--#
-    # --OnApp: Run kpartx and mount disk --#
-    NOTE = """ -- Run unmount and del partition devmappings -- """
-
-    CMD = "ssh root@{hv_ip} 'umount {primary_disk_partition} '".format(hv_ip=VM_OHV_IP,
-                                                                       primary_disk_partition=ONAPPVM_DISK_PARTITION)
-    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
-    CMD = "ssh root@{hv_ip} 'kpartx -d -p X {primary_disk}'".format(hv_ip=VM_OHV_IP,
-                                                                    primary_disk=ONAPPVM_PRIMARY_DISK[0]['path'])
-    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
+    # -- STEP 7 --
+    logs.info(f"{_spaces}{_dri_msg}STEP #7 -- OnApp: Run unmount and del partition devmappings --", header=True)
+    _hv_ssh.execute(f"umount {ONAPPVM_DISK_PARTITION}")
+    _hv_ssh.execute(f"kpartx -d -p X {_onappvm_primary_disk}")
+    return True
 
 
 @click.group(cls=DefaultGroup, default='driversoffline', invoke_without_command=True, default_if_no_args=True)
@@ -171,11 +94,8 @@ def cli():
 
 @click.command()
 @click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-@click.option('--vhip', '--vhi-ip', '--vhi-hypervisor-ip', default='', help="VHI destination HV IP address.")
-@click.option('--verb', '-v', '--v', '--verbosity', default='', help="Verbosity level of values between 0 and 8")
-# click.argument('name',default='') - not used
-def driversoffline(idn='', vhip='', verb=''):
-    vm_install_win_drivers_offline(idn, vhip, verb)
+def driversoffline(idn=''):
+    vm_install_win_drivers_offline(idn=idn)
 
 
 cli.add_command(driversoffline)

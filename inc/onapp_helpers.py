@@ -1,344 +1,286 @@
-import json
-from collections import defaultdict
-import requests
-from cfg.o2v_config import OnAppAPICredentials, Helper
+from inc.rest_client import OnAppRequests
 import xml.etree.ElementTree as KVMxml
-from functions import run_command
+from inc.helper import Helper
+from cfg.config_parser import ONAPP_CREDS, VHI_CREDS, VINFRA_AUTH
+from inc.ssh_connector import ssh_run, SSH
 from inc.logger import logs
-from utils import parse_matrix
+from inc.utils import parse_matrix
 from collections import namedtuple
+from typing import List, Dict
+from inc.vinfra_wrapper import VinfraSecurityGroups, VinfraSGRules, VinfraProject, VinfraServerInterface, VinfraServer
+import copy
+import json
+import re
+
+_spaces = Helper.SPACES.value
+onapp_requests = OnAppRequests()
 
 
-AUTH = (OnAppAPICredentials.ONAPP_USER_EMAIL.value, OnAppAPICredentials.ONAPP_USER_APIKEY.value)
+class Bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARN = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 
-######################
-##-----FUNCTION-------##
-##---list_onapp_vms---##
-######################
-def list_onapp_vms(vals='',by='',url='',verbosity=8):
-    _default_jqexp = ('[ .virtual_machine.id , .virtual_machine.label, .virtual_machine.identifier ,'
-                      ' .virtual_machine.template_label , .virtual_machine.booted, .virtual_machine.user_id ]')
-    URL = OnAppAPICredentials.ONAPP_CP_URL.value + '/virtual_machines.json'
-    if verbosity > 7:
-        verbosity = 7
+FirewallRules = namedtuple('FirewallRules', 'id position nic_id address command port protocol '
+                                            ' comment source_port destination_ip protocol_type')
+NIC = namedtuple('NIC', 'id vm_id label nic_idn is_primary mac network_join '
+                        'default_firewall_rule is_connected ip_addr')
+ComputeZone = namedtuple('ComputeZone', 'name cpu ram')
+DataStoreZone = namedtuple('DataStoreZone', 'name storage_policy')
 
-    if not vals and not by:
-        jqexp = "jq -c '.[] | {}'".format(_default_jqexp)
-    elif not vals and by:
-        by_arg = by.split("=")[0]
-        by_val = by.split("=")[1]
-        if by_val.isdigit():
-            jqexp = "jq -c '.[] | select(.virtual_machine.{by_a}=={by_v}) | {jqpex}'".format(by_a=by_arg,
-                                                                                             by_v=by_val,
-                                                                                             jqpex=_default_jqexp)
-        elif by_val in ('true', 'false'):
-            jqexp = "jq -c '.[] | select(.virtual_machine.{by_a}=={by_v}) | {jqpex}'".format(by_a=by_arg,
-                                                                                             by_v=by_val,
-                                                                                             jqpex=_default_jqexp)
-        else:
-            jqexp = "jq -c '.[] | select(.virtual_machine.{by_a}==\"{by_v}\") | {jqpex}'".format(by_a=by_arg,
-                                                                                                 by_v=by_val,
-                                                                                                 jqpex=_default_jqexp)
-    elif vals and by:
-        by_arg = by.split("=")[0]
-        by_val = by.split("=")[1]
-        vals_list = [".virtual_machine.{}".format(x) for x in vals.split(",")]
-        if len(vals_list) == 1:
-            vals_list = vals_list[0]
-        vals_str = str(vals_list).replace("'", '')
-        if by_val.isdigit():
-            jqexp = "jq -c '.[] | select(.virtual_machine.{by_a}=={by_v}) | {jqpex}'".format(by_a=by_arg,
-                                                                                             by_v=by_val,
-                                                                                             jqpex=vals_str)
-        elif not by_val.isdigit():
-            jqexp = "jq -c '.[] | select(.virtual_machine.{by_a}==\"{by_v}\") | {jqpex}'".format(by_a=by_arg,
-                                                                                                 by_v=by_val,
-                                                                                                 jqpex=vals_str)
+
+def _find_by(find: str, obj: dict):
+    """
+    Find some object in the list
+    :param find: str - "user_name=AQA Roman Holovko"
+    :param obj: {'1': 1}
+    :return:
+    """
+    by_arg = find.split("=")[0]
+    by_val = find.split("=")[1]
+    if by_arg in ('ip_addresses', 'ip_address', 'ip'):
+        if not obj['ip_addresses']:
+            return False
+
+        if obj['ip_addresses'][0]['ip_address']['address'] == by_val:
+            return True
+
+    if by_arg in ('roles', 'role'):
+        if obj['roles'][0]['role']['label'] == by_val:
+            return True
+
+    try:
+        if str(obj[by_arg]) != by_val:
+            return False
+
+    except KeyError:
+        return False
+
+    return True
+
+
+def _create_obj_list(obj_list: list, obj_name: str, default_props: list, find=''):
+    """
+    Create List of specified object to display info in the table
+    :param obj_list: [{'1': 1}, {'2': 1}, {'3': 1}]
+    :param obj_name: "virtual_machine", "user"
+    :param default_props: ['id', 'label', . . .]
+    :param find: str - "user_name=AQA Roman Holovko"
+    :return:
+    """
+    new_list = []
+    for _one_obj in obj_list:
+        _obj_dict = _one_obj[obj_name]
+        _one_vm = []
+        if find:
+            if not _find_by(find, _obj_dict):
+                continue
+
+        for value in default_props:
+            if value in ('ip_addresses', 'ip_address', 'ip'):
+                if not _obj_dict['ip_addresses']:
+                    _one_vm.append(str('NO_IP_ADDRESS'))
+                    continue
+
+                _one_vm.append(str(_obj_dict['ip_addresses'][0]['ip_address']['address']))
+                continue
+
+            if value in ('roles', 'role'):
+                _one_vm.append(str(_obj_dict['roles'][0]['role']['label']))
+                continue
+
+            _one_vm.append(str(_obj_dict[value]))
+        new_list.append(_one_vm)
+    return new_list
+
+
+def list_onapp_vms(props='', find=''):
+    """
+    Get all virtual machines from OnApp Control Panel and show them in the terminal
+    :param props: --props=identifier,hostname,memory,cpus,user_id,template_label,total_disk_size
+    :param find: --find="identifier=lidqtfwggohyzk"
+    :return:
+    """
+    default_props = ['id', 'label', 'ip_address', 'identifier', 'template_label', 'booted', 'user_id']
+    if props:
+        _additional_vals = props.split(",")
+        default_props = default_props + [_val for _val in _additional_vals if _val not in default_props]
+    _virtual_machines = onapp_requests.get('virtual_machines')
+    if _virtual_machines:
+        vm_list = _create_obj_list(obj_list=_virtual_machines,
+                                   obj_name='virtual_machine',
+                                   default_props=default_props,
+                                   find=find)
+        if not vm_list:
+            logs.error("No Virtual Servers found.")
+            return
+
+        logs.info(f'{_spaces} -- LIST ONAPP VIRTUAL MACHINES --')
+        vms = parse_matrix(default_props, vm_list)
+        logs.info(f"\n{vms}")
     else:
-        vals_list = [".virtual_machine.{}".format(x) for x in vals.split(",")]
-        vals_str = str(vals_list).replace("'", '')
-        if len(vals_list) == 1:
-            vals_list = vals_list[0]
-            vals_str = str(vals_list).replace("'", '')
-        jqexp = "jq -c '.[] | {vls}'".format(vls=vals_str)
-
-    logs.info('{} -- LIST ONAPP VIRTUAL MACHINES --'.format(Helper.SPACES.value))
-    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {res_url}".format(user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value, res_url=URL) + " | {jqex}".format(jqex=jqexp)
-    (rc, ou) = run_command(CMD, verbosity, 0, '')
-    default_vals = ['id', 'label', 'identifier', 'template_label', 'booted', 'user_id']
-    if vals:
-        default_vals = vals.split(",")
-    vm_list = [a.replace('[', '').replace(']', '').replace('\"', '').split(',') for a in ou.splitlines()]
-    vms = parse_matrix(default_vals, vm_list)
-    logs.info("\n{}".format(vms))
-    return rc, ou.decode('ascii')
+        logs.error("No Virtual Servers found.")
 
 
-######################
-##-----FUNCTION-------##
-##---list_onapp_users---##
-######################
-def list_onapp_users(vals='',by='',url='',verbosity=8):
+def list_onapp_users(props='', find=''):
+    """
+    Get all users from OnApp Control Panel and show them in the terminal
+    :param props: --props=identifier,hostname,memory,cpus,user_id,template_label,total_disk_size
+    :param find: --find="identifier=lidqtfwggohyzk"
+    :return:
+    """
+    default_props = ['first_name', 'last_name', 'login', 'email', 'roles', 'id']
+    if props:
+        _additional_vals = props.split(",")
+        default_props = default_props + [_val for _val in _additional_vals if _val not in default_props]
+    _users = onapp_requests.get('users')
+    if _users:
+        user_list = _create_obj_list(obj_list=_users,
+                                     obj_name='user',
+                                     default_props=default_props,
+                                     find=find)
+        logs.info(f'{_spaces} -- LIST ONAPP USERS --')
+        if not user_list:
+            logs.error("No Users found.")
+            return
 
-    URL = OnAppAPICredentials.ONAPP_CP_URL.value + '/users.json'
-
-    _default_jqexp = '[ .user.id, .user.email, .user.login, .user.roles[0].role.label ]'
-    if verbosity > 7:
-        verbosity = 7
-
-    if vals == "" and by == "":
-        jqexp = "jq -c '.[] | {}'".format(_default_jqexp)
-    elif vals == "" and by != "":
-        by_arg=by.split("=")[0]
-        by_val=by.split("=")[1]
-        if by_val.isdigit():
-            jqexp = "jq -c '.[] | select(.user.{by_a}=={by_v}) | {jqpex}'".format(by_a=by_arg,
-                                                                                  by_v=by_val,
-                                                                                  jqpex=_default_jqexp)
-        elif not by_val.isdigit():
-            jqexp = "jq -c '.[] | select(.user.{by_a}==\"{by_v}\") | {jqpex}'".format(by_a=by_arg,
-                                                                                      by_v=by_val,
-                                                                                      jqpex=_default_jqexp)
-    elif vals != "" and by != "":
-        by_arg=by.split("=")[0]
-        by_val=by.split("=")[1]
-        if 'roles' in vals:
-            vals = vals.replace('roles', 'roles[0].role.label')
-        vals_list = [".user.{}".format(x) for x in vals.split(",")]
-        if len(vals_list) == 1:
-            vals_list = vals_list[0]
-        vals_str = str( vals_list ).replace("'",'')
-        if by_val.isdigit():
-            jqexp = "jq -c '.[] | select(.user.{by_a}=={by_v}) | {jqpex}'".format(by_a=by_arg,
-                                                                                  by_v=by_val,
-                                                                                  jqpex=vals_str)
-        elif not by_val.isdigit():
-            jqexp = "jq -c '.[] | select(.user.{by_a}==\"{by_v}\") | {jqpex}'".format(by_a=by_arg,
-                                                                                      by_v=by_val,
-                                                                                      jqpex=vals_str)
+        users = parse_matrix(default_props, user_list)
+        logs.info(f"\n{users}")
     else:
-        if 'roles' in vals:
-            vals = vals.replace('roles', 'roles[0].role.label')
-        vals_list = [".user.{}".format(x) for x in vals.split(",")]
-        if len(vals_list) == 1:
-            vals_list = vals_list[0]
-        vals_str = str(vals_list).replace("'", '')
-        jqexp = "jq -c '.[] | {vls}'".format(vls=vals_str)
-
-    logs.info('{} -- LIST ONAPP USERS --'.format(Helper.SPACES.value))
-    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {res_url}".format(user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value, res_url=URL) + " | {jqex}".format(jqex=jqexp)
-    (rc, ou) = run_command(CMD, verbosity, 0, '')
-    default_vals = ['id', 'email', 'login', 'roles']
-    if vals:
-        default_vals = vals.split(",")
-        if 'roles[0].role.label' in default_vals:
-            default_vals[default_vals.index('roles[0].role.label')] = 'roles'
-    user_list = [a.replace('[', '').replace(']', '').replace('\"', '').split(',') for a in ou.splitlines()]
-    users = parse_matrix(default_vals, user_list)
-    logs.info("\n{}".format(users))
-    return rc, ou.decode('ascii')
+        logs.error("No Users found.")
 
 
-######################
-##----- FUNCTION ------##
-##-get_onapp_vm_nics---##
-######################
-def get_onapp_vm_nics(vm_idn='',verbosity=8):
+def get_onapp_vm_nics(vm_idn: str) -> List[Dict]:
+    """
+    Get OnApp NIC's info
+    :param vm_idn:
+    :return:
+    """
+    nic_res = onapp_requests.get(f'virtual_machines/{vm_idn}/network_interfaces')
+    _onapp_nics = [{'id': _ni['network_interface']['id'],
+                    'mac': _ni['network_interface']['mac_address'],
+                    'primary': _ni['network_interface']['primary']} for _ni in nic_res]
+    ip_addresses = onapp_requests.get(f'virtual_machines/{vm_idn}/ip_addresses')
+    for _vm_mac in _onapp_nics:
+        _vm_mac.update({'ips': []})
+        for line in ip_addresses:
+            _ip_addr = line['ip_address_join']
+            if _vm_mac['id'] != _ip_addr['network_interface_id']:
+                continue
 
-    VM_IDn = vm_idn
-
-    #--OnApp: get source VM NICs' MACs info --#
-
-    NOTE = """ -- OnApp: get VM's MACS -- """
-
-    URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/virtual_machines/{}/network_interfaces.json".format(VM_IDn)
-    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | [ .network_interface[\"id\"],.network_interface[\"mac_address\"],.network_interface[\"primary\"] ] '".format(user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value, full_url=URL )
-    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
-    API_VM_MACS = []
-    for line in ou.splitlines():
-        nic = json.loads(line)
-        API_VM_MACS.append( { 'id': nic[0], 'mac': nic[1].encode('ascii'),'primary': nic[2] } )
-
-    NOTE = """ -- OnApp: get VM's IP addresses -- """
-
-    URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/virtual_machines/{}/ip_addresses.json".format(VM_IDn)
-    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | [ .ip_address_join[\"network_interface_id\"],.ip_address_join[\"ip_address\"][\"address\"] ] '".format(user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value, full_url=URL )
-    (rc,ou) = run_command(CMD,verbosity,0,NOTE)
-    API_VM_IPS = defaultdict( lambda: [] )
-    for line in ou.splitlines():
-        nic = json.loads(line)
-        if nic[0] in API_VM_IPS.keys():
-            API_VM_IPS[ nic[0] ].append( nic[1].encode('ascii') )
-        else:
-            API_VM_IPS[ nic[0] ] = [ nic[1].encode('ascii') ]
-
-    API_VM_NICS = []
-
-    for idx, mac in enumerate(API_VM_MACS):
-        nic_id = API_VM_MACS[idx]['id']
-        API_VM_NICS.append({'id': nic_id, 'number': idx, 'mac': API_VM_MACS[idx]['mac'], 'ips': API_VM_IPS[nic_id],
-                            'primary': API_VM_MACS[idx]['primary']})
-
-    return API_VM_NICS
+            _vm_mac['ips'].append(_ip_addr['ip_address']['address'])
+    logs.info(f'OnApp VM "{vm_idn}" NICs:')
+    [logs.info(f"{nic}") for nic in _onapp_nics]
+    return _onapp_nics
 
 
-def get_onapp_vm_disks(vm_idn):
+def get_onapp_vm_disks(vm_idn: str, primary=False):
     """
     Get Virtual Machine disks and specify Data Stores
-    :param vm_idn: str
+    :param vm_idn: str - "lidqtfwggohyzk"
+    :param primary: bool - whether we need just primary disk
     :return:
     """
     api_ds = {}
     api_vm_disks = []
-    _cp_url = OnAppAPICredentials.ONAPP_CP_URL.value
-    _data_store_url = "{cp}/settings/data_stores.json".format(cp=_cp_url)
-    _disks_url = "{cp}/virtual_machines/{idn}/disks.json".format(cp=_cp_url, idn=vm_idn)
-    logs.info('GET {}'.format(_data_store_url), separator=True)
-    data_stores_response = requests.get(_data_store_url, auth=AUTH)
-    logs.info('Response [{}]: {}'.format(data_stores_response.status_code, data_stores_response.json()))
-    for d_store in data_stores_response.json():
+    data_stores_response = onapp_requests.get("settings/data_stores")
+    for d_store in data_stores_response:
         _ds = d_store['data_store']
         api_ds[_ds['id']] = {'id': _ds['identifier'], 'type': _ds['data_store_type']}
 
-    logs.info("ONAPP_DATASTORES: {}".format(api_ds), separator=True)
-    logs.info(" -- OnApp: get VM's disks by ID={identifier} -- ".format(identifier=vm_idn), separator=True)
-    logs.info('GET {}'.format(_disks_url), separator=True)
-    disks_response = requests.get(_disks_url, auth=AUTH)
-    logs.info('Response [{}]: {}'.format(disks_response.status_code, disks_response.json()))
-    for _disk in disks_response.json():
-        disk = _disk['disk']
-        ds = api_ds[disk['data_store_id']]
-        api_vm_disks.append({'datastore_idn': ds['id'],
-                             'number': disk['disk_vm_number'],
-                             'is_swap': disk['is_swap'],
-                             'primary': disk['primary'],
-                             'path': '/dev/{}/{}'.format(ds['id'], disk['identifier']),
-                             'ds_id': disk['id'],
-                             'disk_idn': disk['identifier'],
-                             'size': disk['disk_size'],
-                             'datastore_type': ds['type']})
-    logs.info("OnApp_VM_DISKS:")
-    for disk_data in api_vm_disks:
-        logs.info("{}".format(disk_data))
+    logs.info(f"ONAPP DATASTORES:\n{api_ds}")
+    disks_response = onapp_requests.get(f"virtual_machines/{vm_idn}/disks")
+    if disks_response:
+        for _disk in disks_response:
+            disk = _disk['disk']
+            ds = api_ds[disk['data_store_id']]
+            if primary and disk['primary']:
+                return f'/dev/{ds["id"]}/{disk["identifier"]}'
+
+            api_vm_disks.append({'datastore_idn': ds['id'],
+                                 'number': disk['disk_vm_number'],
+                                 'is_swap': disk['is_swap'],
+                                 'primary': disk['primary'],
+                                 'path': f'/dev/{ds["id"]}/{disk["identifier"]}',
+                                 'ds_id': disk['id'],
+                                 'disk_idn': disk['identifier'],
+                                 'size': disk['disk_size'],
+                                 'datastore_type': ds['type']})
+    logs.info(f'OnApp VM "{vm_idn}" DISKS:')
+    [logs.info(f'{disk_data}') for disk_data in api_vm_disks]
     return api_vm_disks
 
 
-#########################
-##------- FUNCTION -------##
-##---get_onapp_vm_primary_disk---##
-##########################
-def get_onapp_vm_primary_disk(vm_idn='', verbosity=8):
-    VM_IDn = vm_idn
-    # --OnApp: get source VM data_stores --#
-    URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/settings/data_stores.json"
-    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | [ .data_store.id , .data_store.identifier ] '".format(user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value, full_url=URL)
-    (rc, ou) = run_command(CMD, verbosity, 0)
-    api_ds = {}
-    for line in ou.splitlines():
-        ds = json.loads(line)
-        api_ds[ds[0]] = ds[1].encode('ascii')
-    logs.info("ONAPP_DATASTORES: \n" + str(api_ds))
-    # --OnApp: get source VM disks --#
-    NOTE = """ -- OnApp: get VM's disks by {identifier} -- """
-    URL = OnAppAPICredentials.ONAPP_CP_URL.value + "/virtual_machines/{}/disks.json".format(VM_IDn)
-    CMD = "curl -k -s -X GET -H 'Accept: application/json' -H 'Content-type: application/json' -u {user_email}:{user_apikey} {full_url} | jq -c '.[] | select(.disk.primary==true) | [ .disk.identifier,.disk.data_store_id ] '".format(user_email=OnAppAPICredentials.ONAPP_USER_EMAIL.value, user_apikey=OnAppAPICredentials.ONAPP_USER_APIKEY.value, full_url=URL )
-    (rc, ou) = run_command(CMD, verbosity, 0, NOTE)
-    api_vm_primary_disk = []
-    for line in ou.splitlines():
-        dsk = json.loads(line)
-        api_vm_primary_disk.append({'path': "/dev/"+str(api_ds[dsk[1]])+"/"+str(dsk[0])})
-
-    return api_vm_primary_disk
-
-
-def get_onapp_vm_flavor(vm_identifier):
+def get_onapp_vm_flavor(vm_idn: str):
     """
     Get ram, cpu, data store
-    :param vm_identifier: "lidqtfwggohyzk"
+    :param vm_idn: "lidqtfwggohyzk"
     :return:
     """
-    _url = '{}/virtual_machines/{}.json'.format(OnAppAPICredentials.ONAPP_CP_URL.value, vm_identifier)
-    logs.info('GET {}'.format(_url), separator=True)
-    response = requests.get(_url, auth=AUTH)
-    logs.info('Response [{}]: {}'.format(response.status_code, response.json()))
-    vm_props = response.json()['virtual_machine']
+    response = onapp_requests.get(f'virtual_machines/{vm_idn}')
+    vm_props = response['virtual_machine']
     return {'vcpus': vm_props['cpus'],
             'ram': vm_props['memory'],
-            'name': 'onapp_flavor_{}_{}'.format(vm_props['cpus'], vm_props['memory'])}
+            'name': f"flavor_{vm_props['cpus']}_{vm_props['memory']}"}
 
 
-def _get_onapp_bucket_access_controls(bucket_id):
+def _get_onapp_bucket_access_controls(bucket_id: str):
     """
         Get access controls from the users bucket
         :param bucket_id: "1", "1000"
         :return: json of access controls
     """
-    _url = '{url}/billing/buckets/{bucket_id}/access_controls.json'.format(
-        url=OnAppAPICredentials.ONAPP_CP_URL.value, bucket_id=bucket_id)
-    logs.info("{}-- OnApp: Get User Bucket Access Controls --   ".format(Helper.SPACES.value), separator=True)
-    logs.info('GET {url}'.format(url=_url), separator=True)
-    response = requests.get(_url, auth=AUTH)
-    _access_controls = response.json() if response.status_code == 200 else False
-    if _access_controls:
-        logs.info('Response [{}]'.format(response.status_code))
-        return _access_controls
-    else:
-        logs.error('Response [{}]: {}'.format(response.status_code, response.content))
-        return _access_controls
+    logs.info(f"{_spaces}-- OnApp: Get User Bucket Access Controls --   ", separator=True)
+    return onapp_requests.get(f'billing/buckets/{bucket_id}/access_controls')
 
 
-def get_user_ssh_keys(user_data):
+def get_user_ssh_keys(user_data: dict) -> List:
     """
     Get user ssh keys and return them
     :param user_data: {"id": 3, "first_name": "Test1", "last_name": "Test2", . . .}
     :return: [ssh_key1, ssh_key2]
     """
-    _url = '{}/users/{}/ssh_keys.json'.format(OnAppAPICredentials.ONAPP_CP_URL.value, user_data['id'])
-    logs.info("{}-- OnApp: Get User SSH keys --  ".format(Helper.SPACES.value), separator=True)
-    logs.info('GET {url}'.format(url=_url), separator=True)
-    _ssh_keys = []
-    response = requests.get(_url, auth=AUTH)
-    for ssh_key in response.json():
-        _ssh_keys.append(ssh_key['ssh_key']['key'])
-    logs.info('Response [{}]: {}'.format(response.status_code, _ssh_keys))
+    logs.info(f"{_spaces}-- OnApp: Get User SSH keys --  ", separator=True)
+    response = onapp_requests.get(f"users/{user_data['id']}/ssh_keys")
+    _ssh_keys = [ssh_key['ssh_key']['key'] for ssh_key in response]
     return _ssh_keys
 
 
-def get_user_data(url, get_type, value_to_search=None, all_users=False):
+def get_user_data(url: str, get_type, value_to_search=None, all_users=False):
     """
     Get users data from OnApp platform
-    :param url: /users.json or /users/1.json
+    :param url: /users or /users/1
     :param get_type: ID or any value in user obj
     :param value_to_search: value based on what we will find user
     :param all_users: bool True or False
     :return:
     """
-    logs.info("{}-- OnApp: Get User information --  ".format(Helper.SPACES.value), separator=True)
-    logs.info('GET {url}'.format(url=url), separator=True)
-    response = requests.get(url, auth=AUTH)
-    if response.status_code != 200:
-        logs.error(response.content)
-        logs.error('Credentials you are using: {creds}'.format(creds=AUTH))
-        exit(1)
-
+    logs.info(f"{_spaces}-- OnApp: Get User information --  ", separator=True)
+    response = onapp_requests.get(url)
     if get_type == 'ID':
-        return response.json()['user'], response
+        return response['user']
 
     if all_users:
-        return response.json(), response
+        return response
 
-    for _user in response.json():
+    for _user in response:
         if value_to_search in list(_user['user'].values()):
-            return _user['user'], response
+            return _user['user']
 
 
-def _get_primary_vm_ip(vm):
+def _get_primary_vm_ip(vm: dict):
     for ip_address in vm['ip_addresses']:
         ip = ip_address['ip_address']
-        if not ip['primary']:
-            continue
-
+        # TODO The IP address should be used from primary interface
+        # if not ip['primary']:
+        # continue
         return ip['address']
 
 
@@ -347,15 +289,11 @@ def get_all_virtual_machines():
     Get list of all virtual machines and sort them by user ID
     :return: list of VMs
     """
-    logs.info("{}-- OnApp: Get All Virtual Machines information --  ".format(Helper.SPACES.value), separator=True)
-    _url = '{}/virtual_machines.json'.format(OnAppAPICredentials.ONAPP_CP_URL.value)
-    logs.info('GET {}'.format(_url), separator=True)
-    response = requests.get(_url, auth=AUTH)
-    logs.info('Response [{}]'.format(response.status_code))
-
+    logs.info(f"{_spaces}-- OnApp: Get All Virtual Machines information --  ", separator=True)
+    response = onapp_requests.get('virtual_machines')
     from collections import defaultdict
     vms_dict = defaultdict(list)
-    for _vm in response.json():
+    for _vm in response:
         vm = _vm['virtual_machine']
         if vm["vip"]:
             continue
@@ -363,56 +301,59 @@ def get_all_virtual_machines():
         vms_dict[vm['user_id']].append({'id': vm['identifier'],
                                         'booted': vm['booted'],
                                         'ip_addr': _get_primary_vm_ip(vm),
-                                        'operating_system': vm['operating_system']})
+                                        'operating_system': vm['operating_system'],
+                                        'hostname': vm['hostname'],
+                                        'label': vm['label']})
     return dict(vms_dict)
 
 
-def get_vm_hypervisor_ip(vm_idn):
-    logs.info("{}-- OnApp: Get VM HV IP address --".format(Helper.SPACES.value), separator=True)
-    _url = '{url}/virtual_machines/{vm_idn}.json'.format(url=OnAppAPICredentials.ONAPP_CP_URL.value,
-                                                         vm_idn=vm_idn)
-    logs.info('GET {}'.format(_url), separator=True)
-    response_1 = requests.get(_url, auth=AUTH)
-    logs.info('Response [{}]'.format(response_1.status_code))
-    _hv_id = response_1.json()['virtual_machine']['hypervisor_id']
-    logs.info('HV ID: {}'.format(_hv_id))
-    _hv_url = '{url}/settings/hypervisors/{hv_id}.json'.format(url=OnAppAPICredentials.ONAPP_CP_URL.value,
-                                                               hv_id=_hv_id)
-    logs.info('GET {}'.format(_hv_url), separator=True)
-    response_2 = requests.get(_hv_url, auth=AUTH)
-    logs.info('Response [{}]'.format(response_2.status_code))
-    return response_2.json()['hypervisor']['ip_address']
+def get_vm_source_properties(vm_idn: str) -> Dict:
+    """
+    Get Virtual Machine HV IP address
+    :param vm_idn:
+    :return:
+    """
+    vm_properties = onapp_requests.get(f'virtual_machines/{vm_idn}')['virtual_machine']
+    _vm_hv_id = vm_properties['hypervisor_id']
+    _vm_os = vm_properties['operating_system']
+    _hot_migrate = vm_properties['allowed_hot_migrate']
+    _vm_hostname = vm_properties['hostname']
+    _hv_props = onapp_requests.get(f'settings/hypervisors/{_vm_hv_id}')
+    _vm_hv_ip = _hv_props['hypervisor']['ip_address']
+    _vm_nics = onapp_requests.get(f'virtual_machines/{vm_idn}/ip_addresses')
+    _vm_ip_addr = [nic['ip_address_join']['ip_address']['address'] for nic in _vm_nics
+                   if nic['ip_address_join']['ip_address']][0]
+    logs.info(f"-- Hypervisor ID: {_vm_hv_id} | Hypervisor IP ADDRESS: {_vm_hv_ip} | VM IP ADDRESS {_vm_ip_addr}")
+    return {'hv_ip': _vm_hv_ip, 'vm_os': _vm_os, 'vm_ip_addr': _vm_ip_addr,
+            'hot_migrate': _hot_migrate, 'hostname': _vm_hostname}
 
 
-def get_bucket_limits(bucket_id):
+def get_bucket_limits(bucket_id: str) -> dict:
     """
         Get Compute Zone and Data Store Zone limitations from the specific bucket
         :param bucket_id: "1", "1000"
         :return: peaks of the limits
     """
-
     compute_zones_in_bucket, datastore_zones_in_bucket = [], []
-    ComputeZone = namedtuple('ComputeZone', 'name cpu ram')
-    DataStoreZone = namedtuple('DataStoreZone', 'name storage_policy')
-    access_controls = _get_onapp_bucket_access_controls("{}".format(bucket_id))
+    access_controls = _get_onapp_bucket_access_controls(f'{bucket_id}')
 
-    for _ in access_controls:
-        if _['access_control']['type'] == 'compute_zone_resource' \
-                and _['access_control']['server_type'] == 'virtual':
+    for ac in access_controls:
+        if ac['access_control']['type'] == 'compute_zone_resource' \
+                and ac['access_control']['server_type'] == 'virtual':
             # float("inf") represents infinity
-            ram_quota = float("inf") if _['access_control']['limits']['limit_memory'] is None\
-                else int(_['access_control']['limits']['limit_memory'])
-            cpu_quota = float("inf") if _['access_control']['limits']['limit_cpu'] is None\
-                else int(_['access_control']['limits']['limit_cpu'])
+            ram_quota = float("inf") if ac['access_control']['limits']['limit_memory'] is None \
+                else int(ac['access_control']['limits']['limit_memory'])
+            cpu_quota = float("inf") if ac['access_control']['limits']['limit_cpu'] is None \
+                else int(ac['access_control']['limits']['limit_cpu'])
 
-            compute_zones_in_bucket.append(ComputeZone(name=_['access_control']['target_name'],
+            compute_zones_in_bucket.append(ComputeZone(name=ac['access_control']['target_name'],
                                                        cpu=cpu_quota,
                                                        ram=ram_quota))
-        elif _['access_control']['type'] == 'data_store_zone_resource':
+        elif ac['access_control']['type'] == 'data_store_zone_resource':
             # float("inf") represents infinity
-            quota = float("inf") if _['access_control']['limits']['limit'] is None \
-                else int(_['access_control']['limits']['limit'])
-            datastore_zones_in_bucket.append(DataStoreZone(name=_['access_control']['target_name'],
+            quota = float("inf") if ac['access_control']['limits']['limit'] is None \
+                else int(ac['access_control']['limits']['limit'])
+            datastore_zones_in_bucket.append(DataStoreZone(name=ac['access_control']['target_name'],
                                                            storage_policy=quota))
         else:
             continue
@@ -426,7 +367,76 @@ def get_bucket_limits(bucket_id):
             "storage": -1 if max_storage_policy == float("inf") else max_storage_policy * (1024 ** 3)}
 
 
-def check_user_role(user_data):
+def _get_onapp_nics_per_vm(vm_idn: str) -> List[NIC]:
+    """
+    Returns list of NICs per Virtual Server
+    """
+    logs.info(f'{_spaces}-- OnApp: Get OnApp VM NICs  --')
+    response = onapp_requests.get(f'virtual_machines/{vm_idn}/network_interfaces')
+
+    nics = [NIC(id=nic['network_interface']['id'],
+                vm_id=nic['network_interface']['virtual_machine_id'],
+                label=nic['network_interface']['label'],
+                nic_idn=nic['network_interface']['identifier'],
+                is_primary=nic['network_interface']['primary'],
+                mac=nic['network_interface']['mac_address'],
+                network_join=nic['network_interface']['network_join_id'],
+                default_firewall_rule=nic['network_interface']['default_firewall_rule'],
+                is_connected=nic['network_interface']['connected'],
+                ip_addr=_get_nic_ip_address(vm_idn=vm_idn, network_interface_id=nic['network_interface']['id']))
+            for nic in response]
+    return [] if not nics else nics
+
+
+def _get_nic_ip_address(vm_idn: str, network_interface_id: str) -> str:
+    """
+    Return the IP address for the specified NIC.
+    """
+    logs.info(f'{_spaces}-- OnApp: Get OnApp VM NIC IP address  --')
+    response = onapp_requests.get(f'virtual_machines/{vm_idn}/ip_addresses')
+    for nic in response:
+        if nic['ip_address_join']['network_interface_id'] == network_interface_id:
+            return nic['ip_address_join']['ip_address']['address']
+
+
+def get_vm_firewall_rules(vm_idn: str) -> List[FirewallRules]:
+    """
+    Returns list of all firewall rules for all NICs
+    """
+    logs.info(f'{_spaces}-- OnApp: Get OnApp VM Firewall Rules  --')
+    response = onapp_requests.get(f'virtual_machines/{vm_idn}/firewall_rules')
+    firewall_rules = [FirewallRules(id=fr['firewall_rule']['id'],
+                                    position=fr['firewall_rule']['position'],
+                                    address=fr['firewall_rule']['address'],
+                                    command=fr['firewall_rule']['command'],
+                                    port=fr['firewall_rule']['port'],
+                                    protocol=fr['firewall_rule']['protocol'],
+                                    nic_id=fr['firewall_rule']['network_interface_id'],
+                                    comment=fr['firewall_rule']['comment'],
+                                    source_port=fr['firewall_rule']['source_port'],
+                                    destination_ip=fr['firewall_rule']['destination_ip'],
+                                    protocol_type=fr['firewall_rule']['protocol_type'])
+                      for fr in response]
+    return [] if not firewall_rules else firewall_rules
+
+
+def get_primary_nic(vm_idn: str) -> NIC:
+    """
+    Returns primary NIC, otherwise, this functions returns None
+    """
+    for nic in _get_onapp_nics_per_vm(vm_idn):
+        if nic.is_primary:
+            return nic
+
+
+def get_firewall_rules_for_specific_nic(nic: NIC, rules: List[FirewallRules]) -> List[FirewallRules]:
+    """
+    Returns firewall rules for specific NIC
+    """
+    return [rule for rule in rules if rule.nic_id == nic.id]
+
+
+def check_user_role(user_data: dict) -> str:
     """
     Check whether user has admin role or not
     :param user_data:
@@ -440,6 +450,117 @@ def check_user_role(user_data):
         else:
             admin_role = False
     return admin_role
+
+
+def transfer_firewall_rules_to_sg(vm_idn: str, vhiproj: str, drop: str = "DROP", accept: str = "ACCEPT"):
+    """
+    Transfer firewall rules to the VHI side from OnApp
+    :param vm_idn: "843yjosames"
+    :param vhiproj: "5ae5cee8-677e-4ed6-b1cb-b9e9bb4c36f7"
+    :param drop: "DROP"
+    :param accept: "ACCEPT"
+    :return:
+    """
+    sgr_data = {"ethertype": "IPv4"}  # VHI only supports IPv4, so this variable hardcoded
+    sg = VinfraSecurityGroups()
+    sgr = VinfraSGRules()
+    proj = VinfraProject()
+
+    primary_nic = get_primary_nic(vm_idn=vm_idn)
+    if not primary_nic:
+        logs.warn("Primary network interface not found!")
+        return False
+
+    firewall_rules_for_vm = get_vm_firewall_rules(vm_idn=vm_idn)
+    firewall_rules_for_primary_nic = get_firewall_rules_for_specific_nic(nic=primary_nic, rules=firewall_rules_for_vm)
+    security_group_name = f'sg_from_vs_{vm_idn}_and_nic_{primary_nic.nic_idn}'
+    _, output = proj.show(domain=VHI_CREDS['vinfra_domain'], project_name=vhiproj)
+    proj_id = json.loads(output)['id']
+    _, sg_list = sg.list(**{'project': proj_id})
+    sg_list = json.loads(sg_list)
+    if not firewall_rules_for_primary_nic:
+        logs.debug(msg=f'No rules for transfer!')
+        for sg in sg_list:
+            if sg['name'] == 'default':
+                # return only default security group ID
+                return sg['id']
+
+    # Verify whether SC exists on VHI side
+    if len(sg_list) > 1:
+        for _sg_obj in sg_list:
+            if security_group_name != _sg_obj['name']:
+                continue
+
+            logs.warn(f'Security Group exists on VHI side NAME: {_sg_obj["name"]}| ID: {_sg_obj["id"]}')
+            return _sg_obj['id']
+
+    # Create new SG
+    _description = f'Security group created from the VS: {vm_idn} with primary NIC: {primary_nic.nic_idn}'
+    _cmd_create_sg = (f"{VINFRA_AUTH} --vinfra-project='{vhiproj}' service compute security-group create"
+                      f" {security_group_name} --description '{_description}'")
+    _, sg_create = sg.execute(_cmd_create_sg)
+    sg_create = json.loads(sg_create)
+    sg_name = sg_create.get('name', '')
+    _, output = sg.list(**{'name': f"{sg_name}"})
+    output = json.loads(output)
+    if not output:
+        logs.error(msg=f"Security group hasn't been created")
+        return False
+
+    custom_sg_id = output[0]['id']
+
+    # https://virtuozzo.atlassian.net/wiki/spaces/PROD/pages/2616033301/WiP+-+Compare+OnApp+firewall+rules+with+Virtuozzo+security+groups#The-first-scenario%3A-The-default-firewall-rule-of-OnApp-VS-is-Drop
+    accept_only_rules = [rule for rule in firewall_rules_for_primary_nic if rule.command == accept]
+
+    if primary_nic.default_firewall_rule == drop and accept_only_rules:
+        for rule in accept_only_rules:
+            logs.debug(f"Rule position is: {rule.position}")
+            data = copy.deepcopy(sgr_data)
+            data["protocol"] = rule.protocol
+            data["remote-ip"] = rule.address
+            if rule.port:  # some protocols do not need to specify ports
+                data["port-range-max"] = rule.port
+                data["port-range-min"] = rule.port
+            # create the rule
+            _, output = sgr.create(sg_name=sg_name, **data)
+            output = json.loads(output)
+            if not output:
+                logs.warn(msg=f"Firewall rule: {rule} was not transferred correctly")
+
+        _, output = sg.list(**{'name': f"{sg_name}"})
+        custom_sg_id = json.loads(output)[0]['id']
+        logs.debug(f"Transferred firewall rules list: {custom_sg_id} for newly created Security group")
+        return custom_sg_id
+    else:
+        logs.debug(f'Firewall rules contains only {accept}" rules.')
+        return custom_sg_id
+
+
+# init
+vs = VinfraServer()
+vsi = VinfraServerInterface()
+
+
+def get_iface_from_specific_vs(vm_name: str) -> str:
+    """
+    Get iface from specific VS
+    """
+    _, output = vsi.list(server_name=vm_name)
+    return json.loads(output)[0]['id']
+
+
+def attach_security_group_to_nic_and_enable_spoofing(vm_name: str, iface: str, sg_id: str):
+    """
+    Attach SG to the specific NIC and enable spoofing
+    """
+    if not sg_id:
+        logs.error('*** Security Group has not been attached to NIC. Please check logs. ***')
+        return False
+
+    _, output = vsi.set(vm_name=vm_name, iface=iface, spoofing=True, **{'security-group': sg_id})
+    logs.info(iface)
+    iface = json.loads(output)
+    logs.debug(iface)
 
 
 class VmHandler:
@@ -464,12 +585,10 @@ class VmHandler:
         from ops.install_win_drivers import vm_install_win_drivers
         from ops.install_win_drivers_offline import vm_install_win_drivers_offline
         if self._booted:
-            _cmd = 'ssh -o StrictHostKeyChecking=no -o CheckHostIP=no -p 22 {user}@{ip} -t "hostname; exit;"'.format(
-                ip=self._ip_addr,
-                user=self._user)
-            (rc, ou) = run_command(_cmd, 8)
+            _cmd = (f'ssh -o StrictHostKeyChecking=no -o CheckHostIP=no -p 22'
+                    f' {self._user}@{self._ip_addr} -t "hostname; exit;"')
+            (rc, ou) = ssh_run(command=_cmd)
             if not rc:
-                logs.info('{}-- LIVE MIGRATION --'.format(Helper.SPACES.value))
                 if self._os == self.WINDOWS_OS:
                     return vm_install_win_drivers, vm_live_migrate
                 else:
@@ -477,7 +596,6 @@ class VmHandler:
             else:
                 return False, False
         else:
-            logs.info('{}-- COLD MIGRATION --'.format(Helper.SPACES.value))
             if self._os == self.WINDOWS_OS:
                 return vm_install_win_drivers_offline, vm_cold_migrate
             else:
@@ -485,60 +603,61 @@ class VmHandler:
 
 
 class GenerateXmlConfig:
+    RECOVERY_TEMPLATE = 'ls /onapp/tools/recovery/recovery-centos-7.*.{file} | tail -1'
 
-    RECOVERY_TEMPLATE = "ssh root@{hv_ip} 'ls /onapp/tools/recovery/recovery-centos-7.*.{file} | tail -1'"
-
-    def __init__(self, vm_idn, hv_ip):
+    def __init__(self, vm_idn: str, hv_ip: str):
+        """
+        Generates Recovery .xml file for VM
+        :param vm_idn:
+        :param hv_ip:
+        """
         self._vm_idn = vm_idn
         self._hv_ip = hv_ip
-        self._verbosity = 8
         self._kernel = 'kernel'
         self._iso = 'iso'
         self._initrd = 'initrd'
         self._recovery_mg_file = 'scripts/recovery.xml.mg'
         self._recovery_xml = 'scripts/recovery.xml'
+        self.hv_ssh = SSH(**{"host": hv_ip})
 
     def shut_down_vm(self):
         """
         Shut down VM and save original xml and remove cdrom
         :return:
         """
-        cmd_1 = "ssh root@{hv_ip} 'virsh dumpxml {vm_idn} 2>/dev/null > /tmp/{vm_idn}.xml ;" \
-                " cat /tmp/{vm_idn}.xml' 2>/dev/null".format(vm_idn=self._vm_idn, hv_ip=self._hv_ip)
-        (rc, vm_xml_cfg) = run_command(cmd_1, 1, 0)
+        cmd_1 = (f"virsh dumpxml {self._vm_idn} 2>/dev/null > /tmp/{self._vm_idn}.xml;"
+                 f" cat /tmp/{self._vm_idn}.xml' 2>/dev/null")
+        exit_status, vm_xml_cfg = self.hv_ssh.execute(command=cmd_1)
         vm_xml = KVMxml.fromstring(vm_xml_cfg)
         for device in vm_xml.findall("devices"):
             for disk in device.findall("disk"):
                 if disk.attrib['device'] == "cdrom":
                     device.remove(disk)
         xmltree = KVMxml.ElementTree(vm_xml)
-        _file = "scripts/{}.xml".format(self._vm_idn)
-        logs.info("Writing config into {}".format(_file), separator=True)
+        _file = f"scripts/{self._vm_idn}.xml"
+        logs.info(f"Writing config into {_file}", separator=True)
         xmltree.write(_file)
-        cmd_2 = "ssh root@{hv_ip} 'virsh shutdown {vm_idn}'".format(hv_ip=self._hv_ip, vm_idn=self._vm_idn)
-        (rc, ou) = run_command(cmd_2, self._verbosity, 0)
+        exit_status, vm_xml_cfg = self.hv_ssh.execute(command=f'virsh shutdown {self._vm_idn}')
         from time import sleep
         for i in range(0, 100):
-            if rc != 1:
+            if exit_status != 1:
                 break
 
             sleep(10)
-            cmd_3 = "ssh root@{hv_ip} 'virsh dominfo {vm_idn}'".format(hv_ip=self._hv_ip, vm_idn=self._vm_idn)
-            (rc, ou) = run_command(cmd_3, self._verbosity, 0)
+            exit_status, vm_xml_cfg = self.hv_ssh.execute(command=f'virsh dominfo {self._vm_idn}')
+        sleep(5)
 
-    def generate_recovery_xml_config(self, primary_disk):
+    def generate_recovery_xml_config(self, primary_disk: str):
         """
         Generate recovery config xml based on HV parameters
         Grep .iso, .kernel, .initrd files and set them into recovery file on the fly
-        :param primary_disk: string
+        :param primary_disk: "/dev/disk3s4"
         :return:
         """
-        logs.info("{}-- OnApp: Get Hypervisor Recovery Info --".format(Helper.SPACES.value), separator=True)
-        (rc, iso) = run_command(self.RECOVERY_TEMPLATE.format(hv_ip=self._hv_ip, file=self._iso), self._verbosity, 0)
-        (rc, kernel) = run_command(self.RECOVERY_TEMPLATE.format(hv_ip=self._hv_ip, file=self._kernel),
-                                   self._verbosity, 0)
-        (rc, initrd) = run_command(self.RECOVERY_TEMPLATE.format(hv_ip=self._hv_ip, file=self._initrd),
-                                   self._verbosity, 0)
+        logs.info(f"{_spaces}-- OnApp: Get Hypervisor Recovery Info --", header=True)
+        exit_status, iso = self.hv_ssh.execute(self.RECOVERY_TEMPLATE.format(file=self._iso))
+        exit_status, kernel = self.hv_ssh.execute(self.RECOVERY_TEMPLATE.format(file=self._kernel))
+        exit_status, initrd = self.hv_ssh.execute(self.RECOVERY_TEMPLATE.format(file=self._initrd))
         tree = KVMxml.parse(self._recovery_xml)
         root = tree.getroot()
         for device in root.findall("devices"):
@@ -557,7 +676,7 @@ class GenerateXmlConfig:
         tree.write(self._recovery_mg_file)
 
 
-def activate_disk(vm_idn, vm_ohv_ip, multiply_disks=False, disk=None):
+def activate_disk(vm_idn: str, vm_ohv_ip: str, multiply_disks=False, disk=None):
     """
     Activate primary disk
     :param vm_idn: 'i43oijf8sdu'
@@ -566,8 +685,8 @@ def activate_disk(vm_idn, vm_ohv_ip, multiply_disks=False, disk=None):
     :param disk: {disk: info}
     :return:
     """
-    logs.info("-- OnApp: HV activating disk --", separator=True)
-    verbosity = 8
+    logs.info(f"{_spaces}-- OnApp: HV ACTIVATING DISK --", header=True)
+    hv_ssh = SSH(**{"host": vm_ohv_ip})
     ovm_dsk = disk
     ds_type = None
     store_idn = None
@@ -582,62 +701,126 @@ def activate_disk(vm_idn, vm_ohv_ip, multiply_disks=False, disk=None):
         store_idn = ovm_dsk['datastore_idn']
         disk_idn = ovm_dsk['disk_idn']
         ds_type = ovm_dsk['datastore_type']
-    _ssh_connect = 'ssh -p {hv_port} {sshopt} root@{hv_ip}'.format(
-        hv_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value,
-        sshopt=Helper.SSH_OPTS.value,
-        hv_ip=vm_ohv_ip)
     if ds_type == 'is':
         # Here We are working on Hypervisor side Port is 22 and HV IP
-        logs.info('-- OnApp HV: get frontend UUID', separator=True)
-        hv_cmd = _ssh_connect + " 'onappstore getid'"
-        (rc, ou) = run_command(hv_cmd, verbosity, 0)
-        frontend_uuid = ou.splitlines()[1].split(' ')[1].split('=')[1]
+        logs.debug('-- OnApp HV: get frontend UUID')
+        exit_status, output = hv_ssh.execute(command='onappstore getid')
+        try:
+            frontend_uuid = re.findall('\d+', re.findall('uuid=\d+', output)[0])[0]
+        except IndexError:
+            logs.error("The UUID was not found")
+            return False
 
         # Get Disk Info
-        logs.info('-- OnApp HV: Get Disk Info', separator=True)
-        _disk_info_cmd = _ssh_connect + " 'onappstore diskinfo uuid={disk_idn}'".format(disk_idn=disk_idn)
-        (rc, ou) = run_command(_disk_info_cmd, verbosity, 0)
-        disk_status = ou.splitlines()[1].split(' ')[2].split('=')[1]
+        logs.debug('-- OnApp HV: Get Disk Info')
+        exit_status, output = hv_ssh.execute(command=f'onappstore diskinfo uuid={disk_idn}')
+        try:
+            disk_status = re.findall('\d+', re.findall('status=\d+', output)[0])[0]
+        except IndexError:
+            logs.error("The status was not found")
+            return False
 
         # If disk is offline, activate it
-        if int(disk_status) != 1:
-            _disk_info_cmd = _ssh_connect + " 'onappstore online uuid={disk_idn} frontend_uuid={fr_id}'".format(
-                disk_idn=disk_idn,
-                fr_id=frontend_uuid
-            )
-            (rc, ou) = run_command(_disk_info_cmd, verbosity, 0)
+        if not int(disk_status):
+            hv_ssh.execute(command=f'onappstore online uuid={disk_idn} frontend_uuid={frontend_uuid}')
+        return True
+
     elif ds_type == 'lvm':
-        _lvm_activate = _ssh_connect + " 'lvchange -ay /dev/{store_idn}/{disk_idn}'".format(
-            disk_idn=disk_idn,
-            store_idn=store_idn
-        )
-        (rc, ou) = run_command(_lvm_activate, 0, 0)
+        hv_ssh.execute(command=f'lvchange -ay /dev/{store_idn}/{disk_idn}')
+        return True
 
 
-def deactivate_disk(vm_idn, vm_ohv_ip):
+def deactivate_disk(vm_idn: str, vm_ohv_ip: str):
     """
     Deactivate primary disk
     :param vm_idn: 'i43oijf8sdu'
     :param vm_ohv_ip: '10.120.0.7'
     :return:
     """
-    logs.info("-- OnApp: HV deactivating disk")
-    verbosity = 8
+    hv_ssh = SSH(**{"host": vm_ohv_ip})
     _onapp_disks = get_onapp_vm_disks(vm_idn)
     ovm_dsk = [_disk for _disk in _onapp_disks if _disk['primary']][0]
     disk_idn = ovm_dsk['disk_idn']
     ds_type = ovm_dsk['datastore_type']
-    _ssh_connect = 'ssh -p {hv_port} {sshopt} root@{hv_ip}'.format(
-        hv_port=OnAppAPICredentials.ONAPP_SSH_PORT_HV.value,
-        sshopt=Helper.SSH_OPTS.value,
-        hv_ip=vm_ohv_ip)
+    _ssh_connect = f'ssh -p {ONAPP_CREDS["hv_ssh_port"]} {Helper.SSH_OPTS.value} root@{vm_ohv_ip}'
     if ds_type == 'lvm':
-        onappvm_primary_disk = get_onapp_vm_primary_disk(vm_idn, verbosity)
-        _disk_deact_cmd = _ssh_connect + ' lvchange -an {}'.format(onappvm_primary_disk[0]['path'])
-        (rc, ou) = run_command(_disk_deact_cmd, verbosity, 0)
+        onappvm_primary_disk = get_onapp_vm_disks(vm_idn=vm_idn, primary=True)
+        hv_ssh.execute(command=f'lvchange -an {onappvm_primary_disk}')
         return True
 
     elif ds_type == 'is':
-        _disk_deact_cmd = _ssh_connect + " 'onappstore offline uuid={disk_idn}'".format(disk_idn=disk_idn)
-        (rc, ou) = run_command(_disk_deact_cmd, verbosity, 0)
+        hv_ssh.execute(command=f'onappstore offline uuid={disk_idn}')
         return True
+
+
+def create_new_vhi_vm(vhi_ssh: SSH,
+                      vinfra_access: str,
+                      vm_idn: str,
+                      network: str,
+                      vhi_image: str,
+                      onapp_disks: list,
+                      flavour: str,
+                      onapp_nics: list,
+                      hostname: str):
+    """
+    Create new VM on VHI side with the same properties as at OnApp
+    Disks and Networks
+    :param vhi_ssh: object ssh connector
+    :param vinfra_access: str - vinfra properties to access
+    :param vm_idn: str "Wrv34vt6n"
+    :param network: str "public2"
+    :param vhi_image: str "linux"
+    :param onapp_disks: list [{"size": 5}, {. . .}]
+    :param flavour: str "flavor_1_128"
+    :param onapp_nics: list [{"ips": ["0.0.0.0", "1.1.1.1"], "mac": "MAC-Addr"}, {. . .}]
+    :param hostname: "virtual_server"
+    :return: str VHI VM ID: "3647dfe-ewr34v3rg4b-34tgfbvdzfjh"
+    """
+    _vhi_vm_id = ''
+    host_name = hostname.lower()
+    onappvm_pri_ips = onapp_nics[0]['ips']
+    create_cmd = (f"{vinfra_access} service compute server create vm_{host_name}_{vm_idn}"
+                  f" --description 'vm_{host_name}_{vm_idn}' {network} --volume source=image,id={vhi_image},"
+                  f"size={onapp_disks[0]['size']} --flavor {flavour} -f json | jq -r \".id\"")
+    exit_status, output = vhi_ssh.execute(command=create_cmd)
+    if 'INTERNAL SERVER ERROR' in output:
+        logs.error(f'*** SOMETHING WENT WRONG. MIGRATION FAILED DUE TO ERROR:\n{Bcolors.BOLD}{output}{Bcolors.ENDC}\n'
+                   f'Last running command:\n{Bcolors.WARN}{create_cmd}{Bcolors.ENDC}\n\n'
+                   f'{Bcolors.FAIL}Please check VHI services.{Bcolors.ENDC}')
+        return False
+
+    if not exit_status and output:
+        # ToDo - need to add verification step whether VM created successfully
+        _vhi_vm_id = output.strip("\n")
+        logs.info(f"NEW VHI VM CREATED: {VHI_CREDS['url']}/compute/servers/instances/{_vhi_vm_id}", separator=True)
+        logs.info(f"{_spaces}...STOPPING VM BEFORE MIGRATION...")
+        vhi_ssh.execute(
+            f"for ((i=1;i<=100;i++)); do {vinfra_access} service compute server stop {_vhi_vm_id} --hard --wait"
+            f" --timeout 15 -f json | jq -r -c [.name,.id,.vm_state,.power_state,.status] ;  "
+            f"pwstate=\"`vinfra service compute server show {_vhi_vm_id} -f json | jq -r .power_state `\" ; "
+            f"echo \"$pwstate\" ; if [[ \"$pwstate\" == \"SHUTDOWN\" ]];"
+            f" then break; fi ; sleep 1; done 2>/dev/null",
+            real_data=True
+        )
+    if len(onapp_disks) > 1:
+        logs.info("-- VHI: Create and Attach extra VHI VM's disks --")
+        for idx, dsk in enumerate(onapp_disks):
+            if idx >= 1:
+                exit_status, output = vhi_ssh.execute(
+                    f"{vinfra_access} service compute volume create --size {dsk['size']} "
+                    f"onapp-{_vhi_vm_id} --storage-policy default -f json | jq -c -r \".id\""
+                )
+                new_disk_id = output.strip()
+                vhi_ssh.execute(f"{vinfra_access} service compute server volume attach"
+                                f" --server {_vhi_vm_id} {new_disk_id} -f json | jq -c 2>/dev/null")
+    if len(onappvm_pri_ips) > 1:
+        logs.info("-- VHI: allocate and assign extra VHI VM's IP addresses to primary NIC--")
+        _ips_params = ''
+        for ip in onappvm_pri_ips:
+            _ips_params += f"--fixed-ip ip-address={ip} "
+        exit_status, output = vhi_ssh.execute(f"{vinfra_access} service compute server iface "
+                                              f"list --server {_vhi_vm_id} -f json | jq -c -r .[0].id 2>/dev/null")
+        _vhi_nic0_id = output.strip()
+        vhi_ssh.execute(f"{vinfra_access} service compute server iface set {_ips_params} --server "
+                        f"{_vhi_vm_id} {_vhi_nic0_id} -f json | jq -c -r .fixed_ips 2>/dev/null")
+    return _vhi_vm_id

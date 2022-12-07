@@ -1,8 +1,9 @@
-#!/usr/bin/env python2
 import os
 import click
+
 from click_default_group import DefaultGroup
-from cfg.o2v_config import Helper, OnAppAPICredentials, VHICLoudDefaults
+from inc.helper import Helper
+from cfg.config_parser import VHI_CREDS
 from inc.vhi_ssh_keys import VhiSshKeys
 from inc.vhi_helpers import Vhi
 from inc.utils import generate_random_password
@@ -54,20 +55,18 @@ def migrate_all(user='', network='', vm=''):
             Finishing script and write down logs into files
     :param user: 4
     :param network: public2
+    :param vm: virtual machine identifier
     :return:
     """
     # Arrange
-    logs.info("")
-    logs.info("{} VHI: Starting Migration Session {}".format(Helper.EQUAL.value, Helper.EQUAL.value))
-    logs.info("")
+    logs.info(f"{Helper.EQUAL.value} VHI: Starting Migration Session {Helper.EQUAL.value}", header=True)
     _path = os.getcwd()
     _file_name = os.path.join(_path, 'migration_logs/migration')
     user_idn = ''
     if not network:
-        _network = VHICLoudDefaults.VHI_NETWORK.value
+        _network = VHI_CREDS['network']
     else:
         _network = network
-    url_user = "{onapp_url}/users.json".format(onapp_url=OnAppAPICredentials.ONAPP_CP_URL.value)
     if user:
         if not user.isdigit():
             logs.error("Please specify User ID as integer: --user=7")
@@ -76,19 +75,25 @@ def migrate_all(user='', network='', vm=''):
 
     # --Step 1--#
     # --OnApp: Get User, VM's information--#
-    _user_data, response = get_user_data(url_user, None, all_users=True)
-    logs.info('Response [{}]'.format(response.status_code))
+    _user_data = get_user_data('users', None, all_users=True)
     _vms_dict = get_all_virtual_machines()
     vhi_users_data = []
     for _user_info in _user_data:
         user_password = generate_random_password()
         _user = _user_info['user']
+        login = _user['login']
         if user_idn:
             if user_idn != _user['id']:
                 continue
 
-        if _user['login'] in DEFAULT_ONAPP_USER_NAMES:
+        if login in DEFAULT_ONAPP_USER_NAMES:
             continue
+
+        if '.' in login:
+            login = login.replace('.', '_')
+
+        elif 'admin' == login:
+            login = 'onapp_admin'
 
         _vhi_user_data = {'user_email': _user['email'],
                           'id': _user['id'],
@@ -96,8 +101,8 @@ def migrate_all(user='', network='', vm=''):
                           'last_name': _user['last_name'],
                           'password': user_password,
                           'roles': _user['roles'],
-                          'user_login': 'onapp_{}'.format(_user['login']),
-                          'project_name': "onapp_project_{}".format(_user['email']),
+                          'user_login': f'{login}',
+                          'project_name': f"project_{_user['email']}",
                           'quotas': get_bucket_limits(bucket_id=_user['bucket_id']),
                           'virtual_machines': []}
         for user_id, vms_list in _vms_dict.items():
@@ -112,73 +117,81 @@ def migrate_all(user='', network='', vm=''):
         _ssh_result = False
         _default_project = True
         full_name = "{} {}".format(user['first_name'], user['last_name'])
-        msg = 'Login: {}\nPassword: {}\nSSH Keys Migrated: {}\nVIRTUAL MACHINES:\n{}'
+        msg = 'Login: "{}"\nPassword: "{}"\nSSH Keys Migrated: {}\nMIGRATED VIRTUAL MACHINES:\n{}'
         vhi = Vhi()
+        vhi.check_default_project()
         logs.info("\n\n")
 
         # --Step 3--#
         # --OnApp: Start migration USER by USER--#
-        logs.info("{}-- VHI: Migrate User {} --".format(Helper.SPACES.value, full_name), separator=True)
+        logs.info(f"{Helper.EQUAL.value} VHI: Migrate User ({full_name}) --", separator=True)
         if not check_user_role(user):
             vhi.create_object(user, 'project')
             _default_project = False
         _user_result = vhi.create_object(user, 'user')
-        if _user_result:
-            _ssh_key = VhiSshKeys(user_obj=user, ssh_keys=get_user_ssh_keys(user), default_project=_default_project)
-            _ssh_result = _ssh_key.create_vhi_ssh_keys()
-        elif not _user_result:
-            user['password'] = ''
-            # ToDo - password reader
+        if not _user_result:
+            user['password'] = vhi.update_user_password(user['user_login'])
 
-        logs.info("{}-- VHI: Migrate User {} Virtual Machines--".format(Helper.SPACES.value, full_name), separator=True)
+        _ssh_key = VhiSshKeys(user_obj=user, ssh_keys=get_user_ssh_keys(user), default_project=_default_project)
+        _ssh_result = _ssh_key.create_vhi_ssh_keys()
 
         # --Step 4 -- #
         # -- VHI: Migrate Users Virtual Machines depends on their OS and BOOTED status -- #
         vm_msg = ""
         for _num, _vm in enumerate(user['virtual_machines']):
+            _vm_number = _num+1 if not vm else 1
             vh = VmHandler(**_vm)
             _idn = _vm['id']
             # Here migrate just specified Virtual Machine
-            if vm:
-                if vm != _idn:
-                    continue
+            if vm and vm != _idn:
+                continue
 
-            logs.info("{}-- VHI: Migrate VM #{} IDENTIFIER {}--".format(Helper.SPACES.value, str(_num), _idn),
-                      separator=True)
-            logs.info("")
+            _vm_info = f'{_idn}|{_vm["ip_addr"]}|{_vm["label"]}'
+            logs.info(f"{Helper.SPACES.value}-- VHI: Migrate VM #{_num} IDENTIFIER [{_vm_info}]--", header=True)
             bootloader_drivers, vm_migrate = vh.vm_handler()
             if not bootloader_drivers and not vm_migrate:
-                msg_failed = 'SSH PORT "22" is not opened for VM ID: {} | IP: {}\n' \
-                             'Please install GRUB/WIN_DRIVERS via these options:' \
-                             ' "install_bootloader_offline" |' \
-                             ' "install_win_drivers_offline"'.format(_idn, _vm['ip_addr'])
-                logs.write_log(file_path="{}_user_{}_manual_migrate_vm".format(_file_name, user['id']),
+                msg_failed = (f'SSH PORT "22" is not opened for VM ID: {_idn} | IP: {_vm["ip_addr"]}\n'
+                              f'Please install GRUB/WIN_DRIVERS via these options:'
+                              f' "install_bootloader_offline --vm=\'identifier\'" |'
+                              f' "install_win_drivers_offline --vm=\'identifier\'"')
+                logs.write_log(file_path=f"{_file_name}_user_{user['id']}_manual_migrate_vm",
                                msg=msg_failed)
                 continue
 
-            bootloader_drivers(idn=_idn, vhip='', verb='')
-            # ToDo
-            #  Create user handler
+            result = bootloader_drivers(idn=_idn)
+            if not result:
+                vm_msg += (f'\t{_vm_number}. VM Migrated = {result}\n'
+                           f'\t\t- IP "{_vm["ip_addr"]}"\n'
+                           f'\t\t- Hostname: "{_vm["hostname"]}"\n'
+                           f'\t\t- Label: "{_vm["label"]}"\n'
+                           f'\t\t- Identifier: "{_idn}"\n'
+                           f'\t- - - - - - - - - - - - - - - - -\n')
+                logs.write_log(file_path=f"{_file_name}_user_{user['id']}",
+                               msg=msg.format(user['user_login'],
+                                              user['password'],
+                                              _ssh_result,
+                                              vm_msg))
+                continue
+
             result_vm = vm_migrate(idn=_idn,
                                    vproj=vhi.project_name,
-                                   # vuser=user['user_login'],
-                                   vuser=VHICLoudDefaults.VINFRA_USER.value,
-                                   vdom='',
-                                   # vpass=user['password'],
-                                   vpass=VHICLoudDefaults.VINFRA_PASS.value,
-                                   verb='',
+                                   vdom=VHI_CREDS['vinfra_domain'],
                                    network=network)
-            vm_msg += "    {}. VM identifier [{}]: Migrated [{}]\n".format(str(_num+1), _idn, result_vm)
 
+            vm_msg += (f'\t{_vm_number}. VM Migrated = {result_vm}\n'
+                       f'\t\t- IP "{_vm["ip_addr"]}"\n'
+                       f'\t\t- Hostname: "{_vm["hostname"]}"\n'
+                       f'\t\t- Label: "{_vm["label"]}"\n'
+                       f'\t\t- Identifier: "{_idn}"\n'
+                       f'\t- - - - - - - - - - - - - - - - -\n')
         # --Step 5 -- #
         # -- Finish Migration Session and put down logs  -- #
-        logs.write_log(file_path="{}_user_{}".format(_file_name, user['id']),
+        logs.write_log(file_path=f"{_file_name}_user_{user['id']}",
                        msg=msg.format(user['user_login'],
                                       user['password'],
                                       _ssh_result,
                                       vm_msg))
-    logs.info("")
-    logs.info("{} VHI: Script finished successfully {}".format(Helper.EQUAL.value, Helper.EQUAL.value))
+    logs.info(f"{Helper.EQUAL.value} VHI: Script finished successfully {Helper.EQUAL.value}", separator=True)
     logs.info("\n")
 
 

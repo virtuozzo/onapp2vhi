@@ -81,30 +81,26 @@ def parse_matrix(headers, matrix):
     for i, head in enumerate(headers):
         sum_list.append(schema_matrix[i])
         _number = schema_matrix[i] - len(str(head)) + 1
-        _prepare_str = "|{head}{spaces}".format(head=head.upper(), spaces=white_space*_number)
+        _prepare_str = f"| {head.upper()}{white_space*_number}"
         header_str += _prepare_str
     for i, row in enumerate(matrix):
         row_str = ""
         for j, elem in enumerate(row):
             _number = schema_matrix[j] - len(str(elem)) + 1
-            row_str += "|{elem}{spaces}".format(elem=elem, spaces=white_space*_number)
+            row_str += f"| {elem}{white_space*_number}"
         if i+2 > len(matrix):
-            table_str += row_str + "|"
+            table_str += row_str + "| "
             continue
 
         table_str += row_str + "|\n"
-    separator = "-" * sum(sum_list) + "|"
-    final_string = "{sep1}\n{head}\n{sep2}\n{table}\n{sep3}".format(sep1=separator,
-                                                                    head=header_str + "|",
-                                                                    sep2=separator,
-                                                                    table=table_str,
-                                                                    sep3=separator)
+    separator = f'+{("-" * len(header_str))[:-1]}+'
+    final_string = f"{separator}\n{header_str}|\n{separator}\n{table_str}\n{separator}"
     return final_string
 
 
-def generate_random_password(length=12):
+def generate_random_password(length=24):
     """
-    Generates password for User with default length 12
+    Generates password for User with default length 24
     :param length: (int) the length of password
     :return: (str) password
     """
