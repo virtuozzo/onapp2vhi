@@ -109,3 +109,15 @@ def generate_random_password(length=24):
     password = [random.choice(characters) for _ in range(length)]
     random.shuffle(password)
     return "".join(password)
+
+
+def exit_status_code_handler(exit_code: int):
+    """
+    Handler will catch errors and return False, otherwise True
+    :param exit_code: 0 or 1
+    :return:
+    """
+    if exit_code:
+        return False
+
+    return True

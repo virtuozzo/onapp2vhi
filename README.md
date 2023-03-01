@@ -38,14 +38,14 @@
     - RUN `pip3 –V` (NOTE: you should see pip version ___pip 20.3.4 from /migrations/.venv/lib/python2.7/site-packages/pip (python 2.7)___)
     - RUN `/usr/bin/pip3 install --upgrade pip`
     - RUN `pip3 install virtualenv`
-  - NOTE: path may be different, please find where python 2.7 is located (`which python2`)
-    - RUN `virtualenv -p /usr/bin/python2.7 .venv`
+  - NOTE: path may be different, please find where python3 is located (`which python2`)
+    - RUN `virtualenv -p /usr/bin/python3 .venv`
     - RUN `source .venv/bin/activate`
     - RUN `pip install --upgrade pip`
     - inside virtual env (you should see in console "(.venv) root@root #"):
       - RUN `pip install -r requirements.txt`
-  - Please provide credentials related to OnApp and VHI clouds in the file __cfg/o2v_config.py__
-    - `vi ./cfg/o2v_config.py`
+  - Please provide credentials related to OnApp and VHI clouds in the file __cfg/config.cfg__
+    - `vi ./cfg/config.cfg`
     - save file
   - Copy files into project root dir:
     - `vz-guest-tools-win.tar`
@@ -54,7 +54,7 @@
     - `su - onapp`
     - `export SSH_AUTH_SOCK=/onapp/interface/tmp/onapp-ssh-agent.socket`
     - `echo "export SSH_AUTH_SOCK=/onapp/interface/tmp/onapp-ssh-agent.socket" >> /home/onapp/.bashrc `
-  * You have installed separate __python 2.7 virtual environment__ that will not affect global python requirements.
+  * You have installed separate __python 3 virtual environment__ that will not affect global python requirements.
   * You have installed all needed packages and libraries into our virtual environment. 
   * You have provided credentials to access our clouds.
 

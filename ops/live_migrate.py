@@ -43,7 +43,13 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str):
     vhi = Vhi()
     vhi.check_default_project()
     _on_app_flavor = get_onapp_vm_flavor(vm_idn=VM_IDn)
-    vhi.create_object(_on_app_flavor, 'flavor')
+    logs.debug(f'OnApp flavor: {_on_app_flavor}')
+    result = vhi.flavor_handler(onapp_flavor=_on_app_flavor)
+    if not result:
+        logs.warn('Flavor has NOT been created on VHI side, further process does not make sense.')
+        return False
+
+    logs.debug(f'VHI flavor: {vhi.flavor_name}')
     _flavour = vhi.flavor_name
     _vhi_image = VHI_CREDS['linux_image']
 

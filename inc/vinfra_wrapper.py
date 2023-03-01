@@ -1,26 +1,28 @@
 from typing import Optional, Tuple, Dict
-from cfg.config_parser import VHI_CREDS, ADMIN_AUTH
+from cfg.config_parser import VHI_CREDS, ADMIN_AUTH, VINFRA_AUTH
 from inc.ssh_connector import SSH
 
 
 class VinfraBase:
 
-    def __init__(self, access: bool = False):
+    def __init__(self, access: bool = False, service_user: bool = False):
         self.ssh = SSH(**{"host": VHI_CREDS['hv_ip']})
         self.vinfra_root = ADMIN_AUTH
+        if service_user:
+            self.vinfra_root = VINFRA_AUTH
         if access:
             self.vinfra_root += f" --vinfra-portal={VHI_CREDS['vinfra_portal']}" \
                                 f" --vinfra-domain={VHI_CREDS['vinfra_domain']}" \
                                 f" --vinfra-project={VHI_CREDS['vinfra_project']}"
 
-    def execute(self, cmd: str, is_json: str = "-f json", is_long: str = "--long") -> Tuple[int, str]:
+    def execute(self, cmd: str) -> Tuple[int, str]:
         return self.ssh.execute(f'{cmd} -f json')
 
 
 class VinfraServiceCompute(VinfraBase):
 
-    def __init__(self):
-        VinfraBase.__init__(self)
+    def __init__(self, service_user: bool = False):
+        super().__init__(service_user=service_user)
         self.vinfra_root += ' service compute'
 
 
@@ -33,8 +35,8 @@ class VinfraDomain(VinfraBase):
 
 class VinfraServer(VinfraServiceCompute):
 
-    def __init__(self):
-        VinfraServiceCompute.__init__(self)
+    def __init__(self, service_user: bool = False):
+        super().__init__(service_user=service_user)
         self.vinfra_root += ' server'
 
     def create(self, server_name: str, **kwargs):
@@ -353,4 +355,33 @@ class VinfraProject(VinfraDomain):
         Project ID or name
         """
         cmd = self.vinfra_root + f' show --domain {domain} {project_name}'
+        return self.execute(cmd)
+
+
+class VinfraFlavor(VinfraServiceCompute):
+
+    def __init__(self, service_user: bool = False):
+        super().__init__(service_user=service_user)
+        self.vinfra_root += ' flavor'
+
+    def create(self, flavor_name: str, vcpus: int, ram: int):
+        """
+        Create new flavor based on input values
+        :param (str) flavor_name: "flavor_4_128"
+        :param (int) vcpus: 3
+        :param (int) ram: 2048
+        """
+        cmd: str = f'{self.vinfra_root} create {flavor_name} --vcpus={vcpus} --ram={ram}'
+        return self.execute(cmd)
+
+    def list(self, long: bool = True):
+        """
+        --long
+        Enable access and listing of all fields of objects.
+        -f json
+        to get output in json format
+        """
+        cmd: str = f'{self.vinfra_root} list'
+        if long:
+            cmd = f"{cmd} --long"
         return self.execute(cmd)

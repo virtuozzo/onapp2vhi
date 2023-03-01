@@ -4,7 +4,8 @@ from inc.helper import Helper
 from cfg.config_parser import VHI_CREDS, configs, ADMIN_AUTH
 from inc.logger import logs
 from inc.ssh_connector import SSH
-from inc.utils import generate_random_password
+from inc.utils import generate_random_password, exit_status_code_handler
+from inc.vinfra_wrapper import VinfraFlavor
 
 
 # ToDo:
@@ -107,7 +108,8 @@ class Vhi:
                              'body': self._creds})
         response = requests.post(self._login_url,
                                  headers=self.headers,
-                                 data=self._creds)
+                                 data=self._creds,
+                                 verify=False)
         if response.status_code != 200:
             self._log_handler(response=response)
             return False
@@ -180,7 +182,10 @@ class Vhi:
                                      "storage": {
                                          "storage_policies": {self._storage_name: {"limit": quotas['storage']}}}})
         self._log_handler(**{'method': self.POST, 'url': _quotas_url, 'headers': self.headers, 'body': quotas_payload})
-        response = requests.post(_quotas_url, headers=self.headers, data=quotas_payload)
+        response = requests.post(_quotas_url,
+                                 headers=self.headers,
+                                 data=quotas_payload,
+                                 verify=False)
         self._log_handler(response=response)
         return
 
@@ -238,16 +243,6 @@ class Vhi:
                     "payload": payload,
                     "url": self.projects_url}
 
-        elif object_type == 'flavor':
-            exist, name = self.verify_object_on_vhi_side(obj_data['name'],
-                                                         'name',
-                                                         self.flavors_url)
-            payload = self._vhi_flavor_payload(obj_data)
-            return {"exist": exist,
-                    "name": name,
-                    "payload": payload,
-                    "url": self.flavors_url}
-
     def _get_objects_list(self, object_url: str):
         """
         Get projects list from VHI Domain
@@ -256,7 +251,7 @@ class Vhi:
         _object_name = object_url.split('/')[-1]
         logs.debug(f"{self._SPACES}-- VHI: Get VHI {_object_name.capitalize()} --", separator=True)
         self._log_handler(**{'method': self.GET, 'url': object_url, 'headers': self.headers})
-        projects_list = requests.get(object_url, headers=self.headers)
+        projects_list = requests.get(object_url, headers=self.headers, verify=False)
         if not self._log_handler(response=projects_list):
             return []
 
@@ -280,9 +275,6 @@ class Vhi:
                         self.user_id = _obj['id']
                     elif _name_object in self.projects_url:
                         self.project_id = _obj['id']
-                        self.project_name = _obj['name']
-                    elif _name_object in self.flavors_url:
-                        self.flavor_name = _obj['name']
                     return True, _name_object.capitalize()
 
         return False, _name_object.capitalize()
@@ -293,6 +285,34 @@ class Vhi:
                        f" --password --domain '{self.vinfra_domain}'")
         self._vhi_ssh.execute(_change_pwd)
         return _pwd
+
+    def flavor_handler(self, onapp_flavor: dict):
+        """
+        Method purpose is to verify flavor on VHI side and check whether it exists or not and create new one
+        :param onapp_flavor:
+        :return:
+        """
+        _flavor_name = onapp_flavor['name']
+        _payload = self._vhi_flavor_payload(vm_data=onapp_flavor)
+        _vinfra = VinfraFlavor(service_user=True)
+        exit_status, output = _vinfra.list()
+        if not exit_status_code_handler(exit_code=exit_status):
+            return False
+
+        _vhi_flavors = [_flavor['name'] for _flavor in json.loads(output)]
+        logs.debug(f'VHI existing flavors: {_vhi_flavors}')
+        if _flavor_name in _vhi_flavors:
+            self.flavor_name = _flavor_name
+            return True
+
+        exit_status, output = _vinfra.create(flavor_name=_flavor_name,
+                                             vcpus=onapp_flavor['vcpus'],
+                                             ram=onapp_flavor['ram'])
+        if not exit_status_code_handler(exit_code=exit_status):
+            return False
+
+        self.flavor_name = json.loads(output)['name']
+        return True
 
     def create_object(self, proj_data: dict, object_type: str):
         """
@@ -318,7 +338,8 @@ class Vhi:
                              'body': object_properties['payload']})
         response = requests.post(object_properties['url'],
                                  headers=self.headers,
-                                 data=object_properties['payload'])
+                                 data=object_properties['payload'],
+                                 verify=False)
         if not self._log_handler(response=response):
             return False
 
@@ -328,6 +349,4 @@ class Vhi:
             self.project_id = response.json()['id']
             self.project_name = response.json()['name']
             self._vhi_quotas(proj_data['quotas'])
-        elif object_type == "flavor":
-            self.flavor_name = response.json()['name']
         return True
