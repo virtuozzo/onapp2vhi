@@ -8,6 +8,7 @@ from inc.logger import logs
 from inc.helper import Helper
 from inc.ssh_connector import ssh_run, SSH
 from inc.onapp_helpers import get_vm_source_properties
+from inc.utils import exit_status_code_handler
 
 
 def vm_install_win_drivers_offline(idn: str):
@@ -49,12 +50,28 @@ def vm_install_win_drivers_offline(idn: str):
 
     # -- STEP 4 --
     logs.info(f"{_spaces}{_dri_msg}STEP #4 -- OnApp: Activate VM disk --", header=True)
-    _hv_ssh.execute(f"lvchange -ay {_onappvm_primary_disk}")
+    exit_status, output = _hv_ssh.execute(f"lvchange -ay {_onappvm_primary_disk}")
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f"[install_win_drivers_offline.py | STEP 4] lvchange failed. Output\n\t{output}"
+    ):
+        return False
 
     # -- STEP 5 --
     logs.info(f"{_spaces}{_dri_msg}STEP #5 -- OnApp: Add partition devmappings and mount disk --", header=True)
-    _hv_ssh.execute(f"kpartx -av -p X {_onappvm_primary_disk}")
-    _hv_ssh.execute(f"mkdir -p /mnt/prepare_win; mount {ONAPPVM_DISK_PARTITION} /mnt/prepare_win")
+    exit_status, output = _hv_ssh.execute(f"kpartx -av -p X {_onappvm_primary_disk}")
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message="[install_win_drivers_offline.py | STEP 5] kpartx failed. Output\n\t{output}"
+    ):
+        return False
+    exit_status, output = _hv_ssh.execute(f"mkdir -p /mnt/prepare_win; mount {ONAPPVM_DISK_PARTITION} /mnt/prepare_win")
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f"[install_win_drivers_offline.py | STEP 5]  mount {ONAPPVM_DISK_PARTITION} /mnt/prepare_win"
+                    f" failed. Output\n\t{output}"
+    ):
+        return False
 
     # -- STEP 6 --
     logs.info(f"{_spaces}{_dri_msg}STEP #6 -- OnApp: Copy drivers and scripts --", header=True)
@@ -62,28 +79,53 @@ def vm_install_win_drivers_offline(idn: str):
     # FILES TO COPY SHOULD BE LOCATED IN PROJECT FOLDER
     cloudbase_init = os.path.join(os.getcwd(), "CloudbaseInitSetup_Stable_x64.msi")
     vz_guest_tools = os.path.join(os.getcwd(), "vz-guest-tools-win.tar")
-    logs.info('File path: {}'.format(cloudbase_init))
-    logs.info('File path: {}'.format(vz_guest_tools))
+    logs.info(f'File path: {cloudbase_init}')
+    logs.info(f'File path: {vz_guest_tools}')
 
-    CMD = f"scp -r {vz_guest_tools} root@{_vm_hv_ip}:/mnt/prepare_win/vz-guest-tools-win.tar"
-    (rc, ou) = ssh_run(CMD)
-    if rc != 0:
-        logs.error(f"Something went wrong. Couldn't transfer vz-guest-tools-win into VM \n")
+    cmd = f"scp -r {vz_guest_tools} root@{_vm_hv_ip}:/mnt/prepare_win/vz-guest-tools-win.tar"
+    [exit_status, output] = ssh_run(cmd)
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f"[install_win_drivers_offline.py | STEP 6] Something went wrong. "
+                    f"Couldn't transfer vz-guest-tools-win into VM. Output\n\t{output}"
+    ):
+        return False
 
-    CMD = f"scp -r {cloudbase_init}  root@{_vm_hv_ip}:/mnt/prepare_win/CloudbaseInitSetup_Stable_x64.msi"
-    (rc, ou) = ssh_run(CMD)
-    if rc != 0:
-        logs.error(f"Something went wrong. Couldn't transfer CloudbaseInitSetup into VM \n")
+    cmd = f"scp -r {cloudbase_init}  root@{_vm_hv_ip}:/mnt/prepare_win/CloudbaseInitSetup_Stable_x64.msi"
+    [exit_status, output] = ssh_run(cmd)
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f"[install_win_drivers_offline.py | STEP 6]"
+                    f" Something went wrong. Couldn't transfer CloudbaseInitSetup into VM. Output\n\t{output}"
+    ):
+        return False
 
-    CMD = f"scp -r scripts/onapp.bat root@{_vm_hv_ip}:/mnt/prepare_win/onapp.bat"
-    (rc, ou) = ssh_run(CMD)
-    if rc != 0:
-        logs.error(f"Something went wrong. Couldn't transfer onapp.bat into VM \n")
+    cmd = f"scp -r scripts/onapp.bat root@{_vm_hv_ip}:/mnt/prepare_win/onapp.bat"
+    [exit_status, output] = ssh_run(cmd)
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f"[install_win_drivers_offline.py | STEP 6]"
+                    f" Something went wrong. Couldn't transfer onapp.bat into VM. Output\n\t{output}"
+    ):
+        return False
 
     # -- STEP 7 --
     logs.info(f"{_spaces}{_dri_msg}STEP #7 -- OnApp: Run unmount and del partition devmappings --", header=True)
-    _hv_ssh.execute(f"umount {ONAPPVM_DISK_PARTITION}")
-    _hv_ssh.execute(f"kpartx -d -p X {_onappvm_primary_disk}")
+    exit_status, output = _hv_ssh.execute(f"umount {ONAPPVM_DISK_PARTITION}")
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f"[install_win_drivers_offline.py | STEP 7]"
+                    f" umount {ONAPPVM_DISK_PARTITION} failed. Output\n\t{output}"
+    ):
+        return False
+
+    exit_status, output = _hv_ssh.execute(f"kpartx -d -p X {_onappvm_primary_disk}")
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f"[install_win_drivers_offline.py | STEP 7] kpartx failed. Output\n\t{output}"
+    ):
+        return False
+
     return True
 
 

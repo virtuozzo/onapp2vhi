@@ -1,5 +1,6 @@
 import string
 import random
+from inc.logger import logs
 
 
 def _find_largest_element(some_list):
@@ -111,13 +112,17 @@ def generate_random_password(length=24):
     return "".join(password)
 
 
-def exit_status_code_handler(exit_code: int):
+def exit_status_code_handler(exit_code: int, message: str = ''):
     """
     Handler will catch errors and return False, otherwise True
     :param exit_code: 0 or 1
+    :param message: "Message"
     :return:
     """
     if exit_code:
+        if not message:
+            message = f'Exit code is {exit_code}, stopping further process...'
+        logs.error(message)
         return False
 
     return True

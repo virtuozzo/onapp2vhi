@@ -142,7 +142,7 @@ def migrate_all(user='', network='', vm=''):
             _vm_number = _num+1 if not vm else 1
             vh = VmHandler(**_vm)
             _idn = _vm['id']
-            # Here migrate just specified Virtual Machine
+            # Here script try to find specified Virtual Machine and migrate only it
             if vm and vm != _idn:
                 continue
 

@@ -13,6 +13,7 @@ from inc.onapp_helpers import (
     get_vm_source_properties,
     transfer_firewall_rules_to_sg, get_iface_from_specific_vs, attach_security_group_to_nic_and_enable_spoofing
 )
+from inc.utils import exit_status_code_handler
 from inc.vhi_helpers import Vhi
 from inc.network_hanlder import get_network_configuration
 from inc.logger import logs
@@ -60,8 +61,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str):
         logs.error(f"{_spaces}ATTENTION hot_migrate is not allowed for VM")
         return False
 
-    else:
-        logs.info("HOT migrate is allowed for VM")
+    logs.info("HOT migrate is allowed for VM")
 
     # -- STEP 2 --
     logs.info(f"{_spaces}{live_migration}STEP #2 -- OnApp: Get VM's NICs' params --", header=True)
@@ -75,8 +75,10 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str):
     logs.info(f"{_spaces}{live_migration}STEP #4 -- OnApp: Check if VM is running on HV --", header=True)
     _hv_ssh = SSH(**{'host': _vm_hv_ip})
     exit_status, output = _hv_ssh.execute(f"virsh list | grep {VM_IDn} 2>/dev/null")
-    if not output:
-        logs.error("VM IS NOT RUNNING. PLEASE, START VM OR USE ``cold_migrate`` OPTION.")
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message="VM IS NOT RUNNING. PLEASE, START VM OR USE ``cold_migrate`` OPTION."
+    ):
         return False
 
     # -- STEP 5 --
@@ -84,9 +86,12 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str):
               header=True)
     exit_status, output = _hv_ssh.execute(f"virsh dumpxml {VM_IDn} > /tmp/{VM_IDn}.xml && cat /tmp/{VM_IDn}.xml")
     _vm_xml_cfg = output
-    if exit_status:
-        logs.error(f"Can't find VM running on Hypervisor. {_vm_xml_cfg}\n")
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f"[live_migrate.py | STEP 5] Can't find VM running on Hypervisor. {_vm_xml_cfg}. Output\n\t{output}"
+    ):
         return False
+
     vmxml = KVMxml.fromstring(_vm_xml_cfg)
     _xml_ovm_disks = []
     _xml_ovm_macs = []
@@ -140,6 +145,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str):
                                        hostname=_vm_properties['hostname'])
         if not _vhi_vm_id:
             return False
+
     else:
         logs.error(_error_msg)
         logs.error("*** Please, remove the target VM on VHI or remove conflicting network interface of it ***\n")
@@ -172,6 +178,10 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str):
         exit_status, output = _vhi_hv_ssh.execute(
             f"find /mnt/vstorage/vols/datastores/cinder/ -type f -name \"*volume-{disk_id}\" 2>/dev/null"
         )
+        if not exit_status_code_handler(exit_code=exit_status,
+                                        message='[live_migrate.py | STEP 7] VHI VM disks NOT found.'):
+            return False
+
         _vhi_vm_disks[disk_lb] = output.strip()
     logs.info(f"VHI VM DISKS: {_vhi_vm_disks}")
 
@@ -180,6 +190,10 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str):
     exit_status, output = _vhi_hv_ssh.execute(
         f"virsh dumpxml {_vhi_vm_id} 2>/dev/null > /tmp/{_vhi_vm_id}.xml ; cat /tmp/{_vhi_vm_id}.xml 2>/dev/null"
     )
+    if not exit_status_code_handler(exit_code=exit_status,
+                                    message='[live_migrate.py | STEP 8] VM dumpxml failed.'):
+        return False
+
     _vm_xml_cfg = output
     vhixml = KVMxml.fromstring(_vm_xml_cfg)
     _xml_vvm_disks, _xml_vvm_nics = [], []
@@ -240,11 +254,16 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str):
     # -- STEP 10 --
     logs.info(f"{_spaces}{live_migration}STEP #10 -- VHI: Upload OnApp2VHI VM migration XML to OnApp HV --",
               header=True)
-    ssh_run(
+    [exit_code, _output] = ssh_run(
         command=f"scp -P{ONAPP_CREDS['hv_ssh_port']} {Helper.SCP_OPTS.value} /tmp/{VM_IDn}.xml root@{_vm_hv_ip}:/tmp/ "
                 f"2>/dev/null ; ssh -p{ONAPP_CREDS['hv_ssh_port']} {Helper.SSH_OPTS.value} root@{_vm_hv_ip} "
                 f"'ls /tmp/{VM_IDn}.xml' 2>/dev/null"
     )
+    if not exit_status_code_handler(
+            exit_code=exit_code,
+            message='[live_migrate.py | STEP 10] VM DUMPXML copy process from VHI to OnApp failed.'
+    ):
+        return False
 
     # -- STEP 11 --
     logs.info(f"{_spaces}{live_migration}STEP #11 -- VHI: Run OnApp2VHI VM migration from OnApp to VHI hypervisor --",
@@ -255,7 +274,10 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str):
         f" --xml /tmp/{VM_IDn}.xml --verbose {VM_IDn} qemu+ssh://{_vhi_hv_ip}:"
         f"{VHI_CREDS['hv_ssh_port']}/system?no_verify=1 tcp:{_vhi_hv_ip}", real_data=True
     )
-    if exit_status:
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f'[live_migrate.py | STEP 11] VM migration process from OnApp to VHI failed. Output\n\t{output}'
+    ):
         return False
 
     # -- STEP 12 --
@@ -263,18 +285,22 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str):
               header=True)
     # ToDo add validation to check whether VM is created
     #  "virsh info {VM_IDn}"
-    _vhi_hv_ssh.execute(f"virsh destroy {VM_IDn} 2>/dev/null")
+    exit_status, output = _vhi_hv_ssh.execute(f"virsh destroy {VM_IDn} 2>/dev/null")
+    if not exit_status_code_handler(exit_code=exit_status,
+                                    message='[live_migrate.py | STEP 12] VM "virsh destroy" on VHI node failed.'):
+        return False
 
     # -- STEP 13 --
     logs.info(f"{_spaces}{live_migration}STEP #13 -- VHI: Start original pre-created VHI VM on VHI hypervisor --",
               header=True)
-    _vhi_hv_ssh.execute(f"{vinfra_access} service compute server start {_vhi_vm_id}"
-                        f" -f json | jq -c -r \"[ .id , .power_state ]\" 2>/dev/null")
+    exit_status, output = _vhi_hv_ssh.execute(f"{vinfra_access} service compute server start {_vhi_vm_id}"
+                                              f" -f json | jq -c -r \"[ .id , .power_state ]\" 2>/dev/null")
+    if not exit_status_code_handler(exit_code=exit_status,
+                                    message='[live_migrate.py | STEP 13] VM "virsh destroy" on VHI node failed.'):
+        return False
 
-    logs.info(
-        f"The virtual server live migration has completed successfully:"
-        f" {VHI_CREDS.url}/compute/servers/instances/{_vhi_vm_id}"
-    )
+    logs.info(f"The virtual server ``LIVE MIGRATION`` has completed successfully:"
+              f" {VHI_CREDS.url}/compute/servers/instances/{_vhi_vm_id}")
     return True
 
 

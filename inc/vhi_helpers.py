@@ -6,10 +6,11 @@ from inc.logger import logs
 from inc.ssh_connector import SSH
 from inc.utils import generate_random_password, exit_status_code_handler
 from inc.vinfra_wrapper import VinfraFlavor
+import urllib3
 
 
-# ToDo:
-#  email notification
+# Disable SSL verification warnings
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class Vhi:
@@ -242,6 +243,8 @@ class Vhi:
                     "name": name,
                     "payload": payload,
                     "url": self.projects_url}
+        else:
+            return {}
 
     def _get_objects_list(self, object_url: str):
         """
@@ -296,7 +299,8 @@ class Vhi:
         _payload = self._vhi_flavor_payload(vm_data=onapp_flavor)
         _vinfra = VinfraFlavor(service_user=True)
         exit_status, output = _vinfra.list()
-        if not exit_status_code_handler(exit_code=exit_status):
+        if not exit_status_code_handler(exit_code=exit_status,
+                                        message=f'Impossible to get Flavor list. Output:\n\t{output}'):
             return False
 
         _vhi_flavors = [_flavor['name'] for _flavor in json.loads(output)]
@@ -308,7 +312,8 @@ class Vhi:
         exit_status, output = _vinfra.create(flavor_name=_flavor_name,
                                              vcpus=onapp_flavor['vcpus'],
                                              ram=onapp_flavor['ram'])
-        if not exit_status_code_handler(exit_code=exit_status):
+        if not exit_status_code_handler(exit_code=exit_status,
+                                        message=f'Flavor has NOT been created. Output:\n\t{output}'):
             return False
 
         self.flavor_name = json.loads(output)['name']
@@ -325,6 +330,9 @@ class Vhi:
             return False
 
         object_properties = self._define_object_type(proj_data, object_type)
+        if not object_properties:
+            return False
+
         if object_properties['exist']:
             return False
 

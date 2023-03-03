@@ -4,7 +4,7 @@ from inc.helper import Helper
 from cfg.config_parser import ONAPP_CREDS, VHI_CREDS, VINFRA_AUTH
 from inc.ssh_connector import ssh_run, SSH
 from inc.logger import logs
-from inc.utils import parse_matrix
+from inc.utils import parse_matrix, exit_status_code_handler
 from collections import namedtuple
 from typing import List, Dict
 from inc.vinfra_wrapper import VinfraSecurityGroups, VinfraSGRules, VinfraProject, VinfraServerInterface, VinfraServer
@@ -708,7 +708,7 @@ def activate_disk(vm_idn: str, vm_ohv_ip: str, multiply_disks=False, disk=None):
         try:
             frontend_uuid = re.findall('\d+', re.findall('uuid=\d+', output)[0])[0]
         except IndexError:
-            logs.error("The UUID was not found")
+            logs.error(f"The UUID was not found. Output:\n\t{output}")
             return False
 
         # Get Disk Info
@@ -717,7 +717,7 @@ def activate_disk(vm_idn: str, vm_ohv_ip: str, multiply_disks=False, disk=None):
         try:
             disk_status = re.findall('\d+', re.findall('status=\d+', output)[0])[0]
         except IndexError:
-            logs.error("The status was not found")
+            logs.error(f"The status was not found. Output:\n\t{output}")
             return False
 
         # If disk is offline, activate it
@@ -745,11 +745,17 @@ def deactivate_disk(vm_idn: str, vm_ohv_ip: str):
     _ssh_connect = f'ssh -p {ONAPP_CREDS["hv_ssh_port"]} {Helper.SSH_OPTS.value} root@{vm_ohv_ip}'
     if ds_type == 'lvm':
         onappvm_primary_disk = get_onapp_vm_disks(vm_idn=vm_idn, primary=True)
-        hv_ssh.execute(command=f'lvchange -an {onappvm_primary_disk}')
+        exit_status, output = hv_ssh.execute(command=f'lvchange -an {onappvm_primary_disk}')
+        if not exit_status_code_handler(exit_code=exit_status, message=f'Disk deactivation failed. Output\n\t{output}'):
+            return False
+
         return True
 
     elif ds_type == 'is':
-        hv_ssh.execute(command=f'onappstore offline uuid={disk_idn}')
+        exit_status, output = hv_ssh.execute(command=f'onappstore offline uuid={disk_idn}')
+        if not exit_status_code_handler(exit_code=exit_status, message=f'Disk deactivation failed. Output\n\t{output}'):
+            return False
+
         return True
 
 

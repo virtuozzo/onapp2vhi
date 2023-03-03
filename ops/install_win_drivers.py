@@ -6,6 +6,7 @@ from inc.helper import Helper
 from cfg.config_parser import ONAPP_CREDS
 from inc.ssh_connector import ssh_run, SSH
 from inc.onapp_helpers import get_vm_source_properties
+from inc.utils import exit_status_code_handler
 
 
 class bcolors:
@@ -49,29 +50,48 @@ def vm_install_win_drivers(idn: str):
     # FILES TO COPY SHOULD BE LOCATED IN PROJECT FOLDER
     cloudbase_init = os.path.join(os.getcwd(), "CloudbaseInitSetup_Stable_x64.msi")
     vz_guest_tools = os.path.join(os.getcwd(), "vz-guest-tools-win.tar")
-    logs.info('File path: {}'.format(cloudbase_init))
-    logs.info('File path: {}'.format(vz_guest_tools))
-    CMD = "scp -P{ssh_port} {scpopt} {init} Administrator@{vm_ip}:C:/ 2>/dev/null ".format(
-        ssh_port=ONAPP_CREDS["hv_ssh_port"], init=cloudbase_init, scpopt=Helper.SCP_OPTS.value,
-        vm_ip=_vm_ip_addr)
-    (rc, ou) = ssh_run(CMD)
-    if rc != 0:
-        logs.info(f"{bcolors.FAIL}Something went wrong. Couldn't transfer CloudbaseInitSetup into VM \n{bcolors.ENDC}")
-    CMD = "scp -P{ssh_port} {scpopt} {guest_tool} Administrator@{vm_ip}:C:/ 2>/dev/null ".format(
-        ssh_port=ONAPP_CREDS["hv_ssh_port"], guest_tool=vz_guest_tools, scpopt=Helper.SCP_OPTS.value,
-        vm_ip=_vm_ip_addr)
-    (rc, ou) = ssh_run(CMD)
-    if rc != 0:
-        logs.info(f"{bcolors.FAIL}Something went wrong. Couldn't transfer vz-guest-tools-win into VM \n{bcolors.ENDC}")
+    logs.info(f'File path: {cloudbase_init}')
+    logs.info(f'File path: {vz_guest_tools}')
+    cmd = f'scp -P{ONAPP_CREDS["hv_ssh_port"]} {Helper.SCP_OPTS.value} {cloudbase_init}' \
+          f' Administrator@{_vm_ip_addr}:C:/ 2>/dev/null'
+    [exit_status, output] = ssh_run(cmd)
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f"{bcolors.FAIL}[install_win_drivers.py | STEP 3] Something went wrong."
+                    f" Couldn't transfer CloudbaseInitSetup into VM \n{bcolors.ENDC}"
+    ):
+        return False
+    cmd = f'scp -P{ONAPP_CREDS["hv_ssh_port"]} {Helper.SCP_OPTS.value}' \
+          f' {vz_guest_tools} Administrator@{_vm_ip_addr}:C:/ 2>/dev/null'
+    [exit_status, output] = ssh_run(cmd)
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f"{bcolors.FAIL}[install_win_drivers.py | STEP 3] "
+                    f"Something went wrong. Couldn't transfer vz-guest-tools-win into VM \n{bcolors.ENDC}"
+    ):
+        return False
 
     # -- STEP 4 --
     logs.info(f'{_spaces}{_dri_msg}STEP #4 -- OnApp: INSTALL DRIVERS for VM --', header=True)
     _vm_ssh = SSH(**{'host': _vm_ip_addr, 'username': 'Administrator'})
-    _hv_ssh.execute('cd C:; msiexec /i CloudbaseInitSetup_Stable_x64.msi /qn /l*v log.txt')
-    _hv_ssh.execute(
+    exit_status, output = _hv_ssh.execute('cd C:; msiexec /i CloudbaseInitSetup_Stable_x64.msi /qn /l*v log.txt')
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f"[install_win_drivers.py | STEP 4] installation failed `CloudbaseInitSetup_Stable_x64`\n"
+                    f"Output: {output}"
+    ):
+        return False
+
+    exit_status, output = _hv_ssh.execute(
         "mkdir -p 'C:/vz-guest-tools-win' tar --force-local -xf 'C:/vz-guest-tools-win.tar' -C 'C:/vz-guest-tools-win'"
         " nohup 'C:/vz-guest-tools-win/setupMain.exe' 1>/dev/null &"
     )
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f"[install_win_drivers.py | STEP 4] installation failed `vz-guest-tools-win.tar`"
+    ):
+        return False
+
     return True
 
 

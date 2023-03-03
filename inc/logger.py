@@ -24,6 +24,7 @@ def setup_logger():
 
     # By default, we are using INFO level
     set_log_lvl = logging.INFO
+    # If you want to watch DEBUG logs please type in the console: [root@cp ~]# export loglevel=debug
     _env_log_lvl = os.environ.get('loglevel')
     if _env_log_lvl:
         _env_log_lvl = _env_log_lvl.lower()

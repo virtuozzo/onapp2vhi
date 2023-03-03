@@ -1,5 +1,6 @@
 import click
 from click_default_group import DefaultGroup
+
 from inc.vhi_helpers import Vhi
 from inc.onapp_helpers import *
 from inc.network_hanlder import get_network_configuration
@@ -64,6 +65,12 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str):
     vinfra_access = f"{VINFRA_AUTH} --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
     _vhi_ssh = SSH(**{'host': VHI_CREDS['cp_ip'], 'port': VHI_CREDS['cloud_ssh_port']})
     exit_status, output = _vhi_ssh.execute(f"{ADMIN_AUTH} service compute server list --long -f json")
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f"[cold_migrate.py | STEP 5] Compute server list command failed. Output:\n\t{output}"
+    ):
+        return False
+
     vhi_vms = json.loads(output)
     _error_msg = ''
     vm_created = False
@@ -133,6 +140,9 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str):
     exit_status, output = _vhi_hv_ssh.execute(
         f"virsh dumpxml {_vhi_vm_id} 2>/dev/null > /tmp/{_vhi_vm_id}.xml ; cat /tmp/{_vhi_vm_id}.xml 2>/dev/null"
     )
+    if not exit_status_code_handler(exit_code=exit_status, message='[cold_migrate.py | STEP 7] VM dumpxml failed.'):
+        return False
+
     _vm_xml_cfg = output
     vhixml = KVMxml.fromstring(_vm_xml_cfg)
     _xml_vvm_disks = []
@@ -161,16 +171,26 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str):
             f"/dev/{store_idn}/{disk_idn} --fork 2>&1` ; res=$? ; if [[ $res == 0 ]] && [[ $nbd == \"\" ]];"
             f" then echo $port; break; else port=$((port+1)); fi ; done"
         )
+        if not exit_status_code_handler(
+                exit_code=exit_status,
+                message=f'[cold_migrate.py | STEP 8] Disk Migration failed. Output:\n\t{output}'
+        ):
+            return False
+
         nbd_port = output.strip()
-        _vhi_hv_ssh.execute(
+        exit_status, output = _vhi_hv_ssh.execute(
             f"qemu-img convert -p -n -t directsync -o cluster_size=1048576,lazy_refcounts=on"
             f" {sparse_opt} nbd://{_vm_hv_ip}:{nbd_port} -O qcow2 {_xml_vvm_disks[dsk_num]}", real_data=True
         )
+        if not exit_status_code_handler(
+                exit_code=exit_status,
+                message=f'[cold_migrate.py | STEP 8] Disk Migration failed. Output:\n\t{output}'
+        ):
+            return False
+
         dsk_num += 1
-    logs.info(
-        f"The virtual server cold migration has completed successfully:"
-        f" {VHI_CREDS.url}/compute/servers/instances/{_vhi_vm_id}"
-    )
+    logs.info(f"The virtual server ``COLD MIGRATION`` has completed successfully:"
+              f" {VHI_CREDS.url}/compute/servers/instances/{_vhi_vm_id}")
     return True
 
 

@@ -4,6 +4,7 @@ from click_default_group import DefaultGroup
 from inc.helper import Helper
 from inc.ssh_connector import ssh_run, SSH
 from inc.onapp_helpers import get_vm_source_properties
+from inc.utils import exit_status_code_handler
 
 
 def vm_install_bootloader(idn: str):
@@ -39,16 +40,42 @@ def vm_install_bootloader(idn: str):
 
     # -- STEP 4 --
     logs.info(f'{_spaces}{_boot_msg}STEP #4 -- OnApp: INSTALL GRUB for VM --', header=True)
-    _vm_ssh.execute("grub-install --recheck /dev/vda || grub2-install --recheck /dev/vda")
+    exit_status, output = _vm_ssh.execute("grub-install --recheck /dev/vda || grub2-install --recheck /dev/vda")
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f'[install_bootloader.py | STEP 4] Grub Installation failed. Output:\n\t{output}'
+    ):
+        return False
 
     # -- STEP 5 --
     logs.info(f'{_spaces}{_boot_msg}STEP #5 -- OnApp: Generate grub config for VM [{VM_IDn}] --', header=True)
-    _vm_ssh.execute("grub-mkconfig -o /boot/grub/grub.cfg || grub2-mkconfig -o /boot/grub2/grub.cfg")
+    exit_status, output = _vm_ssh.execute(
+        "grub-mkconfig -o /boot/grub/grub.cfg || grub2-mkconfig -o /boot/grub2/grub.cfg"
+    )
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f'[install_bootloader.py | STEP 5] Grub make config failed. Output:\n\t{output}'
+    ):
+        return False
 
     # -- STEP 6 --
     logs.info(f'{_spaces}{_boot_msg}STEP #6 -- OnApp: Copy cloud-install into VM [{VM_IDn}] --', header=True)
-    ssh_run(command=f'scp scripts/cron-cloud-install root@{_vm_ip_addr}:/etc/cron.d/cron-cloud-install')
-    ssh_run(command=f'scp scripts/cloud-install root@{_vm_ip_addr}:/usr/bin/cloud-install')
+    [exit_status, output] = ssh_run(
+        command=f'scp scripts/cron-cloud-install root@{_vm_ip_addr}:/etc/cron.d/cron-cloud-install'
+    )
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f'[install_bootloader.py | STEP 6] Copy cron-cloud-install failed. Output:\n\t{output}'
+    ):
+        return False
+
+    [exit_status, output] = ssh_run(command=f'scp scripts/cloud-install root@{_vm_ip_addr}:/usr/bin/cloud-install')
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f'[install_bootloader.py | STEP 6] Copy cloud-install failed. Output:\n\t{output}'
+    ):
+        return False
+
     return True
 
 

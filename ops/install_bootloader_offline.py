@@ -1,6 +1,7 @@
 import click
 import time
 
+from inc.utils import exit_status_code_handler
 from click_default_group import DefaultGroup
 from inc.helper import Helper
 from inc.ssh_connector import ssh_run, SSH
@@ -52,8 +53,12 @@ def vm_install_bootloader_offline(idn: str):
 
     # -- STEP 4 --
     logs.info(f'{_spaces}{_boot_msg}STEP #4 -- Copy scripts --', header=True)
-    _cmd = f"scp -r scripts root@{_vm_hv_ip}:/onapp/tools/"
-    ssh_run(command=_cmd)
+    [exit_status, output] = ssh_run(command=f"scp -r scripts root@{_vm_hv_ip}:/onapp/tools/")
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f'[install_bootloader_offline.py | STEP 4] Copy scripts failed. Output:\n\t{output}'
+    ):
+        return False
 
     # -- STEP 5 --
     logs.info(f'{_spaces}{_boot_msg}STEP #5 -- Correct grub config --', header=True)
@@ -67,11 +72,19 @@ def vm_install_bootloader_offline(idn: str):
         if not result:
             return False
 
-    _hv_ssh.execute("virsh create /onapp/tools/scripts/recovery.xml.mg")
+    exit_status, output = _hv_ssh.execute("virsh create /onapp/tools/scripts/recovery.xml.mg")
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message='[install_bootloader_offline.py | STEP 6] Virsh create from recovery.xml failed.'
+    ):
+        return False
 
     # -- STEP 7 --
     logs.info(f'{_spaces}{_boot_msg}STEP #7 -- OnApp: Install grub for VM --', header=True)
-    _hv_ssh.execute("sh -c -l '/onapp/tools/scripts/vm_grub_install.sh'")
+    exit_status, output = _hv_ssh.execute("sh -c -l '/onapp/tools/scripts/vm_grub_install.sh'")
+    if not exit_status_code_handler(exit_code=exit_status,
+                                    message='[install_bootloader_offline.py | STEP 7] Grub installation failed.'):
+        return False
 
     # -- STEP 8 --
     logs.info(f'{_spaces}{_boot_msg}STEP #8 -- OnApp: Shutdown VM on Hypervisor --', header=True)
@@ -84,12 +97,18 @@ def vm_install_bootloader_offline(idn: str):
     # -- STEP 9 --
     logs.info(f'{_spaces}{_boot_msg}STEP #9 -- OnApp: HV deactivating disk --', header=True)
     if not vm_is_running:
-        deactivate_disk(vm_idn=vm_idn, vm_ohv_ip=_vm_hv_ip)
+        result = deactivate_disk(vm_idn=vm_idn, vm_ohv_ip=_vm_hv_ip)
+        if not result:
+            return False
 
     # -- STEP 10 --
     if vm_is_running:
         logs.info(f'{_spaces}{_boot_msg}STEP #10 -- OnApp: Start VM --', header=True)
-        _hv_ssh.execute(f"virsh create /onapp/tools/scripts/{vm_idn}.xml")
+        exit_status, output = _hv_ssh.execute(f"virsh create /onapp/tools/scripts/{vm_idn}.xml")
+        if not exit_status_code_handler(exit_code=exit_status,
+                                        message='[install_bootloader_offline.py | STEP 10] Virsh create failed.'):
+            return False
+
         return True
 
     return True
