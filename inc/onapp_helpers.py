@@ -476,7 +476,7 @@ def transfer_firewall_rules_to_sg(vm_idn: str, vhiproj: str, drop: str = "DROP",
     security_group_name = f'sg_from_vs_{vm_idn}_and_nic_{primary_nic.nic_idn}'
     _, output = proj.show(domain=VHI_CREDS['vinfra_domain'], project_name=vhiproj)
     proj_id = json.loads(output)['id']
-    _, sg_list = sg.list(**{'project': proj_id})
+    _, sg_list = sg.list_security_group(**{'project': proj_id})
     sg_list = json.loads(sg_list)
     if not firewall_rules_for_primary_nic:
         logs.debug(msg=f'No rules for transfer!')
@@ -501,7 +501,7 @@ def transfer_firewall_rules_to_sg(vm_idn: str, vhiproj: str, drop: str = "DROP",
     _, sg_create = sg.execute(_cmd_create_sg)
     sg_create = json.loads(sg_create)
     sg_name = sg_create.get('name', '')
-    _, output = sg.list(**{'name': f"{sg_name}"})
+    _, output = sg.list_security_group(**{'name': f"{sg_name}"})
     output = json.loads(output)
     if not output:
         logs.error(msg=f"Security group hasn't been created")
@@ -527,7 +527,7 @@ def transfer_firewall_rules_to_sg(vm_idn: str, vhiproj: str, drop: str = "DROP",
             if not output:
                 logs.warn(msg=f"Firewall rule: {rule} was not transferred correctly")
 
-        _, output = sg.list(**{'name': f"{sg_name}"})
+        _, output = sg.list_security_group(**{'name': f"{sg_name}"})
         custom_sg_id = json.loads(output)[0]['id']
         logs.debug(f"Transferred firewall rules list: {custom_sg_id} for newly created Security group")
         return custom_sg_id
@@ -545,7 +545,7 @@ def get_iface_from_specific_vs(vm_name: str) -> str:
     """
     Get iface from specific VS
     """
-    _, output = vsi.list(server_name=vm_name)
+    _, output = vsi.list_server(server_name=vm_name)
     return json.loads(output)[0]['id']
 
 

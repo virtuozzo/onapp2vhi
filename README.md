@@ -12,24 +12,6 @@
       - `service onapp start`
   - Save OnApp ssh key on VHI side on all nodes.
 
-## Setup User on VHI Side
-
-  - Login into `vinfra` on VHI side(CP, HV1, HV2) and enter password for admin
-  - Create any user that will be used for migration process on the UI side
-  - Take new user login and assign new role to him: 
-    - `vinfra domain user set {user_login} --assign-domain Default compute --domain Default`
-      - e.g.:
-      - `vinfra domain user set migration_user@onapp.test.com --assign-domain Default compute --domain=Default`
-  - next step is to provide user credentials into cfg/config.cfg file
-  - On VHI server do next steps:
-    - set into .bashrc file:
-      - `source /etc/kolla/admin-openrc.sh`
-    - take an ID all your networks and do next:
-      - `openstack --insecure network set --disable-port-security {network-id}`
-    - after migration finished revert changes:
-      - `openstack --insecure network set --enable-port-security {network-id}`
-
-
 ## Setup local environment
 #### Please provide SSH KEYS to VHI(HV, CP) and OnApp(HV, CP, BS) from machine you are going to run migration.
   - Before running "./onapp2vhi" command please do next steps:
@@ -57,6 +39,20 @@
   * You have installed separate __python 3 virtual environment__ that will not affect global python requirements.
   * You have installed all needed packages and libraries into our virtual environment. 
   * You have provided credentials to access our clouds.
+
+## Setup User on VHI Side
+
+  - run virtual env [~/onapp2vhi]# source .venv/bin/activate
+    - run next command: `(.venv)[~/onapp2vhi]# ./onapp2vhi create_service_user`
+    - user for migrations will be created and saved into cfg/config.cfg file with credentials
+  - On VHI server do next steps:
+    - set into .bashrc file:
+      - `source /etc/kolla/admin-openrc.sh`
+    - take an ID all your networks and do next:
+      - `openstack --insecure network set --disable-port-security {network-id}`
+    - after migration finished revert changes:
+      - `openstack --insecure network set --enable-port-security {network-id}`
+
 
 ---
 ---

@@ -105,7 +105,16 @@ class OnAppVhiCP:
         with open(self.path, 'w+') as conf:
             self._config.write(conf)
         # Read conf file with new values
+        import time
+        time.sleep(1)
         self._config.read(self.path)
+        time.sleep(1)
+
+    def reset_auth(self):
+        global VINFRA_AUTH
+        VINFRA_AUTH = f"vinfra --vinfra-username='{self.vhi_cp['vinfra_user']}'" \
+                      f" --vinfra-password='{self.vhi_cp['vinfra_pass']}'"
+        return VINFRA_AUTH
 
 
 configs = OnAppVhiCP()

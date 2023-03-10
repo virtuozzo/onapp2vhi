@@ -48,6 +48,8 @@ class SSH:
         self.host = kwargs.get("host")
         self.port = kwargs.get("port", 22)
         self.username = kwargs.get("username", "root")
+        self.connect_timeout = kwargs.get("connect_timeout", CONNECT_TIMEOUT)
+        self.channel_timeout = kwargs.get("channel_timeout", CHANNEL_TIMEOUT)
         self.pkey = paramiko.RSAKey.from_private_key_file(SSH_KEY)
 
     def _port_is_open(self, timeout=10):
@@ -77,7 +79,7 @@ class SSH:
                                     username=self.username,
                                     port=self.port,
                                     pkey=self.pkey,
-                                    timeout=CONNECT_TIMEOUT)
+                                    timeout=self.connect_timeout)
                 return True
             except paramiko.AuthenticationException as AE:
                 logs.error(f"""{AE}\n The possible issues:
@@ -138,7 +140,7 @@ class SSH:
         self.transport = self.client.get_transport()
         self.channel = self.transport.open_session()
         paramiko.agent.AgentRequestHandler(self.channel)
-        self.channel.settimeout(CHANNEL_TIMEOUT)
+        self.channel.settimeout(self.channel_timeout)
         logs.debug(f"Channel timeout - {self.channel.timeout}")
         logs.debug(f"Default window size - {self.transport.default_window_size}")
         logs.info(f'HOST: {self.host} | PORT: {self.port}')

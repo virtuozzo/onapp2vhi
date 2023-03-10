@@ -54,7 +54,7 @@ def list_users():
     '''
     Get a list of users from the keystone service endpoint.
     '''
-    users = ks.users.list()
+    users = ks.users.list_node()
     print pp.pprint(users)
 
 
@@ -62,7 +62,7 @@ def list_instances():
     '''
     Get a list of instances from the nova service endpoint.
     '''
-    instances = nova.servers.list()
+    instances = nova.servers.list_node()
     print pp.pprint(instances)
 
 
@@ -70,7 +70,7 @@ def list_plugins():
     '''
     Get a list of plugins from the sahara service endpoint.
     '''
-    plugins = sahara.plugins.list()
+    plugins = sahara.plugins.list_node()
     print pp.pprint(plugins)
 
 
@@ -78,5 +78,5 @@ def list_heat_services():
     '''
     Get a list of services from the heat/orchestration service endpoint.
     '''
-    services = heat.services.list()
+    services = heat.services.list_node()
     print pp.pprint(services)

@@ -1,12 +1,19 @@
+import time
+
 import requests
+import urllib3
 import json
+
 from inc.helper import Helper
 from cfg.config_parser import VHI_CREDS, configs, ADMIN_AUTH
 from inc.logger import logs
 from inc.ssh_connector import SSH
 from inc.utils import generate_random_password, exit_status_code_handler
-from inc.vinfra_wrapper import VinfraFlavor
-import urllib3
+from inc.vinfra_wrapper import (
+    VinfraFlavor,
+    VinfraUser,
+    VinfraNode
+)
 
 
 # Disable SSL verification warnings
@@ -285,7 +292,7 @@ class Vhi:
     def update_user_password(self, user_login: str):
         _pwd = generate_random_password()
         _change_pwd = (f"echo -e '{_pwd}' | {ADMIN_AUTH} domain user set {user_login}"
-                       f" --password --domain '{self.vinfra_domain}'")
+                       f" --password --domain Default")
         self._vhi_ssh.execute(_change_pwd)
         return _pwd
 
@@ -298,7 +305,7 @@ class Vhi:
         _flavor_name = onapp_flavor['name']
         _payload = self._vhi_flavor_payload(vm_data=onapp_flavor)
         _vinfra = VinfraFlavor(service_user=True)
-        exit_status, output = _vinfra.list()
+        exit_status, output = _vinfra.flavor_list()
         if not exit_status_code_handler(exit_code=exit_status,
                                         message=f'Impossible to get Flavor list. Output:\n\t{output}'):
             return False
@@ -317,6 +324,108 @@ class Vhi:
             return False
 
         self.flavor_name = json.loads(output)['name']
+        return True
+
+    def _verify_user_exists(self, user_email: str):
+        """
+        Verify whether user exists on VHI side or not
+        :param user_email:
+        :return:
+        """
+        v_user = VinfraUser()
+
+        # Get List of users
+        exit_status, output = v_user.user_list(domain='Default')
+        _user_emails = [_user['email'] for _user in json.loads(output)]
+        if user_email in _user_emails:
+            return True
+
+        return False
+
+    def create_service_user(self):
+        """
+        Creates new user and assign to him Service User role to be able
+        to do any manipulations with compute resources within Domain
+        If such user is created it will just take it creds from cfg/config.cfg file
+        :return:
+        """
+        v_user = VinfraUser(cp_ip=True)
+        _pwd = generate_random_password()
+        _service_user_payload = {"email": "migration_helper@user.com",
+                                 "system-permissions": 'compute',
+                                 "name": "migration_user",
+                                 "enable": True,
+                                 "assign-domain": ('Default', 'compute'),
+                                 "domain": 'Default'}
+
+        # Get List of users
+        if VHI_CREDS['vinfra_user'] != _service_user_payload['name']:
+            configs.set_new_value(section=configs.VHI, option="vinfra_user", value=_service_user_payload['name'])
+            vinfra_auth = configs.reset_auth()
+            import inc.vinfra_wrapper as wrapper
+            wrapper.VINFRA_AUTH = vinfra_auth
+
+        result = self._verify_user_exists(user_email=_service_user_payload['email'])
+        if result:
+            _msg = (f'``Service User`` with Email: {_service_user_payload["email"]} exists on VHI side.'
+                    f' Checking ``Service User`` credentials. . .')
+            logs.info(msg=_msg, header=True)
+            vinfra_node = VinfraNode(channel_timeout=5)
+            exit_status, output = vinfra_node.list_node()
+            if not exit_status_code_handler(exit_code=exit_status,
+                                            message=f'Service User creds are not valid. Output:\n\t{output}'):
+                logs.debug('Updating credentials for SERVICE USER and save them into `cfg/config.cfg`')
+
+                # Generating new pwd for Service User and save it into config file, after check credentials again
+                new_pwd = self.update_user_password(user_login=_service_user_payload['name'])
+                configs.set_new_value(section=configs.VHI, option="vinfra_pass", value=new_pwd)
+                vinfra_auth = configs.reset_auth()
+                import inc.vinfra_wrapper as wrapper
+                wrapper.VINFRA_AUTH = vinfra_auth
+                v_node = VinfraNode(channel_timeout=5)
+                exit_status, output = v_node.list_node()
+                try:
+                    assert type(json.loads(output)) == list
+                except AssertionError:
+                    logs.error(f'Service User password has NOT been changed. Output from getting node list:\n{output}')
+                    return False
+                logs.info(msg=f'SERVICE USER password has been updated,'
+                              f' credentials saved into `cfg/config.cfg`')
+                return True
+
+            logs.info(msg=f'SERVICE USER credentials are valid and stored in `cfg/config.cfg`')
+            return True
+
+        exit_status, output = v_user.create(user_data=_service_user_payload, pwd=_pwd)
+        if not exit_status_code_handler(exit_code=exit_status,
+                                        message=f'Service User has not been created. Output:\n\t{output}'):
+            return False
+
+        user_response = json.loads(output)
+        try:
+            assert _service_user_payload['system-permissions'] in user_response['system_permissions']
+            assert _service_user_payload['email'] == user_response['email']
+            assert _service_user_payload['name'] == user_response['name']
+        except AssertionError:
+            logs.error(f'Service User has NOT been created. Output: {user_response}')
+            return False
+
+        # Save password to cfg/config.cfg file and after that verify ability to get list of nodes
+        configs.set_new_value(section=configs.VHI, option="vinfra_pass", value=_pwd)
+        vinfra_auth = configs.reset_auth()
+        import inc.vinfra_wrapper as wrapper
+        wrapper.VINFRA_AUTH = vinfra_auth
+        time.sleep(1)
+        v_node = VinfraNode(channel_timeout=5)
+        exit_status, output = v_node.list_node()
+        try:
+            assert exit_status_code_handler(exit_code=exit_status)
+            assert type(json.loads(output)) == list
+        except AssertionError:
+            logs.error(f'Service User password has NOT been changed. Output from getting node list:\n{output}')
+            return False
+
+        logs.info(msg=f'Service user has been created, credentials saved into `cfg/config.cfg`')
         return True
 
     def create_object(self, proj_data: dict, object_type: str):

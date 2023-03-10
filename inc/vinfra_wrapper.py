@@ -1,12 +1,22 @@
 from typing import Optional, Tuple, Dict
 from cfg.config_parser import VHI_CREDS, ADMIN_AUTH, VINFRA_AUTH
-from inc.ssh_connector import SSH
+from inc.ssh_connector import SSH, CONNECT_TIMEOUT, CHANNEL_TIMEOUT
 
 
 class VinfraBase:
 
-    def __init__(self, access: bool = False, service_user: bool = False):
-        self.ssh = SSH(**{"host": VHI_CREDS['hv_ip']})
+    def __init__(self, access: bool = False,
+                 service_user: bool = False,
+                 connect_timeout: int = CONNECT_TIMEOUT,
+                 channel_timeout: int = CHANNEL_TIMEOUT,
+                 cp_ip: bool = False):
+        self.cp_ip = cp_ip
+        _host = VHI_CREDS['hv_ip']
+        if self.cp_ip:
+            _host = VHI_CREDS['cp_ip']
+        self.ssh = SSH(**{"host": _host,
+                          "connect_timeout": connect_timeout,
+                          "channel_timeout": channel_timeout})
         self.vinfra_root = ADMIN_AUTH
         if service_user:
             self.vinfra_root = VINFRA_AUTH
@@ -15,15 +25,40 @@ class VinfraBase:
                                 f" --vinfra-domain={VHI_CREDS['vinfra_domain']}" \
                                 f" --vinfra-project={VHI_CREDS['vinfra_project']}"
 
-    def execute(self, cmd: str) -> Tuple[int, str]:
+    def execute(self, cmd: str, long: bool = False) -> Tuple[int, str]:
+        if long:
+            cmd += ' --long'
         return self.ssh.execute(f'{cmd} -f json')
 
 
 class VinfraServiceCompute(VinfraBase):
 
-    def __init__(self, service_user: bool = False):
-        super().__init__(service_user=service_user)
+    def __init__(self, service_user: bool = False,
+                 connect_timeout: int = CONNECT_TIMEOUT,
+                 channel_timeout: int = CHANNEL_TIMEOUT):
+        super().__init__(service_user=service_user,
+                         connect_timeout=connect_timeout,
+                         channel_timeout=channel_timeout)
         self.vinfra_root += ' service compute'
+
+
+class VinfraNode(VinfraServiceCompute):
+
+    def __init__(self, service_user: bool = True,
+                 connect_timeout: int = CONNECT_TIMEOUT,
+                 channel_timeout: int = CHANNEL_TIMEOUT):
+        super().__init__(service_user=service_user,
+                         connect_timeout=connect_timeout,
+                         channel_timeout=channel_timeout)
+        self.vinfra_root += ' node'
+
+    def list_node(self):
+        """
+        Get list of all nodes
+        :return:
+        """
+        cmd: str = f'{self.vinfra_root} list'
+        return self.execute(cmd)
 
 
 class VinfraDomain(VinfraBase):
@@ -94,7 +129,7 @@ class VinfraServer(VinfraServiceCompute):
                 cmd += f'--{key} {value} '
         return self.execute(cmd)
 
-    def list(self):
+    def list_server(self):
         """
         https://docs.virtuozzo.com/virtuozzo_hybrid_infrastructure_4_6_admins_cmd_guide/index.html#vinfra-service-compute-server-list.html
         --long
@@ -169,7 +204,7 @@ class VinfraServerInterface(VinfraServer):
                 cmd += f'--{key} {value} '
         return self.execute(cmd)
 
-    def list(self, server_name: str, **kwargs):
+    def list_server(self, server_name: str, **kwargs):
         """
         --long
         Enable access and listing of all fields of objects.
@@ -182,7 +217,7 @@ class VinfraServerInterface(VinfraServer):
         if kwargs:
             for key, value in kwargs.items():
                 cmd += f'--{key} {value} '
-        return self.execute(cmd)
+        return self.execute(cmd, long=True)
 
 
 class VinfraSecurityGroups(VinfraServiceCompute):
@@ -203,7 +238,7 @@ class VinfraSecurityGroups(VinfraServiceCompute):
             if description is None else self.vinfra_root + f' create {name} --description "{description}"'
         return self.execute(cmd)
 
-    def list(self, **kwargs: Dict):
+    def list_security_group(self, **kwargs: Dict):
         """
         https://docs.virtuozzo.com/virtuozzo_hybrid_infrastructure_4_6_admins_cmd_guide/index.html#vinfra-service-compute-security-group-list.html
         --long
@@ -225,7 +260,7 @@ class VinfraSecurityGroups(VinfraServiceCompute):
         if kwargs:
             for key, value in kwargs.items():
                 cmd += f'--{key} {value} '
-        return self.execute(cmd)
+        return self.execute(cmd, long=True)
 
 
 class VinfraSGRules(VinfraServiceCompute):
@@ -262,7 +297,7 @@ class VinfraSGRules(VinfraServiceCompute):
         # onapp supports only incoming traffic, so the default value will be ingress
         return self.execute(f"{cmd} --ingress")
 
-    def list(self, sg_group: str = '', list_all: bool = False, **kwargs):
+    def list_sg_rules(self, sg_group: str = '', list_all: bool = False, **kwargs):
         """
         --long
         Enable access and listing of all fields of objects.
@@ -283,7 +318,7 @@ class VinfraSGRules(VinfraServiceCompute):
             cmd = self.vinfra_root + f' list {sg_group}'
         for key, value in kwargs.items():
             cmd += f'--{key} {value} '
-        return self.execute(cmd)
+        return self.execute(cmd, long=True)
 
 
 class VinfraProject(VinfraDomain):
@@ -355,7 +390,7 @@ class VinfraProject(VinfraDomain):
         Project ID or name
         """
         cmd = self.vinfra_root + f' show --domain {domain} {project_name}'
-        return self.execute(cmd)
+        return self.execute(cmd, long=True)
 
 
 class VinfraFlavor(VinfraServiceCompute):
@@ -366,7 +401,7 @@ class VinfraFlavor(VinfraServiceCompute):
 
     def create(self, flavor_name: str, vcpus: int, ram: int):
         """
-        Create new flavor based on input values
+        Create new flavor based on input properties
         :param (str) flavor_name: "flavor_4_128"
         :param (int) vcpus: 3
         :param (int) ram: 2048
@@ -374,14 +409,68 @@ class VinfraFlavor(VinfraServiceCompute):
         cmd: str = f'{self.vinfra_root} create {flavor_name} --vcpus={vcpus} --ram={ram}'
         return self.execute(cmd)
 
-    def list(self, long: bool = True):
+    def flavor_list(self):
         """
         --long
         Enable access and listing of all fields of objects.
-        -f json
-        to get output in json format
         """
         cmd: str = f'{self.vinfra_root} list'
-        if long:
-            cmd = f"{cmd} --long"
+        return self.execute(cmd, long=True)
+
+
+class VinfraUser(VinfraBase):
+
+    def __init__(self, cp_ip: bool = True):
+        super().__init__(cp_ip=cp_ip)
+        self.vinfra_root += ' domain user'
+
+    def user_list(self, domain: str):
+        """
+        :param domain: Default
+        """
+        cmd: str = f'{self.vinfra_root} list --domain={domain}'
+        return self.execute(cmd, long=True)
+
+    def create(self, user_data: dict, pwd: str):
+        """
+        Create new user based on input properties
+        :param (str) user_data: {
+            "email": "migration_helper@user.com",
+            "system-permissions": 'compute',
+            "domain-permissions": 'compute',
+            "name": "migration_user",
+            "description": "",
+            "enable": True,
+            "assign-domain": default 'compute',
+            "domain_permissions": "domain_admin",
+            "assigned_projects": "project_id" "role"
+            "domain": vinfra_domain
+        }
+        :param pwd: str
+        :return execute command:
+            "echo -e "{password}" | vinfra domain user create {user_name}
+                                    --domain default
+                                     --email 'test@test.com'
+                                     --assign-domain default 'compute'
+                                      --system-permissions 'compute'
+                                       --enable -f json"
+        """
+        _cmd_properties = ''
+        for key, value in user_data.items():
+            if type(value) == bool:
+                continue
+
+            if key in ['name', 'assign-domain']:
+                continue
+
+            _cmd_properties += f'--{key} "{value}" '
+        cmd: str = f'echo -e "{pwd}" | {self.vinfra_root} create {user_data["name"]} {_cmd_properties}'
+        if 'assign-domain' in list(user_data.keys()):
+            cmd += f'--assign-domain {user_data["assign-domain"][0]} {user_data["assign-domain"][1]}'
+        # Handle bool values
+        for _bool in ['enable', 'disable']:
+            if _bool in list(user_data.keys()):
+                if user_data[_bool]:
+                    cmd += f' --{_bool}'
+
         return self.execute(cmd)
