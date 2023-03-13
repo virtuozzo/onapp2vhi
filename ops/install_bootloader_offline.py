@@ -21,6 +21,7 @@ def vm_install_bootloader_offline(idn: str):
         return False
 
     _spaces = Helper.SPACES.value
+    _scp_opts = Helper.SCP_OPTS.value
     _boot_msg = 'BOOTLOADER OFFLINE -- '
     logs.info(f'{_spaces}-- INSTALLING {_boot_msg}', header=True)
     vm_idn = idn
@@ -53,7 +54,7 @@ def vm_install_bootloader_offline(idn: str):
 
     # -- STEP 4 --
     logs.info(f'{_spaces}{_boot_msg}STEP #4 -- Copy scripts --', header=True)
-    [exit_status, output] = ssh_run(command=f"scp -r scripts root@{_vm_hv_ip}:/onapp/tools/")
+    [exit_status, output] = ssh_run(command=f"scp {_scp_opts} -r scripts root@{_vm_hv_ip}:/onapp/tools/")
     if not exit_status_code_handler(
             exit_code=exit_status,
             message=f'[install_bootloader_offline.py | STEP 4] Copy scripts failed. Output:\n\t{output}'

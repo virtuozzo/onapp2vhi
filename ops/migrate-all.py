@@ -150,6 +150,7 @@ def migrate_all(user='', network='', vm=''):
             logs.info(f"{Helper.SPACES.value}-- VHI: Migrate VM #{_num} IDENTIFIER [{_vm_info}]--", header=True)
             bootloader_drivers, vm_migrate = vh.vm_handler()
             if not bootloader_drivers and not vm_migrate:
+                logs.error('Access to online VM is denied. Possible reason - No SSH key on VM')
                 msg_failed = (f'SSH PORT "22" is not opened for VM ID: {_idn} | IP: {_vm["ip_addr"]}\n'
                               f'Please install GRUB/WIN_DRIVERS via these options:'
                               f' "install_bootloader_offline --vm=\'identifier\'" |'

@@ -110,7 +110,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str):
 
     # -- STEP 6 --
     logs.info(f"{_spaces}{live_migration}STEP #6 -- VHI: Create similar VM on VHI side --", header=True)
-    vinfra_access = f"{VINFRA_AUTH} --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
+    vinfra_access = f"{ADMIN_AUTH} --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
     onappvm_pri_ip = _onapp_nics[0]['ips'][0]
     onappvm_pri_mac = _onapp_nics[0]['mac']
     _vhi_ssh = SSH(**{'host': VHI_CREDS['cp_ip'], 'port': VHI_CREDS['cloud_ssh_port']})

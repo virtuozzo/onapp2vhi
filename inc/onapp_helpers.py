@@ -584,8 +584,9 @@ class VmHandler:
         from ops.install_bootloader_offline import vm_install_bootloader_offline
         from ops.install_win_drivers import vm_install_win_drivers
         from ops.install_win_drivers_offline import vm_install_win_drivers_offline
+        from inc.helper import Helper
         if self._booted:
-            _cmd = (f'ssh -o StrictHostKeyChecking=no -o CheckHostIP=no -p 22'
+            _cmd = (f'timeout 15s ssh {Helper.SSH_OPTS.value} -p 22'
                     f' {self._user}@{self._ip_addr} -t "hostname; exit;"')
             (rc, ou) = ssh_run(command=_cmd)
             if not rc:

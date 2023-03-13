@@ -14,6 +14,7 @@ def vm_install_bootloader(idn: str):
         return False
 
     _spaces = Helper.SPACES.value
+    _scp_opts = Helper.SCP_OPTS.value
     _boot_msg = 'BOOTLOADER ONLINE -- '
     logs.info(f'{_spaces}-- INSTALLING {_boot_msg}', header=True)
 
@@ -34,7 +35,7 @@ def vm_install_bootloader(idn: str):
     # -- STEP 3 --
     logs.info(f'{_spaces}{_boot_msg}STEP #3 -- OnApp: GRUB_DISABLE_LINUX_UUID and GRUB_DISABLE_UUID set to false --',
               header=True)
-    _vm_ssh = SSH(**{'host': _vm_ip_addr})
+    _vm_ssh = SSH(**{'host': _vm_ip_addr, 'connect_timeout': 10, 'channel_timeout': 10})
     _vm_ssh.execute("sed -i 's/^GRUB_DISABLE_LINUX_UUID=true/#GRUB_DISABLE_LINUX_UUID=true/' /etc/default/grub")
     _vm_ssh.execute("sed -i 's/^GRUB_DISABLE_UUID=true/#GRUB_DISABLE_UUID=true/' /etc/default/grub")
 
@@ -61,7 +62,7 @@ def vm_install_bootloader(idn: str):
     # -- STEP 6 --
     logs.info(f'{_spaces}{_boot_msg}STEP #6 -- OnApp: Copy cloud-install into VM [{VM_IDn}] --', header=True)
     [exit_status, output] = ssh_run(
-        command=f'scp scripts/cron-cloud-install root@{_vm_ip_addr}:/etc/cron.d/cron-cloud-install'
+        command=f'scp {_scp_opts} scripts/cron-cloud-install root@{_vm_ip_addr}:/etc/cron.d/cron-cloud-install'
     )
     if not exit_status_code_handler(
             exit_code=exit_status,
@@ -69,7 +70,9 @@ def vm_install_bootloader(idn: str):
     ):
         return False
 
-    [exit_status, output] = ssh_run(command=f'scp scripts/cloud-install root@{_vm_ip_addr}:/usr/bin/cloud-install')
+    [exit_status, output] = ssh_run(
+        command=f'scp {_scp_opts} scripts/cloud-install root@{_vm_ip_addr}:/usr/bin/cloud-install'
+    )
     if not exit_status_code_handler(
             exit_code=exit_status,
             message=f'[install_bootloader.py | STEP 6] Copy cloud-install failed. Output:\n\t{output}'

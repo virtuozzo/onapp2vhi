@@ -46,7 +46,7 @@ class Network:
         return False
 
     def is_present(self):
-        cmd = f"{self._vinfra_options} service compute network list -f json"
+        cmd = f"{VINFRA_AUTH} service compute network list -f json"
         exit_status, output = self._ssh.execute(cmd)
         if not exit_status:
             response = output.split('\n')

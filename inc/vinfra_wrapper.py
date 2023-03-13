@@ -217,7 +217,7 @@ class VinfraServerInterface(VinfraServer):
         if kwargs:
             for key, value in kwargs.items():
                 cmd += f'--{key} {value} '
-        return self.execute(cmd, long=True)
+        return self.execute(cmd)
 
 
 class VinfraSecurityGroups(VinfraServiceCompute):
@@ -260,7 +260,7 @@ class VinfraSecurityGroups(VinfraServiceCompute):
         if kwargs:
             for key, value in kwargs.items():
                 cmd += f'--{key} {value} '
-        return self.execute(cmd, long=True)
+        return self.execute(cmd)
 
 
 class VinfraSGRules(VinfraServiceCompute):
@@ -318,7 +318,7 @@ class VinfraSGRules(VinfraServiceCompute):
             cmd = self.vinfra_root + f' list {sg_group}'
         for key, value in kwargs.items():
             cmd += f'--{key} {value} '
-        return self.execute(cmd, long=True)
+        return self.execute(cmd)
 
 
 class VinfraProject(VinfraDomain):
@@ -390,7 +390,7 @@ class VinfraProject(VinfraDomain):
         Project ID or name
         """
         cmd = self.vinfra_root + f' show --domain {domain} {project_name}'
-        return self.execute(cmd, long=True)
+        return self.execute(cmd)
 
 
 class VinfraFlavor(VinfraServiceCompute):
