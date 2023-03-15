@@ -14,14 +14,13 @@ from inc.onapp_helpers import (
     transfer_firewall_rules_to_sg, get_iface_from_specific_vs, attach_security_group_to_nic_and_enable_spoofing
 )
 from inc.utils import exit_status_code_handler
-from inc.vhi_helpers import Vhi
 from inc.network_hanlder import get_network_configuration
 from inc.logger import logs
 from inc.helper import Helper
-from cfg.config_parser import ONAPP_CREDS, VHI_CREDS, VINFRA_AUTH, ADMIN_AUTH
+from cfg.config_parser import ONAPP_CREDS, VHI_CREDS, VINFRA_AUTH, ADMIN_AUTH, DOMAIN_AUTH
 
 
-def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str):
+def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
     if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -41,8 +40,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str):
     _vm_hv_ip = _vm_properties['hv_ip']
     _vm_ip_addr = _vm_properties['vm_ip_addr']
     _hot_migrate = _vm_properties['hot_migrate']
-    vhi = Vhi()
-    vhi.check_default_project()
+    vhi = vhi_obj
     _on_app_flavor = get_onapp_vm_flavor(vm_idn=VM_IDn)
     logs.debug(f'OnApp flavor: {_on_app_flavor}')
     result = vhi.flavor_handler(onapp_flavor=_on_app_flavor)
@@ -111,6 +109,8 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str):
     # -- STEP 6 --
     logs.info(f"{_spaces}{live_migration}STEP #6 -- VHI: Create similar VM on VHI side --", header=True)
     vinfra_access = f"{ADMIN_AUTH} --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
+    if VHI_CREDS['vinfra_domain'] != 'Default':
+        vinfra_access = f"{DOMAIN_AUTH}  --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
     onappvm_pri_ip = _onapp_nics[0]['ips'][0]
     onappvm_pri_mac = _onapp_nics[0]['mac']
     _vhi_ssh = SSH(**{'host': VHI_CREDS['cp_ip'], 'port': VHI_CREDS['cloud_ssh_port']})
@@ -314,11 +314,12 @@ def cli():
 @click.option('--vproj', '--vhi-project', default='', help="VHI Project.")
 @click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
 @click.option('--network', default='', help="Set network id")
-def livemigrate(vdom='', vproj='', idn='', network=''):
+def livemigrate(vdom='', vproj='', idn='', network='', vhi_obj=''):
     vm_live_migrate(vdom=vdom,
                     vproj=vproj,
                     idn=idn,
-                    network=network)
+                    network=network,
+                    vhi_obj=vhi_obj)
 
 
 cli.add_command(livemigrate)

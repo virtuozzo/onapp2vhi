@@ -61,23 +61,21 @@ def vm_install_bootloader(idn: str):
 
     # -- STEP 6 --
     logs.info(f'{_spaces}{_boot_msg}STEP #6 -- OnApp: Copy cloud-install into VM [{VM_IDn}] --', header=True)
-    [exit_status, output] = ssh_run(
-        command=f'scp {_scp_opts} scripts/cron-cloud-install root@{_vm_ip_addr}:/etc/cron.d/cron-cloud-install'
-    )
-    if not exit_status_code_handler(
-            exit_code=exit_status,
-            message=f'[install_bootloader.py | STEP 6] Copy cron-cloud-install failed. Output:\n\t{output}'
-    ):
-        return False
-
-    [exit_status, output] = ssh_run(
-        command=f'scp {_scp_opts} scripts/cloud-install root@{_vm_ip_addr}:/usr/bin/cloud-install'
-    )
-    if not exit_status_code_handler(
-            exit_code=exit_status,
-            message=f'[install_bootloader.py | STEP 6] Copy cloud-install failed. Output:\n\t{output}'
-    ):
-        return False
+    scripts_info = {
+        'scripts/cron-cloud-install': '/etc/cron.d/cron-cloud-install',
+        'scripts/cloud-install': '/usr/bin/cloud-install',
+        'scripts/vz-guest-tools-lin.tar': '/opt/vz-guest-tools-lin.tar ',
+        'scripts/vz-guest-tools': '/usr/bin/vz-guest-tools',
+    }
+    for file, path in scripts_info.items():
+        [exit_status, output] = ssh_run(
+            command=f'scp {file} root@{_vm_ip_addr}:{path}'
+        )
+        if not exit_status_code_handler(
+                exit_code=exit_status,
+                message=f'[install_bootloader.py | STEP 6] Copy {file} failed. Output:\n\t{output}'
+        ):
+            return False
 
     return True
 

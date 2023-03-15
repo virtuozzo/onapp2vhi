@@ -1,12 +1,13 @@
 from typing import Optional, Tuple, Dict
-from cfg.config_parser import VHI_CREDS, ADMIN_AUTH, VINFRA_AUTH
+from cfg.config_parser import VHI_CREDS, ADMIN_AUTH, VINFRA_AUTH, DOMAIN_AUTH
 from inc.ssh_connector import SSH, CONNECT_TIMEOUT, CHANNEL_TIMEOUT
 
 
 class VinfraBase:
 
-    def __init__(self, access: bool = False,
+    def __init__(self, access_domain: bool = False,
                  service_user: bool = False,
+                 domain_service_user: bool = False,
                  connect_timeout: int = CONNECT_TIMEOUT,
                  channel_timeout: int = CHANNEL_TIMEOUT,
                  cp_ip: bool = False):
@@ -20,10 +21,10 @@ class VinfraBase:
         self.vinfra_root = ADMIN_AUTH
         if service_user:
             self.vinfra_root = VINFRA_AUTH
-        if access:
-            self.vinfra_root += f" --vinfra-portal={VHI_CREDS['vinfra_portal']}" \
-                                f" --vinfra-domain={VHI_CREDS['vinfra_domain']}" \
-                                f" --vinfra-project={VHI_CREDS['vinfra_project']}"
+        if domain_service_user:
+            self.vinfra_root = DOMAIN_AUTH
+        if access_domain:
+            self.vinfra_root += f" --vinfra-domain={VHI_CREDS['vinfra_domain']}"
 
     def execute(self, cmd: str, long: bool = False) -> Tuple[int, str]:
         if long:
@@ -34,9 +35,13 @@ class VinfraBase:
 class VinfraServiceCompute(VinfraBase):
 
     def __init__(self, service_user: bool = False,
+                 domain_service_user: bool = False,
                  connect_timeout: int = CONNECT_TIMEOUT,
+                 access_domain: bool = False,
                  channel_timeout: int = CHANNEL_TIMEOUT):
         super().__init__(service_user=service_user,
+                         access_domain=access_domain,
+                         domain_service_user=domain_service_user,
                          connect_timeout=connect_timeout,
                          channel_timeout=channel_timeout)
         self.vinfra_root += ' service compute'
@@ -53,6 +58,27 @@ class VinfraNode(VinfraServiceCompute):
         self.vinfra_root += ' node'
 
     def list_node(self):
+        """
+        Get list of all nodes
+        :return:
+        """
+        cmd: str = f'{self.vinfra_root} list'
+        return self.execute(cmd)
+
+
+class VinfraImage(VinfraServiceCompute):
+
+    def __init__(self, access_domain: bool = True,
+                 domain_service_user: bool = True,
+                 connect_timeout: int = CONNECT_TIMEOUT,
+                 channel_timeout: int = CHANNEL_TIMEOUT):
+        super().__init__(access_domain=access_domain,
+                         domain_service_user=domain_service_user,
+                         connect_timeout=connect_timeout,
+                         channel_timeout=channel_timeout)
+        self.vinfra_root += ' image'
+
+    def images(self):
         """
         Get list of all nodes
         :return:
@@ -415,7 +441,7 @@ class VinfraFlavor(VinfraServiceCompute):
         Enable access and listing of all fields of objects.
         """
         cmd: str = f'{self.vinfra_root} list'
-        return self.execute(cmd, long=True)
+        return self.execute(cmd)
 
 
 class VinfraUser(VinfraBase):
@@ -429,7 +455,7 @@ class VinfraUser(VinfraBase):
         :param domain: Default
         """
         cmd: str = f'{self.vinfra_root} list --domain={domain}'
-        return self.execute(cmd, long=True)
+        return self.execute(cmd)
 
     def create(self, user_data: dict, pwd: str):
         """
@@ -473,4 +499,28 @@ class VinfraUser(VinfraBase):
                 if user_data[_bool]:
                     cmd += f' --{_bool}'
 
+        return self.execute(cmd)
+
+    def show(self, user_name: str, domain: str):
+        """
+        Get user details
+        :param user_name: user_123
+        :param domain: Default
+        :return:
+        """
+        cmd: str = f'{self.vinfra_root} show --domain={domain} {user_name}'
+        return self.execute(cmd)
+
+    def set(self, user_name: str, domain: str, assign_domain: list):
+        """
+        Set any user details
+        :param user_name: 'user_123'
+        :param domain: 'Default'
+        :param assign_domain: ['MultiDomain', 'compute']
+        :return:
+        """
+        cmd: str = f'{self.vinfra_root} set {user_name}'
+        if assign_domain:
+            cmd = f'{cmd} --assign-domain {assign_domain[0]} {assign_domain[1]}'
+        cmd += f' --domain {domain}'
         return self.execute(cmd)

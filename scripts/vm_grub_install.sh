@@ -36,11 +36,23 @@ send -- "/bin/cp -rf /mnt/cron-cloud-install /sysroot/etc/cron.d/cron-cloud-inst
 send -- "\r"
 expect -exact "\r
 \[root@recovery ~\]# "
+send -- "/bin/cp -rf /mnt/vz-guest-tools /sysroot/usr/bin/vz-guest-tools\r"
+send -- "\r"
+expect -exact "\r
+\[root@recovery ~\]# "
+send -- "/bin/cp -rf /mnt/cron-vz-guest-tools-install /sysroot/etc/cron.d/cron-vz-guest-tools-install\r"
+send -- "\r"
+expect -exact "\r
+\[root@recovery ~\]# "
 send -- "/bin/cp -rf /mnt/provisiongrub.sh /sysroot/root/ProvisionGRUB.sh\r"
 send -- "\r"
 expect -exact "\r
 \[root@recovery ~\]# "
 send -- "/bin/cp -rf /mnt/regenerateuuid.sh /sysroot/root/RegenerateUUID.sh\r"
+send -- "\r"
+expect -exact "\r
+\[root@recovery ~\]# "
+send -- "/bin/cp -rf /mnt/vz-guest-tools-lin.tar /sysroot/opt/vz-guest-tools-lin.tar\r"
 send -- "\r"
 expect -exact "\r
 \[root@recovery ~\]# "

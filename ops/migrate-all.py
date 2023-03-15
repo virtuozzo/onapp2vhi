@@ -116,10 +116,16 @@ def migrate_all(user='', network='', vm=''):
     for user in vhi_users_data:
         _ssh_result = False
         _default_project = True
-        full_name = "{} {}".format(user['first_name'], user['last_name'])
+        full_name = f"{user['first_name']} { user['last_name']}"
         msg = 'Login: "{}"\nPassword: "{}"\nSSH Keys Migrated: {}\nMIGRATED VIRTUAL MACHINES:\n{}'
         vhi = Vhi()
         vhi.check_default_project()
+        # Here we create service user for specified domain in cfg/config.cfg
+        service_user = vhi.create_service_user()
+        if not service_user:
+            logs.info('Stopped migration process due to above failure.')
+            continue
+
         logs.info("\n\n")
 
         # --Step 3--#
@@ -130,7 +136,7 @@ def migrate_all(user='', network='', vm=''):
             _default_project = False
         _user_result = vhi.create_object(user, 'user')
         if not _user_result:
-            user['password'] = vhi.update_user_password(user['user_login'])
+            user['password'] = vhi.update_user_password(user_login=user['user_login'])
 
         _ssh_key = VhiSshKeys(user_obj=user, ssh_keys=get_user_ssh_keys(user), default_project=_default_project)
         _ssh_result = _ssh_key.create_vhi_ssh_keys()
@@ -177,7 +183,8 @@ def migrate_all(user='', network='', vm=''):
             result_vm = vm_migrate(idn=_idn,
                                    vproj=vhi.project_name,
                                    vdom=VHI_CREDS['vinfra_domain'],
-                                   network=network)
+                                   network=network,
+                                   vhi_obj=vhi)
 
             vm_msg += (f'\t{_vm_number}. VM Migrated = {result_vm}\n'
                        f'\t\t- IP "{_vm["ip_addr"]}"\n'

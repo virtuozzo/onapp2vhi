@@ -12,7 +12,8 @@ from inc.utils import generate_random_password, exit_status_code_handler
 from inc.vinfra_wrapper import (
     VinfraFlavor,
     VinfraUser,
-    VinfraNode
+    VinfraNode,
+    VinfraImage
 )
 
 
@@ -38,10 +39,11 @@ class Vhi:
     def __init__(self):
         self._cookie = ""
         self.project_id = ""
-        self.project_name = VHI_CREDS['vinfra_project']
+        self.project_name = ""
         self.user_id = ""
         self.flavor_name = ""
         self.vinfra_domain = VHI_CREDS['vinfra_domain']
+        self.domain_id = VHI_CREDS['domain_id']
         self.projects_url = f"{self._VHI_DOMAIN_API}/projects"
         self.flavors_url = f"{self._URL}/compute/flavors"
         self.users_url = f"{self._VHI_DOMAIN_API}/users"
@@ -292,7 +294,7 @@ class Vhi:
     def update_user_password(self, user_login: str):
         _pwd = generate_random_password()
         _change_pwd = (f"echo -e '{_pwd}' | {ADMIN_AUTH} domain user set {user_login}"
-                       f" --password --domain Default")
+                       f" --password --domain {self.vinfra_domain}")
         self._vhi_ssh.execute(_change_pwd)
         return _pwd
 
@@ -326,7 +328,7 @@ class Vhi:
         self.flavor_name = json.loads(output)['name']
         return True
 
-    def _verify_user_exists(self, user_email: str):
+    def _verify_user_exists(self, user_email: str, domain: str):
         """
         Verify whether user exists on VHI side or not
         :param user_email:
@@ -335,18 +337,67 @@ class Vhi:
         v_user = VinfraUser()
 
         # Get List of users
-        exit_status, output = v_user.user_list(domain='Default')
+        exit_status, output = v_user.user_list(domain=domain)
         _user_emails = [_user['email'] for _user in json.loads(output)]
         if user_email in _user_emails:
             return True
 
         return False
 
+    def _create_domain_service_user(self):
+        """
+        Create Domain Service User for specified Domain:
+            - echo -e "123456789@" | vinfra --vinfra-username='admin' --vinfra-password='4OnApp13777'
+                 domain user create test123 --email "migration_helper@user.com" --domain-permissions domain_admin
+                    --domain "MultiDomain"  --enable -f json
+        Set Compute role to new user or to an existing one
+            - vinfra domain user set test123 --assign-domain MultiDomain compute --domain=MultiDomain
+        :return:
+        """
+        v_user = VinfraUser(cp_ip=True)
+        _pwd = generate_random_password()
+        _domain_service_user = {"email": f"{self.vinfra_domain}@user.com",
+                                "name": f"dom_migration_user_{self.vinfra_domain.lower()}",
+                                "enable": True,
+                                "domain-permissions": 'domain_admin',
+                                "domain": self.vinfra_domain}
+        result = self._verify_user_exists(user_email=_domain_service_user['email'],
+                                          domain=self.vinfra_domain)
+        if result:
+            v_image = VinfraImage(channel_timeout=5)
+            exit_status, output = v_image.images()
+            if not exit_status_code_handler(exit_code=exit_status,
+                                            message=f'Domain Service User password is wrong. Output:\n\t{output}'):
+                _new_pwd = self.update_user_password(user_login=_domain_service_user['name'])
+                logs.warn(msg='Changed password to the new one for Domain Service User')
+                configs.set_new_value(section=configs.VHI, option="vinfra_domain_pass", value=_new_pwd)
+                domain_auth = configs.reset_domain_auth()
+                import inc.vinfra_wrapper as wrapper
+                wrapper.DOMAIN_AUTH = domain_auth
+            return True
+
+        exit_status, output = v_user.create(user_data=_domain_service_user, pwd=_pwd)
+        if not exit_status_code_handler(exit_code=exit_status,
+                                        message=f'Domain Service User has not been created. Output:\n\t{output}'):
+            return False
+
+        v_user.set(user_name=_domain_service_user['name'],
+                   domain=self.vinfra_domain,
+                   assign_domain=[self.vinfra_domain, 'compute'])
+        configs.set_new_value(section=configs.VHI, option="vinfra_domain_user", value=_domain_service_user['name'])
+        configs.set_new_value(section=configs.VHI, option="vinfra_domain_pass", value=_pwd)
+        domain_auth = configs.reset_domain_auth()
+        import inc.vinfra_wrapper as wrapper
+        wrapper.DOMAIN_AUTH = domain_auth
+        return True
+
     def create_service_user(self):
         """
         Creates new user and assign to him Service User role to be able
         to do any manipulations with compute resources within Domain
         If such user is created it will just take it creds from cfg/config.cfg file
+        Manually command:
+        `vinfra domain user set migration_user@onapp.test.com --assign-domain Default compute --domain=Default`
         :return:
         """
         v_user = VinfraUser(cp_ip=True)
@@ -365,7 +416,13 @@ class Vhi:
             import inc.vinfra_wrapper as wrapper
             wrapper.VINFRA_AUTH = vinfra_auth
 
-        result = self._verify_user_exists(user_email=_service_user_payload['email'])
+        if self.vinfra_domain != 'Default':
+            domain_user = self._create_domain_service_user()
+            if not domain_user:
+                return False
+
+        result = self._verify_user_exists(user_email=_service_user_payload['email'],
+                                          domain='Default')
         if result:
             _msg = (f'``Service User`` with Email: {_service_user_payload["email"]} exists on VHI side.'
                     f' Checking ``Service User`` credentials. . .')
@@ -377,13 +434,19 @@ class Vhi:
                 logs.debug('Updating credentials for SERVICE USER and save them into `cfg/config.cfg`')
 
                 # Generating new pwd for Service User and save it into config file, after check credentials again
+                self.vinfra_domain = 'Default'
                 new_pwd = self.update_user_password(user_login=_service_user_payload['name'])
+                self.vinfra_domain = VHI_CREDS['vinfra_domain']
                 configs.set_new_value(section=configs.VHI, option="vinfra_pass", value=new_pwd)
                 vinfra_auth = configs.reset_auth()
                 import inc.vinfra_wrapper as wrapper
                 wrapper.VINFRA_AUTH = vinfra_auth
                 v_node = VinfraNode(channel_timeout=5)
                 exit_status, output = v_node.list_node()
+                if not exit_status_code_handler(exit_code=exit_status,
+                                                message=f'Updating Service User creds failed. Output:\n\t{output}'):
+                    return False
+
                 try:
                     assert type(json.loads(output)) == list
                 except AssertionError:

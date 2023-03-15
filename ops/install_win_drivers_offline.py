@@ -77,8 +77,8 @@ def vm_install_win_drivers_offline(idn: str):
     logs.info(f"{_spaces}{_dri_msg}STEP #6 -- OnApp: Copy drivers and scripts --", header=True)
 
     # FILES TO COPY SHOULD BE LOCATED IN PROJECT FOLDER
-    cloudbase_init = os.path.join(os.getcwd(), "CloudbaseInitSetup_Stable_x64.msi")
-    vz_guest_tools = os.path.join(os.getcwd(), "vz-guest-tools-win.tar")
+    cloudbase_init = os.path.join(os.getcwd(), "scripts/CloudbaseInitSetup_Stable_x64.msi")
+    vz_guest_tools = os.path.join(os.getcwd(), "scripts/vz-guest-tools-win.tar")
     logs.info(f'File path: {cloudbase_init}')
     logs.info(f'File path: {vz_guest_tools}')
 

@@ -86,6 +86,8 @@ class OnAppVhiCP:
              'domain_id': self._config.get(self.VHI, "vhi_domain_id", raw=True),
              'vinfra_domain': self._config.get(self.VHI, "vinfra_domain", raw=True),
              'vinfra_project': self._config.get(self.VHI, "vinfra_project", raw=True),
+             'vinfra_domain_user': self._config.get(self.VHI, "vinfra_domain_user", raw=True),
+             'vinfra_domain_pass': self._config.get(self.VHI, "vinfra_domain_pass", raw=True),
              'vinfra_user': self._config.get(self.VHI, "vinfra_user", raw=True),
              'vinfra_pass': self._config.get(self.VHI, "vinfra_pass", raw=True)})
 
@@ -116,6 +118,12 @@ class OnAppVhiCP:
                       f" --vinfra-password='{self.vhi_cp['vinfra_pass']}'"
         return VINFRA_AUTH
 
+    def reset_domain_auth(self):
+        global DOMAIN_AUTH
+        DOMAIN_AUTH = (f"vinfra --vinfra-username='{self.vhi_cp['vinfra_domain_user']}'"
+                       f" --vinfra-password='{self.vhi_cp['vinfra_domain_pass']}'")
+        return DOMAIN_AUTH
+
 
 configs = OnAppVhiCP()
 ONAPP_CREDS = configs.on_app_cp
@@ -123,3 +131,5 @@ VHI_CREDS = configs.vhi_cp
 SSH_KEY = configs.ssh_key
 VINFRA_AUTH = f"vinfra --vinfra-username='{VHI_CREDS['vinfra_user']}' --vinfra-password='{VHI_CREDS['vinfra_pass']}'"
 ADMIN_AUTH = f"vinfra --vinfra-username='{VHI_CREDS['login']}' --vinfra-password='{VHI_CREDS['admin_ui_pwd']}'"
+DOMAIN_AUTH = (f"vinfra --vinfra-username='{VHI_CREDS['vinfra_domain_user']}'"
+               f" --vinfra-password='{VHI_CREDS['vinfra_domain_pass']}'")

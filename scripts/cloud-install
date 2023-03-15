@@ -43,7 +43,7 @@ function checkNetwork() {
 function installCloudinit() {
         if [[ ${OS} == 'ubuntu' ]]; then
                 apt-get update
-                apt-get install -y cloud-init cloud-guest-utils qemu-guest-agent
+                apt-get install -y cloud-init cloud-guest-utils
 		if dpkg -l $pkg
 		then
 			echo "$pkg installed"
@@ -68,7 +68,7 @@ function installCloudinit() {
                         exit 1
                 fi
         elif [[ ${OS} == 'centos' ]]; then
-                yum -y install cloud-init cloud-utils-growpart qemu-guest-agent
+                yum -y install cloud-init cloud-utils-growpart
                 if rpm -q $pkg
                 then
                         echo "$pkg installed"

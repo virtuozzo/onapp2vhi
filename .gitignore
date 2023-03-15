@@ -127,3 +127,6 @@ dmypy.json
 # PyCharm
 .idea/
 /cfg/config.cfg
+
+scripts-tmp
+*.DS_Store

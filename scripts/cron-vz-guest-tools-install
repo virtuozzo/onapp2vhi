@@ -1,0 +1,1 @@
+@reboot root sleep 180; /bin/bash /usr/bin/vz-guest-tools >> /var/log/vz-guest-tools.log 2>&1

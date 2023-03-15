@@ -1,13 +1,12 @@
 import click
 from click_default_group import DefaultGroup
 
-from inc.vhi_helpers import Vhi
 from inc.onapp_helpers import *
 from inc.network_hanlder import get_network_configuration
-from cfg.config_parser import VINFRA_AUTH, ADMIN_AUTH
+from cfg.config_parser import VINFRA_AUTH, ADMIN_AUTH, DOMAIN_AUTH
 
 
-def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str):
+def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
     if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -25,8 +24,7 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str):
     logs.info(f"{_spaces}{_cm_msg}STEP #1 -- OnApp: Get source VM properties --", header=True)
     _vm_properties = get_vm_source_properties(vm_idn=VM_IDn)
     _vm_hv_ip = _vm_properties['hv_ip']
-    vhi = Vhi()
-    vhi.check_default_project()
+    vhi = vhi_obj
     _on_app_flavor = get_onapp_vm_flavor(vm_idn=VM_IDn)
     logs.debug(f'OnApp flavor: {_on_app_flavor}')
     result = vhi.flavor_handler(onapp_flavor=_on_app_flavor)
@@ -62,7 +60,11 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str):
               separator=True)
     onappvm_pri_ip = _onapp_nics[0]['ips'][0]
     onappvm_pri_mac = _onapp_nics[0]['mac']
+
+    # Here we generate vinfra access to create VM
     vinfra_access = f"{ADMIN_AUTH} --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
+    if VHI_CREDS['vinfra_domain'] != 'Default':
+        vinfra_access = f"{DOMAIN_AUTH}  --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
     _vhi_ssh = SSH(**{'host': VHI_CREDS['cp_ip'], 'port': VHI_CREDS['cloud_ssh_port']})
     exit_status, output = _vhi_ssh.execute(f"{ADMIN_AUTH} service compute server list --long -f json")
     if not exit_status_code_handler(
@@ -204,11 +206,12 @@ def cli():
 @click.option('--vproj', '--vhi-project', default='', help="VHI Project.")
 @click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
 @click.option('--network', default='', help="Set network id")
-def coldmigrate(vdom='', vproj='', idn='', network=''):
+def coldmigrate(vdom='', vproj='', idn='', network='', vhi_obj=''):
     vm_cold_migrate(vdom=vdom,
                     vproj=vproj,
                     idn=idn,
-                    network=network)
+                    network=network,
+                    vhi_obj=vhi_obj)
 
 
 cli.add_command(coldmigrate)

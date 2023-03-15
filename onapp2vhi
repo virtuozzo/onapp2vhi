@@ -18,9 +18,7 @@ if str(sys.argv[1]) in ("--help", "help", "man", "--h"):
     okcyan = '\033[96m'
     bold = '\033[1m'
     endc = '\033[0m'
-    _providers = sorted([filename[:-3] for filename in os.listdir(plugin_folder)
-                         if filename.endswith('.py') and not filename.startswith('__')
-                         and 'template' not in filename])
+    _providers = ('create_service_user', 'list_onapp_users', 'list_onapp_vms', 'migrate-all')
     _str_prov = ''
     for i, provider in enumerate(_providers):
         if i == 0:
