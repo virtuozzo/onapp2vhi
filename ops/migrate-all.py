@@ -119,6 +119,10 @@ def migrate_all(user='', network='', vm=''):
         full_name = f"{user['first_name']} { user['last_name']}"
         msg = 'Login: "{}"\nPassword: "{}"\nSSH Keys Migrated: {}\nMIGRATED VIRTUAL MACHINES:\n{}'
         vhi = Vhi()
+        # ToDo
+        #  if parameter vinfra_project:
+        #  - is empty -> then we create new projects per user
+        #  - if specified -> then migrate only inside it
         vhi.check_default_project()
         # Here we create service user for specified domain in cfg/config.cfg
         service_user = vhi.create_service_user()

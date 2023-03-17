@@ -17,10 +17,10 @@
   - Before running "./onapp2vhi" command please do next steps:
     - you should be in onapp2vhi project `[~/onapp2vhi] $ `
     - RUN `yum -y install python3-pip`
-    - RUN `pip3 –V` (NOTE: you should see pip version ___pip 20.3.4 from /migrations/.venv/lib/python2.7/site-packages/pip (python 2.7)___)
+    - RUN `pip3 –V` or `pip -V` (NOTE: you should see pip version ___pip 21.3.1 from /home/onapp/onapp2vhi/.venv3/lib64/python3.6/site-packages/pip (python 3.6)___)
     - RUN `/usr/bin/pip3 install --upgrade pip`
     - RUN `pip3 install virtualenv`
-  - NOTE: path may be different, please find where python3 is located (`which python2`)
+  - NOTE: path may be different, please find where python3 is located (`which python3`)
     - RUN `virtualenv -p /usr/bin/python3 .venv`
     - RUN `source .venv/bin/activate`
     - RUN `pip install --upgrade pip`
@@ -29,9 +29,9 @@
   - Please provide credentials related to OnApp and VHI clouds in the file __cfg/config.cfg__
     - `vi ./cfg/config.cfg`
     - save file
-  - Copy files into project root dir:
-    - `vz-guest-tools-win.tar`
-    - `CloudbaseInitSetup_Stable_x64.msi`
+  - Copy files into project/scripts/ folder:
+    - `/scripts/vz-guest-tools-win.tar`
+    - `/scripts/CloudbaseInitSetup_Stable_x64.msi`
   - run next commands under `onapp` user:
     - `su - onapp`
     - `export SSH_AUTH_SOCK=/onapp/interface/tmp/onapp-ssh-agent.socket`
@@ -105,46 +105,7 @@
           ./onapp2vhi list_onapp_users --find="login=admin" --props=id,email,login,roles,first_name,last_name
           ```
 ---
-  - ### User migration:
-    - When you decided which user should migrate, run one of next command (depends on input property):
-      ```
-      ./onapp2vhi user-migrate --idn=7
-      OR
-      ./onapp2vhi user-migrate --login=rgolovko
-      OR
-      ./onapp2vhi user-migrate --email=roman.holovko@virtuozzo.com
-      ```
-    - User has been migrated, on VHI side for user created:
-      - project
-      - user
-      - migrated ssh keys (if he had in OnApp)
-      - file with user login and password saved into /migrated_users/user_7.log
----
-  - ### Linux based VM's:
-    - First step is to install bootloader into VM on OnApp side:
-      ```
-      ./onapp2vhi install_bootloader --vm=lidqtfwggohyzk
-      OR
-      ./onapp2vhi install_bootloader-offline --vm=lidqtfwggohyzk
-      ```
-    - Then you can migrate that VM:
-      ```
-      ./onapp2vhi live_migrate --vm=lidqtfwggohyzk
-      ```
----
-  - ### Windows based VM's:
-    - First step is to install bootloader into VM on OnApp side:
-        ```
-        ./onapp2vhi install_win_drivers --vm-identifier=qsykamkqqlpjbd
-      OR
-        ./onapp2vhi install_win_drivers_offline --vm-identifier=qsykamkqqlpjbd
-        ```
-    - Then you can migrate that VM:
-      ```
-      ./onapp2vhi live_migrate --vm=lidqtfwggohyzk
-      ```
----
-  - ### Run whole migration process:
+  - ### Run migration script, this is the entry point:
     - Just type command:
         ```
         ./onapp2vhi migrate-all
@@ -152,6 +113,10 @@
     - If you want to migrate only one user and his VM's:
       ```
       ./onapp2vhi migrate-all --user=7
+      ```
+    - If you want to migrate only one user and only 1 VM:
+      ```
+      ./onapp2vhi migrate-all --user=7 --vm=sydarelogizozd
       ```
     - After script finished, please take a look in logs file:
       ```
@@ -162,7 +127,7 @@
     - RUN in terminal `deactivate`
 ---
 
-   - ### Logs on VHI side:
+   - ### Remove Logs on VHI side, sometimes there were issues with internal error:
      - Run command `rm -f ~/.vinfra/backend-api.svc.vstoragedomain/*`
 
 ---

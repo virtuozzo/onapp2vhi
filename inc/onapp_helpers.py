@@ -677,6 +677,20 @@ class GenerateXmlConfig:
         tree.write(self._recovery_mg_file)
 
 
+def get_disk_type(vm_idn: str) -> str:
+    """
+    Deactivate primary disk
+    :param vm_idn: 'i43oijf8sdu'
+    :return:
+    """
+    logs.info(f"{_spaces}-- OnApp: GET DISK TYPE for VM {vm_idn} --", header=True)
+    _onapp_disks = get_onapp_vm_disks(vm_idn)
+    ovm_dsk = [_disk for _disk in _onapp_disks if _disk['primary']][0]
+    disk_type = ovm_dsk['datastore_type']
+    logs.info(f'Disk type is: {disk_type.upper()}')
+    return disk_type
+
+
 def activate_disk(vm_idn: str, vm_ohv_ip: str, multiply_disks=False, disk=None):
     """
     Activate primary disk
@@ -734,10 +748,11 @@ def activate_disk(vm_idn: str, vm_ohv_ip: str, multiply_disks=False, disk=None):
 def deactivate_disk(vm_idn: str, vm_ohv_ip: str):
     """
     Deactivate primary disk
-    :param vm_idn: 'i43oijf8sdu'
-    :param vm_ohv_ip: '10.120.0.7'
+    :param vm_idn: Virtual Machine ID 'i43oijf8sdu'
+    :param vm_ohv_ip: VM IP addr '10.120.0.7'
     :return:
     """
+    logs.info(f"{_spaces}-- OnApp: HV DEACTIVATING DISK --", header=True)
     hv_ssh = SSH(**{"host": vm_ohv_ip})
     _onapp_disks = get_onapp_vm_disks(vm_idn)
     ovm_dsk = [_disk for _disk in _onapp_disks if _disk['primary']][0]
@@ -801,7 +816,7 @@ def create_new_vhi_vm(vhi_ssh: SSH,
         _vhi_vm_id = output.strip("\n")
         logs.info(f"NEW VHI VM CREATED: {VHI_CREDS['url']}/compute/servers/instances/{_vhi_vm_id}", separator=True)
         logs.info(f"{_spaces}...STOPPING VM BEFORE MIGRATION...")
-        vhi_ssh.execute(
+        exit_status, output = vhi_ssh.execute(
             f"for ((i=1;i<=100;i++)); do {vinfra_access} service compute server stop {_vhi_vm_id} --hard --wait"
             f" --timeout 15 -f json | jq -r -c [.name,.id,.vm_state,.power_state,.status] ;  "
             f"pwstate=\"`vinfra service compute server show {_vhi_vm_id} -f json | jq -r .power_state `\" ; "
@@ -809,6 +824,10 @@ def create_new_vhi_vm(vhi_ssh: SSH,
             f" then break; fi ; sleep 1; done 2>/dev/null",
             real_data=True
         )
+        if not exit_status_code_handler(exit_code=exit_status,
+                                        message=f'VM is not created. Output:\n\t{output}'):
+            return False
+
     if len(onapp_disks) > 1:
         logs.info("-- VHI: Create and Attach extra VHI VM's disks --")
         for idx, dsk in enumerate(onapp_disks):
@@ -818,8 +837,14 @@ def create_new_vhi_vm(vhi_ssh: SSH,
                     f"onapp-{_vhi_vm_id} --storage-policy default -f json | jq -c -r \".id\""
                 )
                 new_disk_id = output.strip()
-                vhi_ssh.execute(f"{vinfra_access} service compute server volume attach"
-                                f" --server {_vhi_vm_id} {new_disk_id} -f json | jq -c 2>/dev/null")
+                exit_status, output = vhi_ssh.execute(
+                    f"{vinfra_access} service compute server volume attach "
+                    f"--server {_vhi_vm_id} {new_disk_id} -f json | jq -c 2>/dev/null"
+                )
+                if not exit_status_code_handler(exit_code=exit_status,
+                                                message=f'VM volume is not attached. Output:\n\t{output}'):
+                    return False
+
     if len(onappvm_pri_ips) > 1:
         logs.info("-- VHI: allocate and assign extra VHI VM's IP addresses to primary NIC--")
         _ips_params = ''
@@ -828,6 +853,12 @@ def create_new_vhi_vm(vhi_ssh: SSH,
         exit_status, output = vhi_ssh.execute(f"{vinfra_access} service compute server iface "
                                               f"list --server {_vhi_vm_id} -f json | jq -c -r .[0].id 2>/dev/null")
         _vhi_nic0_id = output.strip()
-        vhi_ssh.execute(f"{vinfra_access} service compute server iface set {_ips_params} --server "
-                        f"{_vhi_vm_id} {_vhi_nic0_id} -f json | jq -c -r .fixed_ips 2>/dev/null")
+        exit_status, output = vhi_ssh.execute(
+            f"{vinfra_access} service compute server iface set {_ips_params} --server "
+            f"{_vhi_vm_id} {_vhi_nic0_id} -f json | jq -c -r .fixed_ips 2>/dev/null"
+        )
+        if not exit_status_code_handler(exit_code=exit_status,
+                                        message=f'VM iface is not set. Output:\n\t{output}'):
+            return False
+
     return _vhi_vm_id

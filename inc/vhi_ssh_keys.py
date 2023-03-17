@@ -101,7 +101,8 @@ class VhiSshKeys:
         self._log_handler(**{'method': self.POST, 'url': self._login_url, 'headers': _headers, 'body': self._creds})
         response = requests.post(self._login_url,
                                  headers=_headers,
-                                 data=json.dumps(self._creds))
+                                 data=json.dumps(self._creds),
+                                 verify=False)
         if not self._log_handler(response=response):
             return False
 
@@ -113,7 +114,7 @@ class VhiSshKeys:
         else:
             _proj_url = self._projects_url
             self._log_handler(**{'method': self.GET, 'url': _proj_url, 'headers': _headers})
-        response_2 = requests.get(_proj_url, headers=_headers)
+        response_2 = requests.get(_proj_url, headers=_headers, verify=False)
         if not self._log_handler(response=response_2):
             return False
 
@@ -122,7 +123,7 @@ class VhiSshKeys:
         self._proj_auth_url = auth_url
         _headers.update({'x-auth-token': proj_id})
         self._log_handler(**{'method': self.POST, 'url': auth_url, 'headers': _headers, 'body': {}})
-        response_3 = requests.post(auth_url, headers=_headers)
+        response_3 = requests.post(auth_url, headers=_headers, verify=False)
         _headers.update({'Cookie': f'session1={response_3.cookies["session1"]}'})
         if not self._log_handler(response=response_3):
             return False
@@ -139,7 +140,7 @@ class VhiSshKeys:
             return False
 
         self._log_handler(**{'method': self.GET, 'url': self.ssh_keys_url, 'headers': self._headers})
-        response = requests.get(self.ssh_keys_url, headers=self._headers)
+        response = requests.get(self.ssh_keys_url, headers=self._headers, verify=False)
         self._log_handler(response=response)
         ssh_keys = response.json()['data']
         if not ssh_keys:
@@ -184,14 +185,14 @@ class VhiSshKeys:
 
         self._log_handler(**{'method': self.POST, 'url': self._proj_auth_url, 'headers': self._headers, 'body': {}})
         # VHI API works strange, before each action via API we should trigger accounts/projects/{proj_id}/auth/
-        requests.post(self._proj_auth_url, headers=self._headers, data={})
+        requests.post(self._proj_auth_url, headers=self._headers, data={}, verify=False)
         for idn, ssh_key in enumerate(ssh_keys):
             payload = self._vhi_ssh_keys_payload(idn, ssh_key)
             self._log_handler(**{'method': self.POST,
                                  'url': self.ssh_keys_url,
                                  'headers': self._headers,
                                  'body': payload})
-            response = requests.post(self.ssh_keys_url, headers=self._headers, data=payload)
+            response = requests.post(self.ssh_keys_url, headers=self._headers, data=payload, verify=False)
             self._log_handler(response=response)
         logs.info(f'{Helper.SPACES.value} -- VHI: User SSH Keys has been migrated successfully --', header=True)
         logs.info('')

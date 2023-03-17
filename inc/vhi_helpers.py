@@ -160,7 +160,7 @@ class Vhi:
         :return: payload
         """
         self._log_handler(**{'method': self.GET, 'url': self._storage_policies_url, 'headers': self.headers})
-        response = requests.get(self._storage_policies_url, headers=self.headers)
+        response = requests.get(self._storage_policies_url, headers=self.headers, verify=False)
         if not self._log_handler(response=response):
             return False
 

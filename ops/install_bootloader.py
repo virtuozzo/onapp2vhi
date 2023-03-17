@@ -69,7 +69,7 @@ def vm_install_bootloader(idn: str):
     }
     for file, path in scripts_info.items():
         [exit_status, output] = ssh_run(
-            command=f'scp {file} root@{_vm_ip_addr}:{path}'
+            command=f'scp {_scp_opts} {file} root@{_vm_ip_addr}:{path}'
         )
         if not exit_status_code_handler(
                 exit_code=exit_status,

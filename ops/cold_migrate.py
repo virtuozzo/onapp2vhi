@@ -7,6 +7,8 @@ from cfg.config_parser import VINFRA_AUTH, ADMIN_AUTH, DOMAIN_AUTH
 
 
 def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
+    # ToDo
+    #  verify IP address before running script
     if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -191,6 +193,9 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
             return False
 
         dsk_num += 1
+
+        # Deactivate Disk
+        deactivate_disk(vm_idn=VM_IDn, vm_ohv_ip=_vm_hv_ip)
     logs.info(f"The virtual server ``COLD MIGRATION`` has completed successfully:"
               f" {VHI_CREDS.url}/compute/servers/instances/{_vhi_vm_id}")
     return True
