@@ -73,12 +73,15 @@ class OnAppRequests:
             logs.error('Authorization failed. Please check out your credentials in "config.cfg" file')
             exit(1)
 
-    def get(self, route: str):
+    def get(self, route: str, params: str = None):
         """
         :param route: users
+        :param params: search_filter[user_id]=4
         :return: dict response
         """
         url = f"{self.url}/{route}.json"
+        if params:
+            url += f'?{params}'
         _headers = self.headers
         response = requests.get(url, auth=self.authorization, headers=_headers)
         self.log.debug(f"GET - {url}", separator=True)

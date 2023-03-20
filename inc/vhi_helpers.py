@@ -135,23 +135,27 @@ class Vhi:
         :return:
         """
         _default_name = VHI_CREDS['vinfra_project']
+        if not _default_name:
+            _default_name = 'Default_Project'
         _create_project = (f"{ADMIN_AUTH} domain project create '{_default_name}' "
                            f"--domain='{self.vinfra_domain}' --enable "
                            f"--description='Default project for migrations.' -f json")
         _projects_cmd = f"{ADMIN_AUTH} domain project list --domain='{self.vinfra_domain}' -f json"
         exit_status, output_proj = self._vhi_ssh.execute(_projects_cmd)
+        if not exit_status_code_handler(exit_code=exit_status,
+                                        message='Listing project failed. Please take a look manually.'):
+            return False
+
         if _default_name.lower() not in [proj['name'].lower() for proj in json.loads(output_proj)]:
-            # Create new `Default project` and set name into config file
-            logs.warn(f'*** "{_default_name}" project was not found on VHI side. Creating new one. . .')
+            # Create new `project` and set name into config file
+            logs.warn(f'*** "{_default_name}" project was not found on VHI side. Creating new one.\n'
+                      f'Please provide QUOTAS for ``{_default_name}`` manually via UI!')
             exit_status, output = self._vhi_ssh.execute(_create_project)
             configs.set_new_value(configs.VHI, "vinfra_project", json.loads(output)['name'])
-            return
+            return True
         else:
-            # Set the name of Default project into `config.cfg` file
-            for proj in json.loads(output_proj):
-                if proj['name'].lower() == _default_name:
-                    configs.set_new_value(configs.VHI, "vinfra_project", _default_name)
-                    return
+            logs.info(f'*** "{_default_name}" project was found on VHI side. Move all stuff there.')
+            return True
 
     def _vhi_project_payload(self, project_data: dict):
         """

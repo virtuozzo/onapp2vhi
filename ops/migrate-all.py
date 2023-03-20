@@ -6,12 +6,9 @@ from inc.helper import Helper
 from cfg.config_parser import VHI_CREDS
 from inc.vhi_ssh_keys import VhiSshKeys
 from inc.vhi_helpers import Vhi
-from inc.utils import generate_random_password
 from inc.logger import logs
 from inc.onapp_helpers import (
-    get_user_data,
-    get_all_virtual_machines,
-    get_bucket_limits,
+    prepare_vhi_migration_data,
     get_user_ssh_keys,
     check_user_role,
     VmHandler
@@ -21,9 +18,6 @@ from inc.onapp_helpers import (
 @click.group(cls=DefaultGroup, default='migrate-all', invoke_without_command=True, default_if_no_args=True)
 def cli():
     pass
-
-
-DEFAULT_ONAPP_USER_NAMES = ('system_owner', 'cloud_locations_manager')
 
 
 @click.command()
@@ -75,55 +69,19 @@ def migrate_all(user='', network='', vm=''):
 
     # --Step 1--#
     # --OnApp: Get User, VM's information--#
-    _user_data = get_user_data('users', None, all_users=True)
-    _vms_dict = get_all_virtual_machines()
-    vhi_users_data = []
-    for _user_info in _user_data:
-        user_password = generate_random_password()
-        _user = _user_info['user']
-        login = _user['login']
-        if user_idn:
-            if user_idn != _user['id']:
-                continue
+    vhi_users_data = prepare_vhi_migration_data(user_idn=user_idn)
 
-        if login in DEFAULT_ONAPP_USER_NAMES:
-            continue
-
-        if '.' in login:
-            login = login.replace('.', '_')
-
-        elif 'admin' == login:
-            login = 'onapp_admin'
-
-        _vhi_user_data = {'user_email': _user['email'],
-                          'id': _user['id'],
-                          'first_name': _user['first_name'],
-                          'last_name': _user['last_name'],
-                          'password': user_password,
-                          'roles': _user['roles'],
-                          'user_login': f'{login}',
-                          'project_name': f"project_{_user['email']}",
-                          'quotas': get_bucket_limits(bucket_id=_user['bucket_id']),
-                          'virtual_machines': []}
-        for user_id, vms_list in _vms_dict.items():
-            if _vhi_user_data['id'] != user_id:
-                continue
-
-            _vhi_user_data['virtual_machines'] = vms_list
-        vhi_users_data.append(_vhi_user_data)
     # --Step 2--#
     # --OnApp: Start migration user by user--#
     for user in vhi_users_data:
         _ssh_result = False
-        _default_project = True
         full_name = f"{user['first_name']} { user['last_name']}"
         msg = 'Login: "{}"\nPassword: "{}"\nSSH Keys Migrated: {}\nMIGRATED VIRTUAL MACHINES:\n{}'
         vhi = Vhi()
-        # ToDo
-        #  if parameter vinfra_project:
-        #  - is empty -> then we create new projects per user
-        #  - if specified -> then migrate only inside it
-        vhi.check_default_project()
+        _default_project = vhi.check_default_project()
+        if not _default_project:
+            continue
+
         # Here we create service user for specified domain in cfg/config.cfg
         service_user = vhi.create_service_user()
         if not service_user:
@@ -135,9 +93,11 @@ def migrate_all(user='', network='', vm=''):
         # --Step 3--#
         # --OnApp: Start migration USER by USER--#
         logs.info(f"{Helper.EQUAL.value} VHI: Migrate User ({full_name}) --", separator=True)
-        if not check_user_role(user):
-            vhi.create_object(user, 'project')
-            _default_project = False
+        # Todo - discuss this step with R.Bogutskii
+        #  if not check_user_role(user):
+        #     vhi.create_object(user, 'project')
+        #     _default_project = False
+        user.update({"project_name": VHI_CREDS['vinfra_project']})
         _user_result = vhi.create_object(user, 'user')
         if not _user_result:
             user['password'] = vhi.update_user_password(user_login=user['user_login'])

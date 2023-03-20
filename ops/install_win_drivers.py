@@ -27,6 +27,10 @@ def vm_install_win_drivers(idn: str):
         return False
 
     VM_IDn = idn
+    logs.warn('Onapp2VHI tool DOES NOT support LIVE Migration for Windows VM.'
+              ' Please turn off VM and start migration again.')
+    return False
+
     _spaces = Helper.SPACES.value
     _dri_msg = 'WIN DRIVERS ONLINE -- '
     logs.info(f'{_spaces}-- INSTALLING {_dri_msg}', header=True)

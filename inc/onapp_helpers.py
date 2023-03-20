@@ -1,16 +1,24 @@
-from inc.rest_client import OnAppRequests
+import copy
+import json
+import re
 import xml.etree.ElementTree as KVMxml
+
+from inc.rest_client import OnAppRequests
 from inc.helper import Helper
 from cfg.config_parser import ONAPP_CREDS, VHI_CREDS, VINFRA_AUTH
 from inc.ssh_connector import ssh_run, SSH
 from inc.logger import logs
-from inc.utils import parse_matrix, exit_status_code_handler
+from inc.utils import parse_matrix, exit_status_code_handler, generate_random_password
 from collections import namedtuple
 from typing import List, Dict
-from inc.vinfra_wrapper import VinfraSecurityGroups, VinfraSGRules, VinfraProject, VinfraServerInterface, VinfraServer
-import copy
-import json
-import re
+from inc.vinfra_wrapper import (
+    VinfraSecurityGroups,
+    VinfraSGRules,
+    VinfraProject,
+    VinfraServerInterface,
+    VinfraServer,
+)
+
 
 _spaces = Helper.SPACES.value
 onapp_requests = OnAppRequests()
@@ -265,7 +273,7 @@ def get_user_data(url: str, get_type, value_to_search=None, all_users=False):
     logs.info(f"{_spaces}-- OnApp: Get User information --  ", separator=True)
     response = onapp_requests.get(url)
     if get_type == 'ID':
-        return response['user']
+        return [response]
 
     if all_users:
         return response
@@ -284,13 +292,17 @@ def _get_primary_vm_ip(vm: dict):
         return ip['address']
 
 
-def get_all_virtual_machines():
+def get_all_virtual_machines(user_id: int = None):
     """
     Get list of all virtual machines and sort them by user ID
+    :param user_id: 4 - get that user VM's
     :return: list of VMs
     """
     logs.info(f"{_spaces}-- OnApp: Get All Virtual Machines information --  ", separator=True)
-    response = onapp_requests.get('virtual_machines')
+    if user_id:
+        response = onapp_requests.get('virtual_machines', params=f'search_filter[user_id]={user_id}')
+    else:
+        response = onapp_requests.get('virtual_machines')
     from collections import defaultdict
     vms_dict = defaultdict(list)
     for _vm in response:
@@ -862,3 +874,60 @@ def create_new_vhi_vm(vhi_ssh: SSH,
             return False
 
     return _vhi_vm_id
+
+
+DEFAULT_ONAPP_USER_NAMES = ('system_owner', 'cloud_locations_manager')
+
+
+def prepare_vhi_migration_data(user_idn=None) -> List[Dict]:
+    """
+    This method prepare user data and vm data for VHI migration
+    :param user_idn:
+    :return:
+    """
+    # Get User data and Virtual Servers from OnApp
+    if user_idn and type(user_idn) == int:
+        _user_data = get_user_data(url=f"users/{user_idn}", get_type='ID')
+        _vms_dict = get_all_virtual_machines(user_id=user_idn)
+    else:
+        _user_data = get_user_data(url='users',
+                                   get_type='',
+                                   value_to_search=None,
+                                   all_users=True)
+        _vms_dict = get_all_virtual_machines()
+    vhi_users_data = []
+
+    # Prepare data from OnApp to VHI
+    for _user_info in _user_data:
+        user_password = generate_random_password()
+        _user = _user_info['user']
+        login = _user['login']
+        if login in DEFAULT_ONAPP_USER_NAMES:
+            continue
+
+        if '.' in login:
+            login = login.replace('.', '_')
+
+        elif 'admin' == login:
+            login = 'onapp_admin'
+
+        _vhi_user_data = {'user_email': _user['email'],
+                          'id': _user['id'],
+                          'first_name': _user['first_name'],
+                          'last_name': _user['last_name'],
+                          'password': user_password,
+                          'roles': _user['roles'],
+                          'user_login': f'{login}',
+                          'project_name': f"project_{_user['email']}",
+                          'quotas': get_bucket_limits(bucket_id=_user['bucket_id']),
+                          'virtual_machines': []}
+        if user_idn and _vms_dict:
+            _vhi_user_data['virtual_machines'] = _vms_dict[user_idn]
+        elif _vms_dict:
+            for user_id, vms_list in _vms_dict.items():
+                if _vhi_user_data['id'] != user_id:
+                    continue
+
+            _vhi_user_data['virtual_machines'] = vms_list
+        vhi_users_data.append(_vhi_user_data)
+    return vhi_users_data
