@@ -77,6 +77,15 @@ def vm_install_bootloader(idn: str):
         ):
             return False
 
+        # -- STEP 7 --
+    logs.info(f'{_spaces}{_boot_msg}STEP #7 -- OnApp: Install vz-guest-tools inside VM [{VM_IDn}] --', header=True)
+    exit_status, output = _vm_ssh.execute("bash /usr/bin/vz-guest-tools")
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f'[install_bootloader.py | STEP 7] Install vz-guest-tools inside VM failed. Output:\n\t{output}'
+    ):
+        return False
+
     return True
 
 
