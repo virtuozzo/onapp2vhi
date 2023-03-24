@@ -3,7 +3,7 @@ from inc.network_onapp import *
 from inc.logger import logs
 
 
-def get_network_configuration(virtual_server_identifier: str) -> str:
+def get_network_configuration(virtual_server_identifier: str, vinfra_project: str) -> str:
 
     data = {}
     networks_cmd = []
@@ -43,6 +43,7 @@ def get_network_configuration(virtual_server_identifier: str) -> str:
     for network in vs_network_interfaces.get_all():
         vhi_network = Network(
             name=f"network_{network.network_identifier}",
+            vinfra_project=vinfra_project,
             rbac_policies=[],
             ip_addresses=network.ip_addresses,
             mac_address=network.mac_address,
@@ -58,9 +59,10 @@ def get_network_configuration(virtual_server_identifier: str) -> str:
         if not network.ip_addresses:
             logs.warn("Network interface without IP address. It won't be used")
             continue
-        if not network.ipv4:
-            logs.warn("IPv6 is not supported in current implementation")
-            continue
+
+        # if not network.ipv4:
+        #     logs.warn("IPv6 is not supported in current implementation")
+        #     continue
 
         ip_addresses = "".join([f"fixed-ip='{ip}'," for ip in network.ip_addresses])
         if not vhi_network.is_present():

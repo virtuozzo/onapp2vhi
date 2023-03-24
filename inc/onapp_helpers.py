@@ -272,6 +272,9 @@ def get_user_data(url: str, get_type, value_to_search=None, all_users=False):
     """
     logs.info(f"{_spaces}-- OnApp: Get User information --  ", separator=True)
     response = onapp_requests.get(url)
+    if not response:
+        return False
+
     if get_type == 'ID':
         return [response]
 
@@ -303,6 +306,10 @@ def get_all_virtual_machines(user_id: int = None):
         response = onapp_requests.get('virtual_machines', params=f'search_filter[user_id]={user_id}')
     else:
         response = onapp_requests.get('virtual_machines')
+
+    if not response:
+        return False
+
     from collections import defaultdict
     vms_dict = defaultdict(list)
     for _vm in response:
@@ -375,8 +382,8 @@ def get_bucket_limits(bucket_id: str) -> dict:
     max_storage_policy = max([v.storage_policy for v in datastore_zones_in_bucket])
     # -1 represents infinity on the VHI side
     return {"cores": -1 if max_vCPUs == float("inf") else max_vCPUs,
-            "RAM": -1 if max_RAM == float("inf") else max_RAM * (1024 ** 3),
-            "storage": -1 if max_storage_policy == float("inf") else max_storage_policy * (1024 ** 3)}
+            "ram-size": -1 if max_RAM == float("inf") else max_RAM * (1024 ** 3),
+            "storage": -1 if max_storage_policy == float("inf") else max_storage_policy}
 
 
 def _get_onapp_nics_per_vm(vm_idn: str) -> List[NIC]:
@@ -553,12 +560,16 @@ vs = VinfraServer()
 vsi = VinfraServerInterface()
 
 
-def get_iface_from_specific_vs(vm_name: str) -> str:
+def get_iface_from_specific_vs(vm_name: str):
     """
     Get iface from specific VS
     """
     _, output = vsi.list_server(server_name=vm_name)
-    return json.loads(output)[0]['id']
+    ifaces = json.loads(output)
+    if not ifaces:
+        return False
+
+    return ifaces[0]['id']
 
 
 def attach_security_group_to_nic_and_enable_spoofing(vm_name: str, iface: str, sg_id: str):
@@ -567,6 +578,10 @@ def attach_security_group_to_nic_and_enable_spoofing(vm_name: str, iface: str, s
     """
     if not sg_id:
         logs.error('*** Security Group has not been attached to NIC. Please check logs. ***')
+        return False
+
+    if not iface:
+        logs.error('*** Iface has NOT been found. Please check logs. ***')
         return False
 
     _, output = vsi.set(vm_name=vm_name, iface=iface, spoofing=True, **{'security-group': sg_id})
@@ -879,7 +894,7 @@ def create_new_vhi_vm(vhi_ssh: SSH,
 DEFAULT_ONAPP_USER_NAMES = ('system_owner', 'cloud_locations_manager')
 
 
-def prepare_vhi_migration_data(user_idn=None) -> List[Dict]:
+def prepare_vhi_migration_data(user_idn=None):
     """
     This method prepare user data and vm data for VHI migration
     :param user_idn:
@@ -895,6 +910,12 @@ def prepare_vhi_migration_data(user_idn=None) -> List[Dict]:
                                    value_to_search=None,
                                    all_users=True)
         _vms_dict = get_all_virtual_machines()
+    if not _user_data:
+        return False
+
+    if not _vms_dict:
+        return False
+
     vhi_users_data = []
 
     # Prepare data from OnApp to VHI
@@ -923,11 +944,14 @@ def prepare_vhi_migration_data(user_idn=None) -> List[Dict]:
                           'virtual_machines': []}
         if user_idn and _vms_dict:
             _vhi_user_data['virtual_machines'] = _vms_dict[user_idn]
+            vhi_users_data.append(_vhi_user_data)
+            continue
+
         elif _vms_dict:
             for user_id, vms_list in _vms_dict.items():
                 if _vhi_user_data['id'] != user_id:
                     continue
 
-            _vhi_user_data['virtual_machines'] = vms_list
+                _vhi_user_data['virtual_machines'] = vms_list
         vhi_users_data.append(_vhi_user_data)
     return vhi_users_data

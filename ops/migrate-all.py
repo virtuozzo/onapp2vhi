@@ -24,7 +24,8 @@ def cli():
 @click.option('--user', default='', help="OnApp User, VM identifier.")
 @click.option('--network', default='', help="Network to be used")
 @click.option('--vm', default='', help="VM to be migrated")
-def migrate_all(user='', network='', vm=''):
+@click.option('--project', default='', help="Project where all objects will be migrated")
+def migrate_all(user='', network='', vm='', project=''):
     """
     Migrate all resources from OnApp to VHI:
         - OnApp Users to VHI users
@@ -50,6 +51,7 @@ def migrate_all(user='', network='', vm=''):
     :param user: 4
     :param network: public2
     :param vm: virtual machine identifier
+    :param project: project
     :return:
     """
     # Arrange
@@ -66,10 +68,20 @@ def migrate_all(user='', network='', vm=''):
             logs.error("Please specify User ID as integer: --user=7")
             exit(1)
         user_idn = int(user)
-
+    _custom_project = project
     # --Step 1--#
     # --OnApp: Get User, VM's information--#
     vhi_users_data = prepare_vhi_migration_data(user_idn=user_idn)
+    if not vhi_users_data:
+        logs.error(msg='Collecting user data failed. Please take a look into logs.')
+        return False
+
+    # Here we create service user for specified domain in cfg/config.cfg
+    service_user = Vhi().create_service_user()
+    if not service_user:
+        logs.info('Stopped migration process due to above failure.')
+
+    logs.info("\n\n")
 
     # --Step 2--#
     # --OnApp: Start migration user by user--#
@@ -78,31 +90,33 @@ def migrate_all(user='', network='', vm=''):
         full_name = f"{user['first_name']} { user['last_name']}"
         msg = 'Login: "{}"\nPassword: "{}"\nSSH Keys Migrated: {}\nMIGRATED VIRTUAL MACHINES:\n{}'
         vhi = Vhi()
-        _default_project = vhi.check_default_project()
-        if not _default_project:
-            continue
-
-        # Here we create service user for specified domain in cfg/config.cfg
-        service_user = vhi.create_service_user()
-        if not service_user:
-            logs.info('Stopped migration process due to above failure.')
-            continue
-
-        logs.info("\n\n")
 
         # --Step 3--#
         # --OnApp: Start migration USER by USER--#
         logs.info(f"{Helper.EQUAL.value} VHI: Migrate User ({full_name}) --", separator=True)
-        # Todo - discuss this step with R.Bogutskii
-        #  if not check_user_role(user):
-        #     vhi.create_object(user, 'project')
-        #     _default_project = False
-        user.update({"project_name": VHI_CREDS['vinfra_project']})
-        _user_result = vhi.create_object(user, 'user')
-        if not _user_result:
-            user['password'] = vhi.update_user_password(user_login=user['user_login'])
+        # If we specified custom project via --project=my_project, then creation projects step will be missed
+        if not _custom_project:
+            if not check_user_role(user):
+                result = vhi.create_project(user_data=user)
+                if not result:
+                    continue
+                user.update({"project_name": vhi.project_name})
+            else:
+                _default_project = vhi.check_default_project()
+                if not _default_project:
+                    continue
+                user.update({"project_name": vhi.project_name})
+        else:
+            logs.warn(msg=f'You have specified CUSTOM Project name [{_custom_project}]'
+                          f' please be ensure such project exist on VHI side in Domain. Otherwise command will fail!')
+            user.update({"project_name": _custom_project})
 
-        _ssh_key = VhiSshKeys(user_obj=user, ssh_keys=get_user_ssh_keys(user), default_project=_default_project)
+        result, user_pwd = vhi.create_user(user_data=user)
+        if not result:
+            continue
+
+        user.update({'password': user_pwd})
+        _ssh_key = VhiSshKeys(user_obj=user, ssh_keys=get_user_ssh_keys(user))
         _ssh_result = _ssh_key.create_vhi_ssh_keys()
 
         # --Step 4 -- #

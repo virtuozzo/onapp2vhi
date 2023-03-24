@@ -131,7 +131,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
             break
 
     _vhi_vm_id = ''
-    _network = get_network_configuration(virtual_server_identifier=VM_IDn)
+    _network = get_network_configuration(virtual_server_identifier=VM_IDn, vinfra_project=_vhiproj)
     logs.debug(f'NETWORK PARAMS: {_network}', separator=True)
     if not vm_created:
         _vhi_vm_id = create_new_vhi_vm(vhi_ssh=_vhi_ssh,

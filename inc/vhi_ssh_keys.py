@@ -19,15 +19,13 @@ class VhiSshKeys:
     DELETE = 'DELETE'
     PATCH = 'PATCH'
 
-    def __init__(self, user_obj: dict, ssh_keys: list, default_project=False):
+    def __init__(self, user_obj: dict, ssh_keys: list):
         self._user = user_obj
         self._login = self._user['user_login']
         self._first_name = self._user['first_name']
         self._last_name = self._user['last_name']
         self._pwd = self._user['password']
         self._proj_name = self._user['project_name']
-        if default_project:
-            self._proj_name = VHI_CREDS['vinfra_project']
         self._ssh_keys = ssh_keys
         self._headers = ''
         self._creds = {"domain": VHI_CREDS['vinfra_domain'],
@@ -80,16 +78,13 @@ class VhiSshKeys:
                 logs.debug(f'Payload: {_body}')
             return True
 
-        elif response:
+        else:
             if response.status_code not in (200, 201, 204):
                 logs.error(f'Response [{response.status_code}]: {response.content}')
                 return False
 
             logs.debug(f'Response [{response.status_code}]: {response.content}')
             return True
-
-        else:
-            return False
 
     def _auth(self):
         """
@@ -159,7 +154,7 @@ class VhiSshKeys:
         :param idn: 1, 2, 3
         :return:
         """
-        name = f"{self._login}_ssh_key_{idn}"
+        name = f"{self._first_name.lower()}_{self._last_name.lower()}_ssh_key_{idn}".replace('@', '')
         if '.' in name:
             name = name.replace('.', '_')
         return json.dumps({"name": name,

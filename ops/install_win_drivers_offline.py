@@ -21,21 +21,21 @@ def vm_install_win_drivers_offline(idn: str):
         logs.error('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
 
-    VM_IDn = idn
+    vm_idn = idn
     _spaces = Helper.SPACES.value
     _dri_msg = 'WIN DRIVERS OFFLINE -- '
     logs.info(f'{_spaces}-- INSTALLING {_dri_msg}', header=True)
 
     # -- STEP 1 --
     logs.info(f'{_spaces}{_dri_msg}STEP #1 -- OnApp: get source VM properties --', header=True)
-    _vm_properties = get_vm_source_properties(vm_idn=VM_IDn)
+    _vm_properties = get_vm_source_properties(vm_idn=vm_idn)
     _vm_hv_ip = _vm_properties['hv_ip']
 
     # -- STEP 2 --
     logs.info(f"{_spaces}{_dri_msg}STEP #2 -- OnApp: Get VM primary disk info --", header=True)
     _onappvm_primary_disk = get_onapp_vm_disks(vm_idn=idn, primary=True)
     logs.info(f"OnApp VM PRIMARY DISK: {_onappvm_primary_disk}")
-    disk_type = get_disk_type(vm_idn=VM_IDn)
+    disk_type = get_disk_type(vm_idn=vm_idn)
     x1 = 'X1'
     if disk_type == 'lvm':
         onappvm_disk_mapper = _onappvm_primary_disk.replace("onapp-", "onapp--").replace("/", "-").replace(
@@ -51,17 +51,17 @@ def vm_install_win_drivers_offline(idn: str):
     # -- STEP 3 --
     logs.info(f"{_spaces}{_dri_msg}STEP #3 -- OnApp: Check if VM is running on hypervisor --", header=True)
     _hv_ssh = SSH(**{'host': _vm_hv_ip})
-    exit_status, output = _hv_ssh.execute(f'virsh dominfo {VM_IDn}')
+    exit_status, output = _hv_ssh.execute(f'virsh dominfo {vm_idn}')
     if not exit_status:
-        logs.info("VM IS  RUNNING.\n ")
-        exit_status, output = _hv_ssh.execute(f'virsh shutdown {VM_IDn}')
+        logs.info("VM IS RUNNING.\n ")
+        exit_status, output = _hv_ssh.execute(f'virsh shutdown {vm_idn}')
         while exit_status != 1:
             time.sleep(60)
-            exit_status, output = _hv_ssh.execute(f'virsh dominfo {VM_IDn}')
+            exit_status, output = _hv_ssh.execute(f'virsh dominfo {vm_idn}')
 
     # -- STEP 4 --
     logs.info(f"{_spaces}{_dri_msg}STEP #4 -- OnApp: Activate VM disk --", header=True)
-    if not activate_disk(vm_idn=VM_IDn, vm_ohv_ip=_vm_hv_ip):
+    if not activate_disk(vm_idn=vm_idn, vm_ohv_ip=_vm_hv_ip):
         logs.error('Disk ACTIVATION failed.')
         return False
 
@@ -134,7 +134,7 @@ def vm_install_win_drivers_offline(idn: str):
     ):
         return False
 
-    if not deactivate_disk(vm_idn=VM_IDn, vm_ohv_ip=_vm_hv_ip):
+    if not deactivate_disk(vm_idn=vm_idn, vm_ohv_ip=_vm_hv_ip):
         logs.error('Disk DEACTIVATION failed.')
         return False
 

@@ -122,6 +122,10 @@
       ```
       ~/onapp2vhi/migration_logs/
       ```
+    - When you have case you need to migrate all VM's into one project please use such command:
+      ```
+      ./onapp2vhi migrate-all --user=7 --vm=sydarelogizozd --project=my_project
+      ```
 ---
   - ### Deactivate environment:
     - RUN in terminal `deactivate`

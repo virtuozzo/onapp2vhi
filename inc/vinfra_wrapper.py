@@ -26,10 +26,12 @@ class VinfraBase:
         if access_domain:
             self.vinfra_root += f" --vinfra-domain={VHI_CREDS['vinfra_domain']}"
 
-    def execute(self, cmd: str, long: bool = False) -> Tuple[int, str]:
+    def execute(self, cmd: str, long: bool = False, json: bool = True) -> Tuple[int, str]:
         if long:
             cmd += ' --long'
-        return self.ssh.execute(f'{cmd} -f json')
+        if json:
+            cmd += ' -f json'
+        return self.ssh.execute(cmd)
 
 
 class VinfraServiceCompute(VinfraBase):
@@ -353,54 +355,26 @@ class VinfraProject(VinfraDomain):
         VinfraDomain.__init__(self)
         self.vinfra_root += ' project'
 
-    def create(self, project_name: str, domain: str, description: Optional[str] = None, enable=True, **kwargs):
+    def create(self, project_name: str, domain: str, description: Optional[str] = None, enable=True):
         """
-        --description <description>
-        Project description
-        --enable
-        Enable project
-        --disable
-        Disable project
-        --domain <domain>
-        Domain name or ID
-        <name>
-        Project name
+
         """
         cmd: str = self.vinfra_root + f' create {project_name} --domain {domain}'
         if description:
-            cmd += f' --description {description}'
+            cmd += f' --description "{description}"'
         if enable:
             cmd += f' --enable'
         else:
             cmd += f' --disable'
-        if kwargs:
-            for key, value in kwargs.items():
-                cmd += f' --{key} {value} '
         return self.execute(cmd)
 
-    def list(self, project_name: str, list_all: bool = False, **kwargs):
+    def projects(self, project_name: Optional[str] = None, **kwargs):
         """
-        --long
-        Enable access and listing of all fields of objects.
-        --domain <domain>
-        Domain name or ID
-        --limit <num>
-        The maximum number of projects to list. To list all projects, set the option to -1.
-        --marker <project>
-        List projects after the marker.
-        --name <name>
-        List projects with the specified name or use a filter.
-        Supported filter operator: contains. The filter format is <operator>:<value1>[,<value2>,…].
-        --id <id>
-        Show a project with the specified ID or list projects using a filter.
-        Supported filter operator: in. The filter format is <operator>:<value1>[,<value2>,…].
-        --tags <tag>[,<tag>,…]
-        List projects with the specified tags (comma-separated) or use a filter.
-        Supported filter operators: any, not_any. The filter format is <operator>:<value1>[,<value2>,…].
+        Get list of projects
+        :param project_name: str "New Project"
+        :param kwargs: {}
         """
-        cmd: str = ''
-        if list_all:
-            cmd = self.vinfra_root + ' list '
+        cmd = self.vinfra_root + ' list '
         if project_name:
             cmd = self.vinfra_root + f' list {project_name}'
         if kwargs:
@@ -486,13 +460,15 @@ class VinfraUser(VinfraBase):
             if type(value) == bool:
                 continue
 
-            if key in ['name', 'assign-domain']:
+            if key in ['name', 'assign-domain', 'assign']:
                 continue
 
             _cmd_properties += f'--{key} "{value}" '
         cmd: str = f'echo -e "{pwd}" | {self.vinfra_root} create {user_data["name"]} {_cmd_properties}'
         if 'assign-domain' in list(user_data.keys()):
             cmd += f'--assign-domain {user_data["assign-domain"][0]} {user_data["assign-domain"][1]}'
+        if 'assign' in list(user_data.keys()):
+            cmd += f'--assign {user_data["assign"][0]} {user_data["assign"][1]}'
         # Handle bool values
         for _bool in ['enable', 'disable']:
             if _bool in list(user_data.keys()):
@@ -523,4 +499,54 @@ class VinfraUser(VinfraBase):
         if assign_domain:
             cmd = f'{cmd} --assign-domain {assign_domain[0]} {assign_domain[1]}'
         cmd += f' --domain {domain}'
+        return self.execute(cmd)
+
+
+class VinfraQuotas(VinfraServiceCompute):
+
+    def __init__(self, service_user: bool = True,
+                 connect_timeout: int = CONNECT_TIMEOUT,
+                 channel_timeout: int = CHANNEL_TIMEOUT):
+        super().__init__(service_user=service_user,
+                         connect_timeout=connect_timeout,
+                         channel_timeout=channel_timeout)
+        self.vinfra_root += ' quotas'
+
+    def update_quotas(self, project_id: str, **kwargs):
+        """
+        Get list of all nodes
+        :param project_id: "8yse873huc39en0v"
+        :param kwargs: {}
+        :return:
+        """
+        _cmd_properties = ''
+        cmd: str = f'{self.vinfra_root} update {project_id}'
+        for key, value in kwargs.items():
+            if key == "storage-policy":
+                continue
+
+            _cmd_properties += f'--{key} "{value}" '
+        if "storage-policy" in list(kwargs.keys()):
+            _cmd_properties += f'--storage-policy' \
+                               f' {kwargs["storage-policy"]["name"]}:{kwargs["storage-policy"]["size"]}G'
+        cmd = f"{cmd} {_cmd_properties}"
+        return self.execute(cmd, json=False)
+
+
+class VinfraStoragePolicies(VinfraServiceCompute):
+
+    def __init__(self, service_user: bool = True,
+                 connect_timeout: int = CONNECT_TIMEOUT,
+                 channel_timeout: int = CHANNEL_TIMEOUT):
+        super().__init__(service_user=service_user,
+                         connect_timeout=connect_timeout,
+                         channel_timeout=channel_timeout)
+        self.vinfra_root += ' storage-policy'
+
+    def storage_policy_list(self):
+        """
+        Get list of all storage_policy
+        :return:
+        """
+        cmd: str = f'{self.vinfra_root} list'
         return self.execute(cmd)

@@ -1,6 +1,4 @@
 import time
-
-import requests
 import urllib3
 import json
 
@@ -13,7 +11,10 @@ from inc.vinfra_wrapper import (
     VinfraFlavor,
     VinfraUser,
     VinfraNode,
-    VinfraImage
+    VinfraImage,
+    VinfraProject,
+    VinfraStoragePolicies,
+    VinfraQuotas,
 )
 
 
@@ -44,88 +45,16 @@ class Vhi:
         self.flavor_name = ""
         self.vinfra_domain = VHI_CREDS['vinfra_domain']
         self.domain_id = VHI_CREDS['domain_id']
-        self.projects_url = f"{self._VHI_DOMAIN_API}/projects"
-        self.flavors_url = f"{self._URL}/compute/flavors"
-        self.users_url = f"{self._VHI_DOMAIN_API}/users"
-        self._login_url = f"{self._URL}/login"
-        self._storage_policies_url = f"{self._URL}/storage_policies"
-        self._quotas_url = "{}/compute/quotas/{}"
-        self._auth_endpoint = "{}/accounts/projects/{}/auth/"
         self._storage_id = ""
         self._storage_name = ""
-
         self._vhi_ssh = SSH(**{'host': VHI_CREDS['cp_ip'], 'port': VHI_CREDS['cloud_ssh_port']})
-        self._creds = json.dumps({"username": VHI_CREDS['login'],
-                                  "password": VHI_CREDS['admin_ui_pwd']})
 
-        if not self._cookie:
-            self._auth()
-
-    def _log_handler(self, response=None, **url_data):
-        """
-        :param response: response object
-        :param url_data: {'method': 'GET',
-                           'headers': {},
-                            'body': {},
-                            'url': 'https://www.google.com'}
-        :return:
-        """
-        if url_data:
-            _method = url_data.get('method', '')
-            _headers = url_data.get('headers', '')
-            _body = url_data.get('body', '')
-            _url = url_data.get('url', '')
-            logs.debug(f'{_method} {_url}', separator=True)
-            logs.debug(f'Headers: {_headers}')
-            if _method in (self.POST, self.PUT, self.PATCH):
-                logs.debug(f'Payload: {_body}')
-            return True
-
-        elif response:
-            if response.status_code not in (200, 201, 204):
-                logs.error(f'Response [{response.status_code}]: {response.content}')
-                return False
-
-            logs.debug(f'Response [{response.status_code}]: {response.content}')
-            return True
-
-        else:
-            return False
-
-    @property
-    def headers(self):
-        """
-        Prepare headers for VHI API
-        :return:
-        """
-        _headers = {'Content-type': 'application/json',
-                    'x-requested-with': 'XMLHttpRequest',
-                    'accept': 'application/json, text/plain, */*',
-                    'User-Agent': 'Mozilla/5.0',
-                    'Connection': 'keep-alive'}
-        if self._cookie:
-            _headers.update({'Cookie': f'session={self._cookie}'})
-        return _headers
-
-    def _auth(self):
-        """
-        Get authorization cookies
-        :return:
-        """
-        self._log_handler(**{'method': self.POST,
-                             'url': self._login_url,
-                             'headers': self.headers,
-                             'body': self._creds})
-        response = requests.post(self._login_url,
-                                 headers=self.headers,
-                                 data=self._creds,
-                                 verify=False)
-        if response.status_code != 200:
-            self._log_handler(response=response)
-            return False
-
-        self._cookie = response.cookies['session']
-        return True
+    @staticmethod
+    def _vhi_flavor_payload(vm_data: dict):
+        return json.dumps({"name": vm_data['name'],
+                           "vcpus": vm_data['vcpus'],
+                           "ram": vm_data['ram'],
+                           "disk": 0})
 
     def check_default_project(self):
         """
@@ -134,9 +63,7 @@ class Vhi:
          `config.cfg` file
         :return:
         """
-        _default_name = VHI_CREDS['vinfra_project']
-        if not _default_name:
-            _default_name = 'Default_Project'
+        _default_name = 'Default_Project'
         _create_project = (f"{ADMIN_AUTH} domain project create '{_default_name}' "
                            f"--domain='{self.vinfra_domain}' --enable "
                            f"--description='Default project for migrations.' -f json")
@@ -146,158 +73,24 @@ class Vhi:
                                         message='Listing project failed. Please take a look manually.'):
             return False
 
-        if _default_name.lower() not in [proj['name'].lower() for proj in json.loads(output_proj)]:
+        if _default_name not in [proj['name'] for proj in json.loads(output_proj)]:
             # Create new `project` and set name into config file
-            logs.warn(f'*** "{_default_name}" project was not found on VHI side. Creating new one.\n'
-                      f'Please provide QUOTAS for ``{_default_name}`` manually via UI!')
+            logs.warn(f'*** "{_default_name}" project was not found on VHI side. Creating new one.\n')
             exit_status, output = self._vhi_ssh.execute(_create_project)
+            project = json.loads(output)
+            self.project_id = project['id']
+            self.project_name = project['name']
             configs.set_new_value(configs.VHI, "vinfra_project", json.loads(output)['name'])
             return True
+
         else:
+            self.project_name = _default_name
             logs.info(f'*** "{_default_name}" project was found on VHI side. Move all stuff there.')
             return True
 
-    def _vhi_project_payload(self, project_data: dict):
-        """
-        Prepare payload for VHI project object
-        :param project_data: {'project_name': 'name', . . .}
-        :return: payload
-        """
-        self._log_handler(**{'method': self.GET, 'url': self._storage_policies_url, 'headers': self.headers})
-        response = requests.get(self._storage_policies_url, headers=self.headers, verify=False)
-        if not self._log_handler(response=response):
-            return False
-
-        _storage = response.json()['data'][0]
-        self._storage_id = _storage['id']
-        self._storage_name = _storage['name']
-        return json.dumps({"name": project_data['project_name'],
-                           "description": "OnApp User {first_name} {last_name}".format(
-                               first_name=project_data['first_name'],
-                               last_name=project_data['last_name']),
-                           "enabled": True,
-                           "policiesEnabled": ["default", "default"],
-                           "traitsEnabled": [],
-                           "compute": {"cores": {"limit": -1},
-                                       "ram": {"limit": -1},
-                                       "network": {"floatingip": {"limit": -1}, "ipsec_site_connection": {"limit": -1}},
-                                       "storage": {"storage_policies": {self._storage_id: {
-                                           "name": self._storage_name,
-                                           "limit": -1}}},
-                                       "lbaas": {"loadbalancer": {"limit": -1}},
-                                       "k8saas": {"cluster": {"limit": 20}},
-                                       "placement": {}}})
-
-    def _vhi_quotas(self, quotas: dict):
-        logs.debug(f'{self._SPACES}-- VHI: Set Quotas to project "{self.project_id}" --', separator=True)
-        _quotas_url = self._quotas_url.format(self._URL, self.project_id)
-        quotas_payload = json.dumps({"compute": {"cores": {"limit": quotas['cores']},
-                                                 "ram": {"limit": quotas['RAM']}},
-                                     "storage": {
-                                         "storage_policies": {self._storage_name: {"limit": quotas['storage']}}}})
-        self._log_handler(**{'method': self.POST, 'url': _quotas_url, 'headers': self.headers, 'body': quotas_payload})
-        response = requests.post(_quotas_url,
-                                 headers=self.headers,
-                                 data=quotas_payload,
-                                 verify=False)
-        self._log_handler(response=response)
-        return
-
-    def _vhi_user_payload(self, user_data: dict):
-        """
-        Prepare user payload for VHI based on OnApp role
-        :param user_data: {'login': 'test', . . .}
-        :return:
-        """
-        _user_role = ''
-        for role in user_data['roles']:
-            if role['role']['identifier'] == "admin":
-                _user_role = self.VHI_ADMIN
-                break
-
-            _user_role = self.VHI_PROJECT_MEMBER
-        vhi_user = {"name": user_data['user_login'],
-                    "password": user_data['password'],
-                    "system_permissions": [],
-                    "email": user_data['user_email'],
-                    "enabled": True}
-        if _user_role == self.VHI_ADMIN:
-            vhi_user.update({"domain_permissions": ["domain_admin"]})
-            return json.dumps(vhi_user)
-
-        vhi_user.update({"assigned_projects": [
-            {"project_id": self.project_id, "role": self.VHI_PROJECT_MEMBER}
-        ]})
-        return json.dumps(vhi_user)
-
-    def _vhi_flavor_payload(self, vm_data: dict):
-        return json.dumps({"name": vm_data['name'],
-                           "vcpus": vm_data['vcpus'],
-                           "ram": vm_data['ram'],
-                           "disk": 0})
-
-    def _define_object_type(self, obj_data: dict, object_type: str):
-        if object_type == 'user':
-            exist, name = self.verify_object_on_vhi_side(obj_data['user_email'],
-                                                         'email',
-                                                         self.users_url)
-            payload = self._vhi_user_payload(obj_data)
-            return {"exist": exist,
-                    "name": name,
-                    "payload": payload,
-                    "url": self.users_url}
-
-        elif object_type == 'project':
-            exist, name = self.verify_object_on_vhi_side(obj_data['project_name'],
-                                                         'name',
-                                                         self.projects_url)
-            payload = self._vhi_project_payload(obj_data)
-            return {"exist": exist,
-                    "name": name,
-                    "payload": payload,
-                    "url": self.projects_url}
-        else:
-            return {}
-
-    def _get_objects_list(self, object_url: str):
-        """
-        Get projects list from VHI Domain
-        :return: list object with project data
-        """
-        _object_name = object_url.split('/')[-1]
-        logs.debug(f"{self._SPACES}-- VHI: Get VHI {_object_name.capitalize()} --", separator=True)
-        self._log_handler(**{'method': self.GET, 'url': object_url, 'headers': self.headers})
-        projects_list = requests.get(object_url, headers=self.headers, verify=False)
-        if not self._log_handler(response=projects_list):
-            return []
-
-        return projects_list.json()['data']
-
-    def verify_object_on_vhi_side(self, object_name: str, key_to_check: str, object_url: str):
-        """
-        Verify whether object exists on VHI side or not
-        :return: bool True or False
-        """
-        _name_object = object_url.split("/")[-1][:-1]
-        objects = self._get_objects_list(object_url)
-        if not objects:
-            return False, ""
-
-        if object_name in [obj[key_to_check] for obj in objects]:
-            for _obj in objects:
-                if object_name == _obj[key_to_check]:
-                    logs.warn(f'{_name_object.capitalize()} with name "{object_name}" exists on VHI side.')
-                    if _name_object in self.users_url:
-                        self.user_id = _obj['id']
-                    elif _name_object in self.projects_url:
-                        self.project_id = _obj['id']
-                    return True, _name_object.capitalize()
-
-        return False, _name_object.capitalize()
-
     def update_user_password(self, user_login: str):
         _pwd = generate_random_password()
-        _change_pwd = (f"echo -e '{_pwd}' | {ADMIN_AUTH} domain user set {user_login}"
+        _change_pwd = (f"echo -e '{_pwd}' | {ADMIN_AUTH} domain user set '{user_login}'"
                        f" --password --domain {self.vinfra_domain}")
         self._vhi_ssh.execute(_change_pwd)
         return _pwd
@@ -495,42 +288,128 @@ class Vhi:
         logs.info(msg=f'Service user has been created, credentials saved into `cfg/config.cfg`')
         return True
 
-    def create_object(self, proj_data: dict, object_type: str):
+    def create_project(self, user_data: dict):
         """
-        Create new project on VHI side with provided properties
-        :param proj_data: {'user_email': 'email@email.com', . . .}
-        :param object_type: "user", "project", "ssh_keys"
+        Create project on VHI side
+        :param user_data: {
+            "user_email": "roman.holovko@virtuozzo.com",
+            "id": 4,
+            "first_name": "Roman",
+            "last_name": "Holovko",
+            "password": "pwd",
+                "user_login": "roman_holovko@virtuozzo_com",
+            "project_name": "project_roman.holovko@virtuozzo.com",
+            "quotas": {
+              "cores": -1,
+              "RAM": -1,
+              "storage": -1
+            },
+            "virtual_machines": [. . .]
         :return:
         """
-        if not self._auth():
+        project_name = user_data['project_name']
+        quotas = user_data['quotas']
+        _v_project = VinfraProject()
+        exit_status, projects = _v_project.projects(**{'domain': self.vinfra_domain})
+        _projects = [_proj['name'] for _proj in json.loads(projects)]
+        if project_name in _projects:
+            logs.warn(msg=f'Project with name `{project_name}` exists on VHI side!')
+            self.project_name = project_name
+            return True
+
+        # Create new project
+        logs.info(msg=f"{Helper.SPACES.value} -- Creating new project [{project_name}] on VHI side.", header=True)
+        exit_status, output = _v_project.create(
+            project_name=project_name,
+            domain=self.vinfra_domain,
+            description=f"OnApp User {user_data['first_name']} {user_data['last_name']}"
+        )
+        if not exit_status_code_handler(exit_code=exit_status,
+                                        message=f'New Project was NOT created. Output:\n\t{output}'):
             return False
 
-        object_properties = self._define_object_type(proj_data, object_type)
-        if not object_properties:
-            return False
+        create_project = json.loads(output)
+        self.project_id = create_project['id']
+        self.project_name = create_project['name']
+        configs.set_new_value(configs.VHI, "vinfra_project", self.project_name)
 
-        if object_properties['exist']:
-            return False
+        # Storage Policies
+        v_storage = VinfraStoragePolicies()
+        exit_status, storage_output = v_storage.storage_policy_list()
+        storage_policy_name = json.loads(storage_output)[0]['name']
+        new_quotas = {}
+        for quota_name, quota_value in quotas.items():
+            if quota_value == -1:
+                continue
 
-        if not object_properties['name']:
-            return False
+            if quota_name == 'storage':
+                new_quotas['storage-policy'] = {'name': storage_policy_name,
+                                                'size': quota_value}
+                continue
 
-        logs.debug(f'{self._SPACES}-- VHI: Create new {object_properties["name"]} --', separator=True)
-        self._log_handler(**{'method': self.POST,
-                             'url': object_properties['url'],
-                             'headers': self.headers,
-                             'body': object_properties['payload']})
-        response = requests.post(object_properties['url'],
-                                 headers=self.headers,
-                                 data=object_properties['payload'],
-                                 verify=False)
-        if not self._log_handler(response=response):
-            return False
+            new_quotas[quota_name] = quota_value
 
-        if object_type == "user":
-            self.user_id = response.json()['id']
-        elif object_type == "project":
-            self.project_id = response.json()['id']
-            self.project_name = response.json()['name']
-            self._vhi_quotas(proj_data['quotas'])
+        # Set Quotas
+        if new_quotas:
+            v_quotas = VinfraQuotas()
+            logs.info(msg=f"Setting Up quotas for project [{project_name}] on VHI side.", header=True)
+            exit_status, output = v_quotas.update_quotas(project_id=self.project_id, **new_quotas)
+            exit_status_code_handler(exit_code=exit_status,
+                                     message=f'Quotas has NOT been set for Project {self.project_name}.'
+                                             f' Output:\n\t{output}\n\tPlease set quotas MANUALLY.')
+
         return True
+
+    def create_user(self, user_data: dict):
+        """
+        Create User on VHI side
+        :param user_data: {
+            "user_email": "roman.holovko@virtuozzo.com",
+            "id": 4,
+            "first_name": "Roman",
+            "last_name": "Holovko",
+            "password": "pwd",
+                "user_login": "roman_holovko@virtuozzo_com",
+            "project_name": "project_roman.holovko@virtuozzo.com",
+            "quotas": {
+              "cores": -1,
+              "RAM": -1,
+              "storage": -1
+            },
+            "virtual_machines": [. . .]
+        :return:
+        """
+        v_user = VinfraUser()
+        result = self._verify_user_exists(user_email=user_data['user_email'], domain=self.vinfra_domain)
+        if result:
+            logs.warn(msg=f'User with email [{user_data["user_email"]}] exists on VHI side.')
+            _new_pwd = self.update_user_password(user_login=user_data['user_login'])
+            return True, _new_pwd
+
+        # Create new user
+        _user_role = ''
+        _user = {"email": user_data['user_email'],
+                 "name": user_data['user_login'],
+                 "enable": True,
+                 "domain": self.vinfra_domain}
+        for role in user_data['roles']:
+            if role['role']['identifier'] == "admin":
+                _user_role = self.VHI_ADMIN
+                break
+
+            _user_role = self.VHI_PROJECT_MEMBER
+        if _user_role == self.VHI_ADMIN:
+            _user.update({"domain-permissions": _user_role})
+        else:
+            _user.update({"assign": (self.project_name, _user_role)})
+
+        logs.info(msg=f"{Helper.SPACES.value} -- Creating new user [{_user['name']}] on VHI side.", header=True)
+        _pwd = generate_random_password()
+        exit_status, output = v_user.create(user_data=_user, pwd=_pwd)
+        if not exit_status_code_handler(exit_code=exit_status,
+                                        message=f'New User was NOT created. Output:\n\t{output}'):
+            return False, ''
+
+        new_user = json.loads(output)
+        self.user_id = new_user['id']
+        return True, _pwd

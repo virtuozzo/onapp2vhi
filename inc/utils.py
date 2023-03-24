@@ -105,7 +105,7 @@ def generate_random_password(length=24):
     :param length: (int) the length of password
     :return: (str) password
     """
-    characters = list(string.ascii_letters + string.digits + "!@#$%^&*()")
+    characters = list(string.ascii_letters + string.digits + "@#%^&*()")
     random.shuffle(characters)
     password = [random.choice(characters) for _ in range(length)]
     random.shuffle(password)

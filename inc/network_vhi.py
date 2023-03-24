@@ -7,8 +7,9 @@ class Network:
     def __init__(self, **kwargs):
         self._config = OnAppVhiCP().get_config(cp_type="vhi")
         self._ssh = SSH(host=self._config.cp_ip, port=self._config.vhi_ssh_port)
-        self._vinfra_options = (f'{VINFRA_AUTH} --vinfra-domain="{self._config.vinfra_domain}"'
-                                f' --vinfra-project="{self._config.vinfra_project}"')
+        self._vinfra_project = kwargs.get("vinfra_project", self._config.vinfra_project)
+        self._vinfra_options = f'{VINFRA_AUTH} --vinfra-domain="{self._config.vinfra_domain}"' \
+                               f' --vinfra-project="{self._vinfra_project}'
 
         self.id = kwargs.get("id", "")
         self.name = kwargs.get("name", "")

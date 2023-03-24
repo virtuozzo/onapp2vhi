@@ -91,7 +91,7 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
             break
 
     _vhi_vm_id = ''
-    _network = get_network_configuration(virtual_server_identifier=VM_IDn)
+    _network = get_network_configuration(virtual_server_identifier=VM_IDn, vinfra_project=_vhiproj)
     logs.debug(f'NETWORK PARAMS: {_network}', separator=True)
     if not vm_created:
         _vhi_vm_id = create_new_vhi_vm(vhi_ssh=_vhi_ssh,
@@ -195,7 +195,10 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
         dsk_num += 1
 
         # Deactivate Disk
-        deactivate_disk(vm_idn=VM_IDn, vm_ohv_ip=_vm_hv_ip)
+        deactivate_result = deactivate_disk(vm_idn=VM_IDn, vm_ohv_ip=_vm_hv_ip)
+        if not deactivate_result:
+            return False
+
     logs.info(f"The virtual server ``COLD MIGRATION`` has completed successfully:"
               f" {VHI_CREDS.url}/compute/servers/instances/{_vhi_vm_id}")
     return True
