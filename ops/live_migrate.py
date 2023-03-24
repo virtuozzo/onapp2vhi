@@ -82,7 +82,9 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
     # -- STEP 5 --
     logs.info(f"{_spaces}{live_migration}STEP #5 -- OnApp: Get VM's XML config from OnApp hypervisor --",
               header=True)
-    exit_status, output = _hv_ssh.execute(f"virsh dumpxml {VM_IDn} > /tmp/{VM_IDn}.xml && cat /tmp/{VM_IDn}.xml")
+    exit_status, output = _hv_ssh.execute(
+        f"virsh dumpxml {VM_IDn} --migratable > /tmp/{VM_IDn}.xml && cat /tmp/{VM_IDn}.xml"
+    )
     _vm_xml_cfg = output
     if not exit_status_code_handler(
             exit_code=exit_status,
