@@ -130,3 +130,6 @@ dmypy.json
 
 scripts-tmp
 *.DS_Store
+
+# vim
+**/.*.sw[o|p]
