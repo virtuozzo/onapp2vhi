@@ -1,7 +1,5 @@
 import os
-import click
 
-from click_default_group import DefaultGroup
 from inc.helper import Helper
 from cfg.config_parser import VHI_CREDS
 from inc.vhi_ssh_keys import VhiSshKeys
@@ -15,17 +13,7 @@ from inc.onapp_helpers import (
 )
 
 
-@click.group(cls=DefaultGroup, default='migrate-all', invoke_without_command=True, default_if_no_args=True)
-def cli():
-    pass
-
-
-@click.command()
-@click.option('--user', default='', help="OnApp User, VM identifier.")
-@click.option('--network', default='', help="Network to be used")
-@click.option('--vm', default='', help="VM to be migrated")
-@click.option('--project', default='', help="Project where all objects will be migrated")
-def migrate_all(user='', network='', vm='', project=''):
+def migrate_all_impl(user='', network='', vm='', project=''):
     """
     Migrate all resources from OnApp to VHI:
         - OnApp Users to VHI users
@@ -180,6 +168,3 @@ def migrate_all(user='', network='', vm='', project=''):
                                       vm_msg))
     logs.info(f"{Helper.EQUAL.value} VHI: Script finished successfully {Helper.EQUAL.value}", separator=True)
     logs.info("\n")
-
-
-cli.add_command(migrate_all)

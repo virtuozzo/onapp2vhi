@@ -2,8 +2,6 @@ import json
 import re
 import xml.etree.ElementTree as KVMxml
 
-import click
-from click_default_group import DefaultGroup
 from inc.ssh_connector import ssh_run, SSH
 from inc.onapp_helpers import (
     get_onapp_vm_flavor,
@@ -304,24 +302,3 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
     logs.info(f"The virtual server ``LIVE MIGRATION`` has completed successfully:"
               f" {VHI_CREDS.url}/compute/servers/instances/{_vhi_vm_id}")
     return True
-
-
-@click.group(cls=DefaultGroup, default='livemigrate', invoke_without_command=True, default_if_no_args=True)
-def cli():
-    pass
-
-
-@click.command()
-@click.option('--vdom', '--vhi-domain', default='', help="VHI Domain.")
-@click.option('--vproj', '--vhi-project', default='', help="VHI Project.")
-@click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-@click.option('--network', default='', help="Set network id")
-def livemigrate(vdom='', vproj='', idn='', network='', vhi_obj=''):
-    vm_live_migrate(vdom=vdom,
-                    vproj=vproj,
-                    idn=idn,
-                    network=network,
-                    vhi_obj=vhi_obj)
-
-
-cli.add_command(livemigrate)

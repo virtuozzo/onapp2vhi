@@ -5,7 +5,7 @@ setup(
     name='onapp2vhi',
     version='0.1dev0',
     author='Virtuozzo',
-    author_email='onapp2vhi@virtuzzo.com',
+    author_email='onapp2vhi@virtuozzo.com',
     packages=find_packages(),
     entry_points={
         "console_scripts": [

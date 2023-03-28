@@ -1,6 +1,3 @@
-import click
-from click_default_group import DefaultGroup
-
 from inc.onapp_helpers import *
 from inc.network_hanlder import get_network_configuration
 from cfg.config_parser import VINFRA_AUTH, ADMIN_AUTH, DOMAIN_AUTH
@@ -205,24 +202,3 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
     logs.info(f"The virtual server ``COLD MIGRATION`` has completed successfully:"
               f" {VHI_CREDS.url}/compute/servers/instances/{_vhi_vm_id}")
     return True
-
-
-@click.group(cls=DefaultGroup, default='coldmigrate', invoke_without_command=True, default_if_no_args=True)
-def cli():
-    pass
-
-
-@click.command()
-@click.option('--vdom', '--vhi-domain', default='', help="VHI Domain.")
-@click.option('--vproj', '--vhi-project', default='', help="VHI Project.")
-@click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-@click.option('--network', default='', help="Set network id")
-def coldmigrate(vdom='', vproj='', idn='', network='', vhi_obj=''):
-    vm_cold_migrate(vdom=vdom,
-                    vproj=vproj,
-                    idn=idn,
-                    network=network,
-                    vhi_obj=vhi_obj)
-
-
-cli.add_command(coldmigrate)

@@ -1,6 +1,4 @@
-import click
 from inc.logger import logs
-from click_default_group import DefaultGroup
 from inc.helper import Helper
 from inc.ssh_connector import ssh_run, SSH
 from inc.onapp_helpers import get_vm_source_properties
@@ -87,17 +85,3 @@ def vm_install_bootloader(idn: str):
         return False
 
     return True
-
-
-@click.group(cls=DefaultGroup, default='installbootloader', invoke_without_command=True, default_if_no_args=True)
-def cli():
-    pass
-
-
-@click.command()
-@click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-def installbootloader(idn=''):
-    vm_install_bootloader(idn=idn)
-
-
-cli.add_command(installbootloader)

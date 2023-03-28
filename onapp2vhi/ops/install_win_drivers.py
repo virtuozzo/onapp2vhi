@@ -1,6 +1,4 @@
 import os
-import click
-from click_default_group import DefaultGroup
 from inc.logger import logs
 from inc.helper import Helper
 from cfg.config_parser import ONAPP_CREDS
@@ -47,7 +45,6 @@ def vm_install_win_drivers(idn: str):
           f' Administrator@{_vm_ip_addr}:C:/ 2>/dev/null'
     [exit_status, output] = ssh_run(cmd)
     if not exit_status_code_handler(
-            exit_code=exit_status,
             message=f"[install_win_drivers.py | STEP 3] Something went wrong."
                     f" Couldn't transfer CloudbaseInitSetup into VM \nOutput: {output}"
     ):
@@ -84,17 +81,3 @@ def vm_install_win_drivers(idn: str):
         return False
 
     return True
-
-
-@click.group(cls=DefaultGroup, default='windrivers', invoke_without_command=True, default_if_no_args=True)
-def cli():
-    pass
-
-
-@click.command()
-@click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-def windrivers(idn=''):
-    vm_install_win_drivers(idn=idn)
-
-
-cli.add_command(windrivers)

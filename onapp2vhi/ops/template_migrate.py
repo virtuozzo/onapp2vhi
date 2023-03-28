@@ -1,24 +1,14 @@
 import json
-import click
 import time
 import xml.etree.ElementTree as KVMxml
 
-from click_default_group import DefaultGroup
 from inc.ssh_connector import ssh_run
 from inc.logger import logs
 from inc.helper import Helper
 from cfg.config_parser import ONAPP_CREDS, VHI_CREDS
 
 
-@click.group(cls=DefaultGroup, default='vm', invoke_without_command=True, default_if_no_args=True)
-def cli():
-    pass
-
-
-@click.command()
-@click.option('--idn', '--tmpl', '--label', '--template-label', default='', help="OnApp template label.")
-# click.argument('name',default='') - not used
-def vm(idn='', vhip=''):
+def vm_template_migrate(idn='', vhip=''):
     if not idn:
         logs.info('You need to pass OnApp template label value through --template-label=? parameter ')
         exit(17)
@@ -129,5 +119,3 @@ def vm(idn='', vhip=''):
     # logs.info(CMD)
     ssh_run(command=_cmd)
 
-
-cli.add_command(vm)

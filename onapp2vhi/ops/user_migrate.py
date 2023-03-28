@@ -1,6 +1,3 @@
-import click
-
-from click_default_group import DefaultGroup
 from inc.vhi_ssh_keys import VhiSshKeys
 from inc.vhi_helpers import Vhi
 from inc.utils import generate_random_password
@@ -16,14 +13,7 @@ from inc.onapp_helpers import (
 USER_PASSWORD = generate_random_password()
 
 
-@click.group(cls=DefaultGroup, default='user', invoke_without_command=True, default_if_no_args=True)
-def cli():
-    pass
-
-
-@click.command()
-@click.option('--idn', '--user', '--email', '--user-id', '--login', default='', help="OnApp User identifier.")
-def user(idn=''):
+def user_migrate_impl(idn=''):
     if not idn:
         logs.error('You need to pass OnApp User ID value through --user-identifier=? parameter ')
         exit(1)
@@ -67,6 +57,3 @@ def user(idn=''):
     else:
         logs.warn('User has not been migrated.')
         return False
-
-
-cli.add_command(user)
