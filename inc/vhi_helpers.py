@@ -380,6 +380,7 @@ class Vhi:
         :return:
         """
         v_user = VinfraUser()
+        self.project_name = user_data["project_name"]
         result = self._verify_user_exists(user_email=user_data['user_email'], domain=self.vinfra_domain)
         if result:
             logs.warn(msg=f'User with email [{user_data["user_email"]}] exists on VHI side.')
