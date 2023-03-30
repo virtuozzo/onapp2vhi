@@ -45,6 +45,7 @@ def vm_install_win_drivers(idn: str):
           f' Administrator@{_vm_ip_addr}:C:/ 2>/dev/null'
     [exit_status, output] = ssh_run(cmd)
     if not exit_status_code_handler(
+            exit_code=exit_status,
             message=f"[install_win_drivers.py | STEP 3] Something went wrong."
                     f" Couldn't transfer CloudbaseInitSetup into VM \nOutput: {output}"
     ):
