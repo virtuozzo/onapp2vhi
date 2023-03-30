@@ -39,71 +39,9 @@ def list_onapp_vms(props='', find=''):
 
 
 @run.command()
-@click.option('--vdom', '--vhi-domain', default='', help="VHI Domain.")
-@click.option('--vproj', '--vhi-project', default='', help="VHI Project.")
-@click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-@click.option('--network', default='', help="Set network id")
-def cold_migrate(vdom='', vproj='', idn='', network='', vhi_obj=''):
-    vm_cold_migrate(vdom=vdom,
-                    vproj=vproj,
-                    idn=idn,
-                    network=network,
-                    vhi_obj=vhi_obj)
-
-
-@run.command()
 def create_service_user():
     vhi = Vhi()
     vhi.create_service_user()
-
-
-@run.command()
-@click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-def install_bootloader(idn=''):
-    vm_install_bootloader(idn=idn)
-
-
-@run.command()
-@click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-def install_bootloder_offline(idn=''):
-    vm_install_bootloader_offline(idn=idn)
-
-
-@run.command()
-@click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-def install_win_drivers(idn=''):
-    vm_install_win_drivers(idn=idn)
-
-
-@run.command()
-@click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-def install_win_drivers_offline(idn=''):
-    vm_install_win_drivers_offline(idn=idn)
-
-
-@run.command()
-@click.option('--vdom', '--vhi-domain', default='', help="VHI Domain.")
-@click.option('--vproj', '--vhi-project', default='', help="VHI Project.")
-@click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-@click.option('--network', default='', help="Set network id")
-def live_migrate(vdom='', vproj='', idn='', network='', vhi_obj=''):
-    vm_live_migrate(vdom=vdom,
-                    vproj=vproj,
-                    idn=idn,
-                    network=network,
-                    vhi_obj=vhi_obj)
-
-
-@run.command()
-@click.option('--idn', '--tmpl', '--label', '--template-label', default='', help="OnApp template label.")
-def template_migrate(idn='', vhip=''):
-    vm_template_migrate(idn=idn, vhip=vhip)
-
-
-@run.command()
-@click.option('--idn', '--user', '--email', '--user-id', '--login', default='', help="OnApp User identifier.")
-def user_migrate(idn=''):
-    user_migrate_impl(idn=idn)
 
 
 @run.command()
