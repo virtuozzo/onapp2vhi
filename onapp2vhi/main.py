@@ -4,14 +4,6 @@ import click
 from inc.onapp_helpers import list_onapp_users as list_onapp_users_impl
 from inc.onapp_helpers import list_onapp_vms as list_onapp_vms_impl
 from inc.vhi_helpers import Vhi
-from onapp2vhi.ops.cold_migrate import vm_cold_migrate
-from onapp2vhi.ops.install_bootloader import vm_install_bootloader
-from onapp2vhi.ops.install_bootloader_offline import vm_install_bootloader_offline
-from onapp2vhi.ops.install_win_drivers import vm_install_win_drivers
-from onapp2vhi.ops.install_win_drivers_offline import vm_install_win_drivers_offline
-from onapp2vhi.ops.user_migrate import user_migrate_impl
-from onapp2vhi.ops.live_migrate import vm_live_migrate
-from onapp2vhi.ops.template_migrate import vm_template_migrate
 from onapp2vhi.ops.migrate_all import migrate_all_impl
 
 

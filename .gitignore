@@ -133,3 +133,6 @@ scripts-tmp
 
 # vim
 **/.*.sw[o|p]
+
+# VSCode
+.vscode/
