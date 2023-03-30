@@ -606,12 +606,12 @@ class VmHandler:
         Handle virtual machine status whether it booted or not, and check OS
         :return:
         """
-        from ops.cold_migrate import vm_cold_migrate
-        from ops.live_migrate import vm_live_migrate
-        from ops.install_bootloader import vm_install_bootloader
-        from ops.install_bootloader_offline import vm_install_bootloader_offline
-        from ops.install_win_drivers import vm_install_win_drivers
-        from ops.install_win_drivers_offline import vm_install_win_drivers_offline
+        from onapp2vhi.ops.cold_migrate import vm_cold_migrate
+        from onapp2vhi.ops.live_migrate import vm_live_migrate
+        from onapp2vhi.ops.install_bootloader import vm_install_bootloader
+        from onapp2vhi.ops.install_bootloader_offline import vm_install_bootloader_offline
+        from onapp2vhi.ops.install_win_drivers import vm_install_win_drivers
+        from onapp2vhi.ops.install_win_drivers_offline import vm_install_win_drivers_offline
         from inc.helper import Helper
         if self._booted:
             _cmd = (f'timeout 15s ssh {Helper.SSH_OPTS.value} -p 22'
