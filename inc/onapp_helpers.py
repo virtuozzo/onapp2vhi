@@ -5,7 +5,7 @@ import xml.etree.ElementTree as KVMxml
 
 from inc.rest_client import OnAppRequests
 from inc.helper import Helper
-from cfg.config_parser import ONAPP_CREDS, VHI_CREDS, VINFRA_AUTH
+from cfg.config_parser import ONAPP_CREDS, VHI_CREDS, DOMAIN_AUTH
 from inc.ssh_connector import ssh_run, SSH
 from inc.logger import logs
 from inc.utils import parse_matrix, exit_status_code_handler, generate_random_password
@@ -20,6 +20,7 @@ from inc.vinfra_wrapper import (
 )
 
 
+vhi_domain = VHI_CREDS['vinfra_domain']
 _spaces = Helper.SPACES.value
 onapp_requests = OnAppRequests()
 
@@ -515,8 +516,8 @@ def transfer_firewall_rules_to_sg(vm_idn: str, vhiproj: str, drop: str = "DROP",
 
     # Create new SG
     _description = f'Security group created from the VS: {vm_idn} with primary NIC: {primary_nic.nic_idn}'
-    _cmd_create_sg = (f"{VINFRA_AUTH} --vinfra-project='{vhiproj}' service compute security-group create"
-                      f" {security_group_name} --description '{_description}'")
+    _cmd_create_sg = (f"{DOMAIN_AUTH} --vinfra-domain='{vhi_domain}' --vinfra-project='{vhiproj}'"
+                      f" service compute security-group create {security_group_name} --description '{_description}'")
     _, sg_create = sg.execute(_cmd_create_sg)
     sg_create = json.loads(sg_create)
     sg_name = sg_create.get('name', '')

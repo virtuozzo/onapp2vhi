@@ -56,6 +56,16 @@ class Vhi:
                            "ram": vm_data['ram'],
                            "disk": 0})
 
+    def clean_up_cache(self):
+        _cmd = 'rm -f ~/.vinfra/backend-api.svc.vstoragedomain/*'
+        logs.info('Clean Up cache on VHI side in "~/.vinfra/backend-api.svc.vstoragedomain/*" path.', header=True)
+        exit_status, output = self._vhi_ssh.execute(command=_cmd)
+        if not exit_status_code_handler(exit_code=exit_status,
+                                        message='Cache has not been cleaned up.'):
+            return False
+
+        return True
+
     def check_default_project(self):
         """
         We had situation when we do not have "Default" project for migrations.

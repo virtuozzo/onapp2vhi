@@ -77,6 +77,7 @@ def migrate_all(user='', network='', vm='', project=''):
         return False
 
     # Here we create service user for specified domain in cfg/config.cfg
+    Vhi().clean_up_cache()
     service_user = Vhi().create_service_user()
     if not service_user:
         logs.info('Stopped migration process due to above failure.')
