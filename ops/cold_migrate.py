@@ -195,7 +195,10 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
         dsk_num += 1
 
         # Deactivate Disk
-        deactivate_result = deactivate_disk(vm_idn=VM_IDn, vm_ohv_ip=_vm_hv_ip)
+        _deactivation_props = {'disk_idn': ovm_dsk['disk_idn'],
+                               'datastore_type': ovm_dsk['datastore_type'],
+                               'path': ovm_dsk['path']}
+        deactivate_result = deactivate_disk(vm_idn='', vm_ohv_ip=_vm_hv_ip, **_deactivation_props)
         if not deactivate_result:
             return False
 

@@ -773,22 +773,30 @@ def activate_disk(vm_idn: str, vm_ohv_ip: str, multiply_disks=False, disk=None):
         return True
 
 
-def deactivate_disk(vm_idn: str, vm_ohv_ip: str):
+def deactivate_disk(vm_idn: str, vm_ohv_ip: str, **kwargs):
     """
     Deactivate primary disk
     :param vm_idn: Virtual Machine ID 'i43oijf8sdu'
     :param vm_ohv_ip: VM IP addr '10.120.0.7'
+    :param kwargs: {}
     :return:
     """
-    logs.info(f"{_spaces}-- OnApp: HV DEACTIVATING DISK --", header=True)
+
     hv_ssh = SSH(**{"host": vm_ohv_ip})
-    _onapp_disks = get_onapp_vm_disks(vm_idn)
-    ovm_dsk = [_disk for _disk in _onapp_disks if _disk['primary']][0]
-    disk_idn = ovm_dsk['disk_idn']
-    ds_type = ovm_dsk['datastore_type']
-    _ssh_connect = f'ssh -p {ONAPP_CREDS["hv_ssh_port"]} {Helper.SSH_OPTS.value} root@{vm_ohv_ip}'
+    if not kwargs:
+        _onapp_disks = get_onapp_vm_disks(vm_idn)
+        ovm_dsk = [_disk for _disk in _onapp_disks if _disk['primary']][0]
+        disk_idn = ovm_dsk['disk_idn']
+        ds_type = ovm_dsk['datastore_type']
+    else:
+        disk_idn = kwargs.get('disk_idn', '')
+        ds_type = kwargs.get('datastore_type', '')
     if ds_type == 'lvm':
-        onappvm_primary_disk = get_onapp_vm_disks(vm_idn=vm_idn, primary=True)
+        if not kwargs:
+            onappvm_primary_disk = get_onapp_vm_disks(vm_idn=vm_idn, primary=True)
+        else:
+            onappvm_primary_disk = kwargs.get('path', '')
+        logs.info(f"{_spaces}-- OnApp: HV DEACTIVATING DISK [{onappvm_primary_disk}|{ds_type}] --", header=True)
         exit_status, output = hv_ssh.execute(command=f'lvchange -an {onappvm_primary_disk}')
         if not exit_status_code_handler(exit_code=exit_status, message=f'Disk deactivation failed. Output\n\t{output}'):
             return False
@@ -796,6 +804,7 @@ def deactivate_disk(vm_idn: str, vm_ohv_ip: str):
         return True
 
     elif ds_type == 'is':
+        logs.info(f"{_spaces}-- OnApp: HV DEACTIVATING DISK [{disk_idn}|{ds_type}] --", header=True)
         exit_status, output = hv_ssh.execute(command=f'onappstore offline uuid={disk_idn}')
         if not exit_status_code_handler(exit_code=exit_status, message=f'Disk deactivation failed. Output\n\t{output}'):
             return False
