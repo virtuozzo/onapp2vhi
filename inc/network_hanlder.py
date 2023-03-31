@@ -60,10 +60,6 @@ def get_network_configuration(virtual_server_identifier: str, vinfra_project: st
             logs.warn("Network interface without IP address. It won't be used")
             continue
 
-        # if not network.ipv4:
-        #     logs.warn("IPv6 is not supported in current implementation")
-        #     continue
-
         ip_addresses = "".join([f"fixed-ip='{ip}'," for ip in network.ip_addresses])
         if not vhi_network.is_present():
             logs.warn(f"The Network not found: {vhi_network.cidr}")

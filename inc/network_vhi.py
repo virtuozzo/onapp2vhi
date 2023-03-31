@@ -1,4 +1,4 @@
-from cfg.config_parser import OnAppVhiCP, VINFRA_AUTH
+from cfg.config_parser import OnAppVhiCP, VINFRA_AUTH, DOMAIN_AUTH
 from inc.ssh_connector import SSH
 import json
 
@@ -8,8 +8,8 @@ class Network:
         self._config = OnAppVhiCP().get_config(cp_type="vhi")
         self._ssh = SSH(host=self._config.cp_ip, port=self._config.vhi_ssh_port)
         self._vinfra_project = kwargs.get("vinfra_project", self._config.vinfra_project)
-        self._vinfra_options = f'{VINFRA_AUTH} --vinfra-domain="{self._config.vinfra_domain}"' \
-                               f' --vinfra-project="{self._vinfra_project}'
+        self._vinfra_options = f'{DOMAIN_AUTH} --vinfra-domain="{self._config.vinfra_domain}"' \
+                               f' --vinfra-project="{self._vinfra_project}"'
 
         self.id = kwargs.get("id", "")
         self.name = kwargs.get("name", "")
@@ -60,8 +60,8 @@ class Network:
 
     def create(self):
         cmd = (f"{self._vinfra_options} service compute network create {self.name} --cidr {self.cidr}"
-               f" --gateway {self.gateway} --dns-nameserver {self.dns_nameservers}  "
-               f"--allocation-pool {self.start_address}-{self.end_address} -f json | jq -r \".id\"")
+               f" --dns-nameserver {self.dns_nameservers} --allocation-pool {self.start_address}-{self.end_address}"
+               f"--no-dhcp --no-gateway -f json | jq -r \".id\"")
         exit_status, output = self._ssh.execute(cmd)
         if not exit_status:
             response = output.split('\n')[0]

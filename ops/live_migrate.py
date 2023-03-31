@@ -235,7 +235,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
             elif disk.attrib['device'] == "cdrom":
                 cdrom_file = disk.find('source').attrib['file']
                 disk.find('source').attrib['file'] = '/tmp/grub2.img'
-                _hv_ssh.execute(f"scp -P {ONAPP_CREDS['hv_ssh_port']} {Helper.SCP_OPTS.value}"
+                _hv_ssh.execute(f"scp -P {ONAPP_CREDS['hv_ssh_port']} {Helper.SSH_OPTS.value}"
                                 f" {cdrom_file} root@{_vhi_hv_ip}:/tmp/ 2>/dev/null ")
                 _vhi_hv_ssh.execute(f'ls /tmp/grub2* 2>/dev/null')
         nic_num = 0
