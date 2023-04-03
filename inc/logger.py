@@ -44,7 +44,7 @@ def setup_logger():
     if not os.path.exists(_dir_path):
         os.mkdir(_dir_path)
 
-    if sys.argv[1] not in ('list_onapp_vms', 'list_onapp_users'):
+    if len(sys.argv) > 1 and (sys.argv[1] not in ('list_onapp_vms', 'list_onapp_users')):
         logging.basicConfig(filename=path,
                             filemode='a',
                             format='[%(asctime)s,%(msecs)d] [%(levelname)s] %(message)s',

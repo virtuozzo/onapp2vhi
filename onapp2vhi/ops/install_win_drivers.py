@@ -1,6 +1,4 @@
 import os
-import click
-from click_default_group import DefaultGroup
 from inc.logger import logs
 from inc.helper import Helper
 from cfg.config_parser import ONAPP_CREDS
@@ -84,17 +82,3 @@ def vm_install_win_drivers(idn: str):
         return False
 
     return True
-
-
-@click.group(cls=DefaultGroup, default='windrivers', invoke_without_command=True, default_if_no_args=True)
-def cli():
-    pass
-
-
-@click.command()
-@click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-def windrivers(idn=''):
-    vm_install_win_drivers(idn=idn)
-
-
-cli.add_command(windrivers)

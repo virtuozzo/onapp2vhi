@@ -1,8 +1,6 @@
-import click
 import time
 
 from inc.utils import exit_status_code_handler
-from click_default_group import DefaultGroup
 from inc.helper import Helper
 from inc.ssh_connector import ssh_run, SSH
 from inc.logger import logs
@@ -113,17 +111,3 @@ def vm_install_bootloader_offline(idn: str):
         return True
 
     return True
-
-
-@click.group(cls=DefaultGroup, default='bootloaderoffline', invoke_without_command=True, default_if_no_args=True)
-def cli():
-    pass
-
-
-@click.command()
-@click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-def bootloaderoffline(idn=''):
-    vm_install_bootloader_offline(idn=idn)
-
-
-cli.add_command(bootloaderoffline)
