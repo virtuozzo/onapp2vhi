@@ -32,3 +32,5 @@ typing==3.7.4.1
 urllib3==1.26.11
 virtualenv==20.0.18
 zipp==1.2.0
+pylint==2.13.9
+nox==2022.1.7
