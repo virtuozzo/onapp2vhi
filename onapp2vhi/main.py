@@ -1,5 +1,6 @@
 import os
 import click
+import onapp2vhi
 
 from inc.onapp_helpers import list_onapp_users as list_onapp_users_impl
 from inc.onapp_helpers import list_onapp_vms as list_onapp_vms_impl
@@ -8,6 +9,7 @@ from onapp2vhi.ops.migrate_all import migrate_all_impl
 
 
 @click.group()
+@click.version_option(onapp2vhi.__version__)
 def run():
     pass
 

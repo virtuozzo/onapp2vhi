@@ -4,7 +4,7 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "onapp2vhi"
-version = "0.1.dev0"
+dynamic = ["version"]
 readme = "README.md"
 authors = [
     { name = "Virtuozzo", email = "onapp2vhi@virtuozzo.com" },
