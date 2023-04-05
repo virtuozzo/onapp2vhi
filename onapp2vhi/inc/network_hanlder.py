@@ -1,6 +1,6 @@
-from inc.network_vhi import Network
-from inc.network_onapp import *
-from inc.logger import logs
+from onapp2vhi.inc.network_vhi import Network
+from onapp2vhi.inc.network_onapp import *
+from onapp2vhi.inc.logger import logs
 
 
 def get_network_configuration(virtual_server_identifier: str, vinfra_project: str) -> str:
