@@ -171,6 +171,14 @@ class Vhi:
         result = self._verify_user_exists(user_email=_domain_service_user['email'],
                                           domain=self.vinfra_domain)
         if result:
+            if not VHI_CREDS['vinfra_domain_user'] or VHI_CREDS['vinfra_domain_user'] == "''":
+                configs.set_new_value(section=configs.VHI,
+                                      option="vinfra_domain_user",
+                                      value=_domain_service_user['name'])
+                domain_auth = configs.reset_domain_auth()
+                import inc.vinfra_wrapper as wrapper
+                wrapper.DOMAIN_AUTH = domain_auth
+
             v_image = VinfraImage(channel_timeout=5)
             exit_status, output = v_image.images()
             if not exit_status_code_handler(exit_code=exit_status,

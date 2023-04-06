@@ -5,7 +5,7 @@ import xml.etree.ElementTree as KVMxml
 
 from inc.rest_client import OnAppRequests
 from inc.helper import Helper
-from cfg.config_parser import ONAPP_CREDS, VHI_CREDS, DOMAIN_AUTH
+from cfg.config_parser import VHI_CREDS, DOMAIN_AUTH
 from inc.ssh_connector import ssh_run, SSH
 from inc.logger import logs
 from inc.utils import parse_matrix, exit_status_code_handler, generate_random_password
@@ -764,6 +764,7 @@ def activate_disk(vm_idn: str, vm_ohv_ip: str, multiply_disks=False, disk=None):
             return False
 
         # If disk is offline, activate it
+        logs.debug(msg=f'Disk Status: {disk_status}', separator=True)
         if not int(disk_status):
             hv_ssh.execute(command=f'onappstore online uuid={disk_idn} frontend_uuid={frontend_uuid}')
         return True

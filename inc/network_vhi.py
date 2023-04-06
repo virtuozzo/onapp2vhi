@@ -47,7 +47,7 @@ class Network:
         return False
 
     def is_present(self):
-        cmd = f"{VINFRA_AUTH} service compute network list -f json"
+        cmd = "vinfra service compute network list -f json"
         exit_status, output = self._ssh.execute(cmd)
         if not exit_status:
             response = output.split('\n')
@@ -61,7 +61,7 @@ class Network:
     def create(self):
         cmd = (f"{self._vinfra_options} service compute network create {self.name} --cidr {self.cidr}"
                f" --dns-nameserver {self.dns_nameservers} --allocation-pool {self.start_address}-{self.end_address}"
-               f"--no-dhcp --no-gateway -f json | jq -r \".id\"")
+               f" --no-dhcp --no-gateway -f json | jq -r \".id\"")
         exit_status, output = self._ssh.execute(cmd)
         if not exit_status:
             response = output.split('\n')[0]

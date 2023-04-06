@@ -23,7 +23,7 @@ def cli():
 @click.command()
 @click.option('--user', default='', help="OnApp User, VM identifier.")
 @click.option('--network', default='', help="Network to be used")
-@click.option('--vm', default='', help="VM to be migrated")
+@click.option('--vm', default='', help="Comma separated virtual machines 'oih783gcvy,982h3buisb,893hviun'")
 @click.option('--project', default='', help="Project where all objects will be migrated")
 def migrate_all(user='', network='', vm='', project=''):
     """
@@ -110,6 +110,7 @@ def migrate_all(user='', network='', vm='', project=''):
         else:
             logs.warn(msg=f'You have specified CUSTOM Project name [{_custom_project}]'
                           f' please be ensure such project exist on VHI side in Domain. Otherwise command will fail!')
+            vhi.project_name = _custom_project
             user.update({"project_name": _custom_project})
 
         result, user_pwd = vhi.create_user(user_data=user)
@@ -119,20 +120,27 @@ def migrate_all(user='', network='', vm='', project=''):
         user.update({'password': user_pwd})
         _ssh_key = VhiSshKeys(user_obj=user, ssh_keys=get_user_ssh_keys(user))
         _ssh_result = _ssh_key.create_vhi_ssh_keys()
+        _specified_list = [_machine for _machine in vm.split(',') if _machine]
 
         # --Step 4 -- #
         # -- VHI: Migrate Users Virtual Machines depends on their OS and BOOTED status -- #
         vm_msg = ""
+        specified_vms = 0
         for _num, _vm in enumerate(user['virtual_machines']):
-            _vm_number = _num+1 if not vm else 1
-            vh = VmHandler(**_vm)
             _idn = _vm['id']
             # Here script try to find specified Virtual Machine and migrate only it
-            if vm and vm != _idn:
+            if _specified_list and _idn not in _specified_list:
                 continue
 
+            if _specified_list:
+                specified_vms += 1
+                _vm_number = specified_vms
+            else:
+                _num += 1
+                _vm_number = _num
+            vh = VmHandler(**_vm)
             _vm_info = f'{_idn}|{_vm["ip_addr"]}|{_vm["label"]}'
-            logs.info(f"{Helper.SPACES.value}-- VHI: Migrate VM #{_num} IDENTIFIER [{_vm_info}]--", header=True)
+            logs.info(f"{Helper.SPACES.value}-- VHI: Migrate VM #{_vm_number} IDENTIFIER [{_vm_info}]--", header=True)
             bootloader_drivers, vm_migrate = vh.vm_handler()
             if not bootloader_drivers and not vm_migrate:
                 logs.error('Access to online VM is denied. Possible reason - No SSH key on VM')

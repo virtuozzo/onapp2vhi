@@ -49,9 +49,9 @@
     - set into .bashrc file:
       - `source /etc/kolla/admin-openrc.sh`
     - take an ID all your networks and do next:
-      - `openstack --insecure network set --disable-port-security {network-id}`
+      - `openstack --insecure network set --disable-port-security network_id`
     - after migration finished revert changes:
-      - `openstack --insecure network set --enable-port-security {network-id}`
+      - `openstack --insecure network set --enable-port-security network_id`
 
 
 ---
@@ -126,6 +126,16 @@
       ```
       ./onapp2vhi migrate-all --user=7 --vm=sydarelogizozd --project=my_project
       ```
+    - Full possible flags command:
+      - migrate-all - stands for starting migration process
+      - --user=*user_id* - stands for `User ID` at OnApp side
+      - --vm=*vm_identifier_1,vm_identifier_2* - comma separated `list` on Virtual Machines to be migrated(can be empty, then all VM's will be migrated for specified user)
+      - --project=*my_project* - stands for pre-created project `NAME` at VHI side
+      - --network=*public_network* - stands for network `NAME` at VHI side
+      - Example:
+        ```
+        ./onapp2vhi migrate-all --user=7 --vm=sydarelogizozd,sy43relogizozd --project=my_project --network=public_network
+        ```
 ---
   - ### Deactivate environment:
     - RUN in terminal `deactivate`
