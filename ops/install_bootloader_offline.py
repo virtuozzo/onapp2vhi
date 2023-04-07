@@ -15,7 +15,7 @@ from inc.onapp_helpers import (
 )
 
 
-def vm_install_bootloader_offline(idn: str):
+def vm_install_bootloader_offline(idn: str, vz_guest_tools: bool, cloud_init_install: bool):
     if not idn:
         logs.error('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -63,7 +63,18 @@ def vm_install_bootloader_offline(idn: str):
 
     # -- STEP 5 --
     logs.info(f'{_spaces}{_boot_msg}STEP #5 -- Correct grub config --', header=True)
-    _hv_ssh.execute(f"sed -i 's/identifier/{vm_idn}/g' /onapp/tools/scripts/vm_grub_install.sh"
+    install_script = "/onapp/tools/scripts/vm_grub_install.sh_grub_ci_vz"
+    if not vz_guest_tools and cloud_init_install:
+        logs.info(msg='Installing only `CLOUD INIT`', separator=True)
+        install_script = "/onapp/tools/scripts/vm_grub_install.sh_grub_ci"
+    elif not cloud_init_install and vz_guest_tools:
+        logs.info(msg='Installing only `VZ GUEST TOOLS`', separator=True)
+        install_script = "/onapp/tools/scripts/vm_grub_install.sh_grub_vz"
+    elif not cloud_init_install and not vz_guest_tools:
+        logs.info(msg='Installing only `GRUB`', separator=True)
+        install_script = "/onapp/tools/scripts/vm_grub_install.sh_grub"
+
+    _hv_ssh.execute(f"sed -i 's/identifier/{vm_idn}/g' {install_script}"
                     f" && sed -i 's/identifier/{vm_idn}/g' /onapp/tools/scripts/recovery.xml.mg")
 
     # -- STEP 6 --
@@ -82,7 +93,7 @@ def vm_install_bootloader_offline(idn: str):
 
     # -- STEP 7 --
     logs.info(f'{_spaces}{_boot_msg}STEP #7 -- OnApp: Install grub for VM --', header=True)
-    exit_status, output = _hv_ssh.execute("sh -c -l '/onapp/tools/scripts/vm_grub_install.sh'")
+    exit_status, output = _hv_ssh.execute(f"sh -c -l '{install_script}'")
     if not exit_status_code_handler(exit_code=exit_status,
                                     message='[install_bootloader_offline.py | STEP 7] Grub installation failed.'):
         return False
@@ -122,8 +133,10 @@ def cli():
 
 @click.command()
 @click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-def bootloaderoffline(idn=''):
-    vm_install_bootloader_offline(idn=idn)
+@click.option('--vz_guest_tools', default=True, help="OnApp VM identifier.")
+@click.option('--cloud_init_install', default=True, help="OnApp VM identifier.")
+def bootloaderoffline(idn='', vz_guest_tools=True, cloud_init_install=True):
+    vm_install_bootloader_offline(idn=idn, vz_guest_tools=vz_guest_tools, cloud_init_install=cloud_init_install)
 
 
 cli.add_command(bootloaderoffline)

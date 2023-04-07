@@ -25,7 +25,9 @@ def cli():
 @click.option('--network', default='', help="Network to be used")
 @click.option('--vm', default='', help="Comma separated virtual machines 'oih783gcvy,982h3buisb,893hviun'")
 @click.option('--project', default='', help="Project where all objects will be migrated")
-def migrate_all(user='', network='', vm='', project=''):
+@click.option('--cloud_init_install', default='', help="Project where all objects will be migrated")
+@click.option('--vz_guest_tools_install', default='', help="Project where all objects will be migrated")
+def migrate_all(user='', network='', vm='', project='', vz_guest_tools_install='true', cloud_init_install='true'):
     """
     Migrate all resources from OnApp to VHI:
         - OnApp Users to VHI users
@@ -52,6 +54,8 @@ def migrate_all(user='', network='', vm='', project=''):
     :param network: public2
     :param vm: virtual machine identifier
     :param project: project
+    :param vz_guest_tools_install: project
+    :param cloud_init_install: project
     :return:
     """
     # Arrange
@@ -68,6 +72,8 @@ def migrate_all(user='', network='', vm='', project=''):
             logs.error("Please specify User ID as integer: --user=7")
             exit(1)
         user_idn = int(user)
+    vz_guest_tools = False if vz_guest_tools_install == 'false' else True
+    cloud_init_install = False if cloud_init_install == 'false' else True
     _custom_project = project
     # --Step 1--#
     # --OnApp: Get User, VM's information--#
@@ -152,7 +158,12 @@ def migrate_all(user='', network='', vm='', project=''):
                                msg=msg_failed)
                 continue
 
-            result = bootloader_drivers(idn=_idn)
+            if _vm['operating_system'] == 'linux':
+                result = bootloader_drivers(idn=_idn,
+                                            vz_guest_tools=vz_guest_tools,
+                                            cloud_init_install=cloud_init_install)
+            else:
+                result = bootloader_drivers(idn=_idn)
             if not result:
                 vm_msg += (f'\t{_vm_number}. VM Migrated = {result}\n'
                            f'\t\t- IP "{_vm["ip_addr"]}"\n'
