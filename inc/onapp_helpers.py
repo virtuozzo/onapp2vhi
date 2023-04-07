@@ -839,8 +839,8 @@ def create_new_vhi_vm(vhi_ssh: SSH,
     _vhi_vm_id = ''
     host_name = hostname.lower()
     onappvm_pri_ips = onapp_nics[0]['ips']
-    create_cmd = (f"{vinfra_access} service compute server create vm_{host_name}_{vm_idn}"
-                  f" --description 'vm_{host_name}_{vm_idn}' {network} --volume source=image,id={vhi_image},"
+    create_cmd = (f"{vinfra_access} service compute server create {host_name}"
+                  f" --description '{host_name}_{vm_idn}' {network} --volume source=image,id={vhi_image},"
                   f"size={onapp_disks[0]['size']} --flavor {flavour} -f json | jq -r \".id\"")
     exit_status, output = vhi_ssh.execute(command=create_cmd)
     if 'INTERNAL SERVER ERROR' in output:
