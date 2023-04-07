@@ -100,7 +100,7 @@ def migrate_all(user='', network='', vm='', project='', vz_guest_tools_install='
 
         # --Step 3--#
         # --OnApp: Start migration USER by USER--#
-        logs.info(f"{Helper.EQUAL.value} VHI: Migrate User ({full_name}) --", separator=True)
+        logs.info(f"{Helper.EQUAL.value} VHI: Migrate User ({full_name}) {Helper.EQUAL.value}", header=True)
         # If we specified custom project via --project=my_project, then creation projects step will be missed
         if not _custom_project:
             if not check_user_role(user):
@@ -108,16 +108,19 @@ def migrate_all(user='', network='', vm='', project='', vz_guest_tools_install='
                 if not result:
                     continue
                 user.update({"project_name": vhi.project_name})
+                vhi.set_project_value(project_name=vhi.project_name)
             else:
                 _default_project = vhi.check_default_project()
                 if not _default_project:
                     continue
                 user.update({"project_name": vhi.project_name})
+                vhi.set_project_value(project_name=vhi.project_name)
         else:
             logs.warn(msg=f'You have specified CUSTOM Project name [{_custom_project}]'
                           f' please be ensure such project exist on VHI side in Domain. Otherwise command will fail!')
             vhi.project_name = _custom_project
             user.update({"project_name": _custom_project})
+            vhi.set_project_value(project_name=vhi.project_name)
 
         result, user_pwd = vhi.create_user(user_data=user)
         if not result:

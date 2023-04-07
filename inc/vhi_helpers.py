@@ -28,8 +28,6 @@ class Vhi:
     VHI_PROJECT_MEMBER = "project_admin"
 
     # API URL
-    _URL = f"{VHI_CREDS['url']}{VHI_CREDS['api_path']}"
-    _VHI_DOMAIN_API = f"{_URL}/domains/{VHI_CREDS['domain_id']}"
     _SPACES = Helper.SPACES.value
     GET = 'GET'
     POST = 'POST'
@@ -55,6 +53,13 @@ class Vhi:
                            "vcpus": vm_data['vcpus'],
                            "ram": vm_data['ram'],
                            "disk": 0})
+
+    @staticmethod
+    def set_project_value(project_name: str):
+        configs.set_new_value(section=configs.VHI, option="vinfra_project", value=project_name)
+        vinfra_auth = configs.reset_auth()
+        import inc.vinfra_wrapper as wrapper
+        wrapper.VINFRA_AUTH = vinfra_auth
 
     def clean_up_cache(self):
         _cmd = 'rm -f ~/.vinfra/backend-api.svc.vstoragedomain/*'
