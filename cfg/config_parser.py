@@ -20,19 +20,25 @@ class AttributeDict(dict):
         self[key] = value
 
 
+class ConfigFileNotFoundException(Exception):
+    pass
+
+
 class OnAppVhiCP:
     """
     Parsing config.cfg file to get credentials to different resources
     """
-    _file_name = 'config.cfg'
-    path = join(dirname(abspath(__file__)), _file_name)
-    err_mgs = (f'Config file does NOT exist: {path}\nPlease create file with name '
-               f'"{_file_name}" and provide properties as in "config-example.cfg" file')
-    if not os.path.isfile(path):
-        logs.error(err_mgs)
-        exit(1)
 
     def __init__(self):
+        self._file_name = 'config.cfg'
+        self.path = join(dirname(abspath(__file__)), self._file_name)
+        self.err_mgs = (f'Config file does NOT exist: {self.path}\nPlease create file with name '
+                   f'"{self._file_name}" and provide properties as in "config-example.cfg" file')
+
+        if not os.path.isfile(self.path):
+            logs.error(self.err_mgs)
+            raise ConfigFileNotFoundException(self.err_mgs)
+
         self._config = ConfigParser(interpolation=None)
         self._config.read(self.path)
         self.CP = CP.OnApp

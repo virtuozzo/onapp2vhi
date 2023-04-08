@@ -5,6 +5,10 @@ from inc.logger import logs
 from cfg.config_parser import ONAPP_CREDS
 
 
+class OnAppRequestsException(Exception):
+    pass
+
+
 def _response_handler(response: requests.Response):
     """
     Response handler manage response according to response status code
@@ -15,8 +19,9 @@ def _response_handler(response: requests.Response):
     code = response.status_code
     text = response.text
     if code not in allowed_status:
-        logs.error(f"Status - [{code}] | Response: {text}")
-        return False
+        message = f"Status - [{code}] | Response: {text}"
+        logs.error(message)
+        raise OnAppRequestsException(message)
 
     if len(text) < 2500:
         logs.debug(f"Status - [{code}] | Response: {text}")
@@ -42,7 +47,7 @@ class OnAppRequests:
         self._request_id = ''
         self._10_min_duration = float(60 * 10)
         self._start_time = None
-        self._auth()
+        self.authorized = False
 
     @property
     def headers(self) -> dict:
@@ -66,12 +71,21 @@ class OnAppRequests:
         self._start_time = time.time()
         url = f"{self.url}/version.json"
         response = requests.get(url, auth=self.authorization)
-        if _response_handler(response):
+        try:
+            _response_handler(response)
             self._session = response.cookies['_session_id']
             self._request_id = response.headers['X-Request-Id']
-        else:
+            self.authorized = True
+        except OnAppRequestsException as e:
             logs.error('Authorization failed. Please check out your credentials in "config.cfg" file')
-            exit(1)
+            raise
+
+    def _ensure_authorized(self):
+        """
+        Ensure session has been authorized
+        """
+        if not self.authorized:
+            self._auth()
 
     def get(self, route: str, params: str = None):
         """
@@ -79,6 +93,8 @@ class OnAppRequests:
         :param params: search_filter[user_id]=4
         :return: dict response
         """
+        self._ensure_authorized()
+
         url = f"{self.url}/{route}.json"
         if params:
             url += f'?{params}'
@@ -93,6 +109,8 @@ class OnAppRequests:
         :param data: {}
         :return: dict response
         """
+        self._ensure_authorized()
+
         url = f"{self.url}/{route}.json"
         _headers = self.headers
         response = requests.post(url, headers=_headers, json=data, auth=self.authorization)
@@ -105,6 +123,8 @@ class OnAppRequests:
         :param data: {}
         :return: dict response
         """
+        self._ensure_authorized()
+
         url = f"{self.url}/{route}.json"
         _headers = self.headers
         response = requests.put(url, headers=_headers, json=data, auth=self.authorization)
@@ -117,6 +137,8 @@ class OnAppRequests:
         :param data: {}
         :return: dict response
         """
+        self._ensure_authorized()
+
         url = f"{self.url}/{route}.json"
         _headers = self.headers
         response = requests.patch(url, headers=_headers, json=data, auth=self.authorization)
@@ -129,6 +151,8 @@ class OnAppRequests:
         :param data:{}
         :return: dict response
         """
+        self._ensure_authorized()
+
         url = f"{self.url}/{route}.json"
         _headers = self.headers
         response = requests.delete(url, json=data, auth=self.authorization, _headers=_headers)
