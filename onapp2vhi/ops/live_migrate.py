@@ -132,6 +132,10 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
 
     _vhi_vm_id = ''
     _network = get_network_configuration(virtual_server_identifier=VM_IDn, vinfra_project=_vhiproj)
+    if not _network:
+        logs.error("The network issue is hit. Could you please check logs.")
+        return False
+
     logs.debug(f'NETWORK PARAMS: {_network}', separator=True)
     if not vm_created:
         _vhi_vm_id = create_new_vhi_vm(vhi_ssh=_vhi_ssh,
@@ -159,7 +163,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
 
     # -- STEP 7 --
     logs.info(f"{_spaces}{live_migration}STEP #7 -- VHI: define VM's hypervisor and disks --", header=True)
-    exit_status, output = _vhi_ssh.execute(f"host `vinfra service compute server show {_vhi_vm_id} -f json"
+    exit_status, output = _vhi_ssh.execute(f"host `{ADMIN_AUTH} service compute server show {_vhi_vm_id} -f json"
                                            f" | jq -r .host` 2>/dev/null | awk '/ has address /{{print $NF}}'")
     if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', output):
         _vhi_hv_ip = output.strip("\n")

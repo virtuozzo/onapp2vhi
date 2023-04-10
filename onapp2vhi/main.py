@@ -41,5 +41,11 @@ def create_service_user():
 @click.option('--network', default='', help="Network to be used")
 @click.option('--vm', default='', help="VM to be migrated")
 @click.option('--project', default='', help="Project where all objects will be migrated")
-def migrate_all(user='', network='', vm='', project=''):
-    migrate_all_impl(user=user, network=network, vm=vm, project=project)
+@click.option('--cloud_init_install', default='', help="Project where all objects will be migrated")
+@click.option('--vz_guest_tools_install', default='', help="Project where all objects will be migrated")
+def migrate_all(user='', network='', vm='', project='', vz_guest_tools_install='true', cloud_init_install='true'):
+    migrate_all_impl(user=user,
+        network=network,
+        vm=vm, project=project,
+        vz_guest_tools_install=vz_guest_tools_install,
+        cloud_init_install=cloud_init_install)

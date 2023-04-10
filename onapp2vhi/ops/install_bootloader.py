@@ -5,7 +5,7 @@ from inc.onapp_helpers import get_vm_source_properties
 from inc.utils import exit_status_code_handler
 
 
-def vm_install_bootloader(idn: str):
+def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install: bool):
     VM_IDn = idn
     if not idn:
         logs.error('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
@@ -23,6 +23,7 @@ def vm_install_bootloader(idn: str):
     _vm_ip_addr = _vm_properties['vm_ip_addr']
 
     # -- STEP 2 --
+    _vm_ssh = SSH(**{'host': _vm_ip_addr, 'connect_timeout': 10, 'channel_timeout': 10})
     logs.info(f'{_spaces}{_boot_msg}STEP #2 -- OnApp: Check if VM is running at OnApp hypervisor --', header=True)
     _hv_ssh = SSH(**{'host': _vm_hv_ip})
     exit_status, output = _hv_ssh.execute(f'virsh list | grep {VM_IDn}')
@@ -31,57 +32,48 @@ def vm_install_bootloader(idn: str):
         return False
 
     # -- STEP 3 --
-    logs.info(f'{_spaces}{_boot_msg}STEP #3 -- OnApp: GRUB_DISABLE_LINUX_UUID and GRUB_DISABLE_UUID set to false --',
-              header=True)
-    _vm_ssh = SSH(**{'host': _vm_ip_addr, 'connect_timeout': 10, 'channel_timeout': 10})
-    _vm_ssh.execute("sed -i 's/^GRUB_DISABLE_LINUX_UUID=true/#GRUB_DISABLE_LINUX_UUID=true/' /etc/default/grub")
-    _vm_ssh.execute("sed -i 's/^GRUB_DISABLE_UUID=true/#GRUB_DISABLE_UUID=true/' /etc/default/grub")
+    logs.info(f'{_spaces}{_boot_msg}STEP #3 -- OnApp: Copy cloud-install into VM [{VM_IDn}] --', header=True)
+    scripts_info = {'scripts/cron-cloud-install': '/etc/cron.d/cron-cloud-install',
+                    'scripts/cloud-install': '/usr/bin/cloud-install',
+                    'scripts/vz-guest-tools-lin.tar': '/opt/vz-guest-tools-lin.tar ',
+                    'scripts/vz-guest-tools': '/usr/bin/vz-guest-tools',
+                    'scripts/PrepareVM.sh': '/opt/PrepareVM.sh'}
+    if not vz_guest_tools:
+        del scripts_info['scripts/vz-guest-tools-lin.tar']
+        del scripts_info['scripts/vz-guest-tools']
+    if not cloud_init_install:
+        del scripts_info['scripts/cloud-install']
+        del scripts_info['scripts/cron-cloud-install']
 
-    # -- STEP 4 --
-    logs.info(f'{_spaces}{_boot_msg}STEP #4 -- OnApp: INSTALL GRUB for VM --', header=True)
-    exit_status, output = _vm_ssh.execute("grub-install --recheck /dev/vda || grub2-install --recheck /dev/vda")
-    if not exit_status_code_handler(
-            exit_code=exit_status,
-            message=f'[install_bootloader.py | STEP 4] Grub Installation failed. Output:\n\t{output}'
-    ):
-        return False
-
-    # -- STEP 5 --
-    logs.info(f'{_spaces}{_boot_msg}STEP #5 -- OnApp: Generate grub config for VM [{VM_IDn}] --', header=True)
-    exit_status, output = _vm_ssh.execute(
-        "grub-mkconfig -o /boot/grub/grub.cfg || grub2-mkconfig -o /boot/grub2/grub.cfg"
-    )
-    if not exit_status_code_handler(
-            exit_code=exit_status,
-            message=f'[install_bootloader.py | STEP 5] Grub make config failed. Output:\n\t{output}'
-    ):
-        return False
-
-    # -- STEP 6 --
-    logs.info(f'{_spaces}{_boot_msg}STEP #6 -- OnApp: Copy cloud-install into VM [{VM_IDn}] --', header=True)
-    scripts_info = {
-        'scripts/cron-cloud-install': '/etc/cron.d/cron-cloud-install',
-        'scripts/cloud-install': '/usr/bin/cloud-install',
-        'scripts/vz-guest-tools-lin.tar': '/opt/vz-guest-tools-lin.tar ',
-        'scripts/vz-guest-tools': '/usr/bin/vz-guest-tools',
-    }
     for file, path in scripts_info.items():
         [exit_status, output] = ssh_run(
             command=f'scp {_scp_opts} {file} root@{_vm_ip_addr}:{path}'
         )
         if not exit_status_code_handler(
                 exit_code=exit_status,
-                message=f'[install_bootloader.py | STEP 6] Copy {file} failed. Output:\n\t{output}'
+                message=f'[install_bootloader.py | STEP 3] Copy {file} failed. Output:\n\t{output}'
         ):
             return False
 
-        # -- STEP 7 --
-    logs.info(f'{_spaces}{_boot_msg}STEP #7 -- OnApp: Install vz-guest-tools inside VM [{VM_IDn}] --', header=True)
-    exit_status, output = _vm_ssh.execute("bash /usr/bin/vz-guest-tools")
-    if not exit_status_code_handler(
+    # -- STEP 4 --
+    if vz_guest_tools:
+        logs.info(f'{_spaces}{_boot_msg}STEP #4 -- OnApp: Install `vz-guest-tools` inside VM [{VM_IDn}] --',
+                  header=True)
+        exit_status, output = _vm_ssh.execute("bash /usr/bin/vz-guest-tools")
+        
+        # NOTE: here we removed validation for `vz-guest-tools` failure
+        exit_status_code_handler(
+                exit_code=exit_status,
+                message=f'[install_bootloader.py | STEP 4] Install vz-guest-tools inside VM failed. Output:\n\t{output}'
+        )
+
+    # -- STEP 5 --
+    logs.info(f'{_spaces}{_boot_msg}STEP #5 -- OnApp: Install `PrepareVM.sh` inside VM [{VM_IDn}] --', header=True)
+    exit_status, output = _vm_ssh.execute("bash /opt/PrepareVM.sh")
+    exit_status_code_handler(
             exit_code=exit_status,
-            message=f'[install_bootloader.py | STEP 7] Install vz-guest-tools inside VM failed. Output:\n\t{output}'
-    ):
-        return False
+            message=f'[install_bootloader.py | STEP 5] Install `PrepareVM.sh` inside VM failed. Output:\n\t{output}'
+    )
 
     return True
+
