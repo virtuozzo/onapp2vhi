@@ -2,7 +2,9 @@ import requests
 import time
 
 from inc.logger import logs
-from cfg.config_parser import ONAPP_CREDS
+from onapp2vhi.utility.config import OnApp2VHIConfig
+
+cfg = OnApp2VHIConfig()
 
 
 def _response_handler(response: requests.Response):
@@ -34,9 +36,9 @@ class OnAppRequests:
     def __init__(self):
         self._cookie = ""
         self.log = logs
-        self.url = ONAPP_CREDS["url"]
-        self._email = ONAPP_CREDS["email"]
-        self._api_key = ONAPP_CREDS["api_key"]
+        self.url = cfg.onapp_conf["url"]
+        self._email = cfg.onapp_conf["email"]
+        self._api_key = cfg.onapp_conf["api_key"]
         self.authorization = (self._email, self._api_key)
         self._session = ''
         self._request_id = ''

@@ -1,9 +1,11 @@
 import requests
 import json
 from inc.helper import Helper
-from cfg.config_parser import VHI_CREDS
 from inc.logger import logs
 from inc.onapp_helpers import check_user_role
+from onapp2vhi.utility.config import OnApp2VHIConfig
+
+cfg = OnApp2VHIConfig()
 
 
 class VhiSshKeys:
@@ -11,8 +13,8 @@ class VhiSshKeys:
     Object is used to migrate User SSH Keys from OnApp platform to VHI platform.
     It takes as input arguments user object and list of ssh keys
     """
-    _URL = f"{VHI_CREDS['url']}{VHI_CREDS['api_path']}"
-    _PANEL_URL = f"{VHI_CREDS['panel_url']}{VHI_CREDS['api_path']}"
+    _URL = f"{cfg.vhi_conf['url']}{cfg.vhi_conf['api_path']}"
+    _PANEL_URL = f"{cfg.vhi_conf['panel_url']}{cfg.vhi_conf['api_path']}"
     GET = 'GET'
     POST = 'POST'
     PUT = 'PUT'
@@ -28,7 +30,7 @@ class VhiSshKeys:
         self._proj_name = self._user['project_name']
         self._ssh_keys = ssh_keys
         self._headers = ''
-        self._creds = {"domain": VHI_CREDS['vinfra_domain'],
+        self._creds = {"domain": cfg.vhi_conf['vinfra_domain'],
                        "domainAdminStartPageEnabled": False,
                        "username": self._login,
                        "password": self._pwd}
@@ -36,7 +38,7 @@ class VhiSshKeys:
         self._panel_login_url = f"{self._PANEL_URL}/login"
         self._auth_endpoint = "{}/accounts/projects/{}/auth/"
         self._user_projects_url = f"{self._URL}/accounts/projects"
-        self._projects_url = f"{self._URL}/domains/{VHI_CREDS['domain_id']}/projects"
+        self._projects_url = f"{self._URL}/domains/{cfg.vhi_conf['domain_id']}/projects"
         self.ssh_keys_url = f"{self._PANEL_URL}/compute/keys"
         self._proj_auth_url = ''
         logs.info(f'{Helper.SPACES.value}-- VHI: Creating SSH keys --', header=True)

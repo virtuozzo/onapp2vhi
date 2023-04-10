@@ -1,14 +1,15 @@
-from cfg.config_parser import OnAppVhiCP, VINFRA_AUTH, DOMAIN_AUTH
+from onapp2vhi.utility.config import OnApp2VHIConfig
 from inc.ssh_connector import SSH
 import json
 
+cfg = OnApp2VHIConfig()
 
 class Network:
     def __init__(self, **kwargs):
-        self._config = OnAppVhiCP().get_config(cp_type="vhi")
-        self._ssh = SSH(host=self._config.cp_ip, port=self._config.vhi_ssh_port)
+        self._config = cfg.get_config(cp_type="vhi")
+        self._ssh = SSH(host=self._config.cp_ip, port=self._config.cloud_ssh_port)
         self._vinfra_project = kwargs.get("vinfra_project", self._config.vinfra_project)
-        self._vinfra_options = f'{DOMAIN_AUTH} --vinfra-domain="{self._config.vinfra_domain}"' \
+        self._vinfra_options = f'{cfg.DOMAIN_AUTH} --vinfra-domain="{self._config.vinfra_domain}"' \
                                f' --vinfra-project="{self._vinfra_project}"'
 
         self.id = kwargs.get("id", "")
@@ -47,7 +48,7 @@ class Network:
         return False
 
     def is_present(self):
-        cmd = f"{VINFRA_AUTH} service compute network list -f json"
+        cmd = f"{cfg.VINFRA_AUTH} service compute network list -f json"
         exit_status, output = self._ssh.execute(cmd)
         if not exit_status:
             response = output.split('\n')

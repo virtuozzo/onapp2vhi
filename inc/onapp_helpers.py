@@ -5,7 +5,7 @@ import xml.etree.ElementTree as KVMxml
 
 from inc.rest_client import OnAppRequests
 from inc.helper import Helper
-from cfg.config_parser import ONAPP_CREDS, VHI_CREDS, DOMAIN_AUTH
+from onapp2vhi.utility.config import OnApp2VHIConfig
 from inc.ssh_connector import ssh_run, SSH
 from inc.logger import logs
 from inc.utils import parse_matrix, exit_status_code_handler, generate_random_password
@@ -19,8 +19,8 @@ from inc.vinfra_wrapper import (
     VinfraServer,
 )
 
+cfg = OnApp2VHIConfig()
 
-vhi_domain = VHI_CREDS['vinfra_domain']
 _spaces = Helper.SPACES.value
 onapp_requests = OnAppRequests()
 
@@ -494,7 +494,7 @@ def transfer_firewall_rules_to_sg(vm_idn: str, vhiproj: str, drop: str = "DROP",
     firewall_rules_for_vm = get_vm_firewall_rules(vm_idn=vm_idn)
     firewall_rules_for_primary_nic = get_firewall_rules_for_specific_nic(nic=primary_nic, rules=firewall_rules_for_vm)
     security_group_name = f'sg_from_vs_{vm_idn}_and_nic_{primary_nic.nic_idn}'
-    _, output = proj.show(domain=VHI_CREDS['vinfra_domain'], project_name=vhiproj)
+    _, output = proj.show(domain=cfg.vhi_conf['vinfra_domain'], project_name=vhiproj)
     proj_id = json.loads(output)['id']
     _, sg_list = sg.list_security_group(**{'project': proj_id})
     sg_list = json.loads(sg_list)
@@ -516,7 +516,7 @@ def transfer_firewall_rules_to_sg(vm_idn: str, vhiproj: str, drop: str = "DROP",
 
     # Create new SG
     _description = f'Security group created from the VS: {vm_idn} with primary NIC: {primary_nic.nic_idn}'
-    _cmd_create_sg = (f"{DOMAIN_AUTH} --vinfra-domain='{vhi_domain}' --vinfra-project='{vhiproj}'"
+    _cmd_create_sg = (f"{cfg.DOMAIN_AUTH} --vinfra-domain='{cfg.vhi_conf['vinfra_domain']}' --vinfra-project='{vhiproj}'"
                       f" service compute security-group create {security_group_name} --description '{_description}'")
     _, sg_create = sg.execute(_cmd_create_sg)
     sg_create = json.loads(sg_create)
@@ -851,7 +851,7 @@ def create_new_vhi_vm(vhi_ssh: SSH,
     if not exit_status and output:
         # ToDo - need to add verification step whether VM created successfully
         _vhi_vm_id = output.strip("\n")
-        logs.info(f"NEW VHI VM CREATED: {VHI_CREDS['url']}/compute/servers/instances/{_vhi_vm_id}", separator=True)
+        logs.info(f"NEW VHI VM CREATED: {cfg.vhi_conf['url']}/compute/servers/instances/{_vhi_vm_id}", separator=True)
         logs.info(f"{_spaces}...STOPPING VM BEFORE MIGRATION...")
         exit_status, output = vhi_ssh.execute(
             f"for ((i=1;i<=100;i++)); do {vinfra_access} service compute server stop {_vhi_vm_id} --hard --wait"

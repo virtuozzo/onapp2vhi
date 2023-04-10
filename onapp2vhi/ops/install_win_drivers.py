@@ -1,10 +1,12 @@
 import os
 from inc.logger import logs
 from inc.helper import Helper
-from cfg.config_parser import ONAPP_CREDS
 from inc.ssh_connector import ssh_run, SSH
 from inc.onapp_helpers import get_vm_source_properties
 from inc.utils import exit_status_code_handler
+from onapp2vhi.utility.config import OnApp2VHIConfig
+
+cfg = OnApp2VHIConfig()
 
 
 def vm_install_win_drivers(idn: str):
@@ -41,7 +43,7 @@ def vm_install_win_drivers(idn: str):
     vz_guest_tools = os.path.join(os.getcwd(), "scripts/vz-guest-tools-win.tar")
     logs.info(f'File path: {cloudbase_init}')
     logs.info(f'File path: {vz_guest_tools}')
-    cmd = f'scp -P{ONAPP_CREDS["hv_ssh_port"]} {Helper.SCP_OPTS.value} {cloudbase_init}' \
+    cmd = f'scp -P{cfg.onapp_conf["hv_ssh_port"]} {Helper.SCP_OPTS.value} {cloudbase_init}' \
           f' Administrator@{_vm_ip_addr}:C:/ 2>/dev/null'
     [exit_status, output] = ssh_run(cmd)
     if not exit_status_code_handler(
@@ -50,7 +52,7 @@ def vm_install_win_drivers(idn: str):
                     f" Couldn't transfer CloudbaseInitSetup into VM \nOutput: {output}"
     ):
         return False
-    cmd = f'scp -P{ONAPP_CREDS["hv_ssh_port"]} {Helper.SCP_OPTS.value}' \
+    cmd = f'scp -P{cfg.onapp_conf["hv_ssh_port"]} {Helper.SCP_OPTS.value}' \
           f' {vz_guest_tools} Administrator@{_vm_ip_addr}:C:/ 2>/dev/null'
     [exit_status, output] = ssh_run(cmd)
     if not exit_status_code_handler(
