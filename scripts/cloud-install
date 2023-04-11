@@ -22,24 +22,7 @@ function checkOS() {
         fi
 }
 
-# Check VM networking
-function checkNetwork() {
-	ping -c5 -q 8.8.8.8
-
-	if [ $? -ne 0 ]; then
-		echo -e "\n Please check network configuration"
-		exit 1
-	fi
-
-	getent ahosts google.com
-
-	if [ $? -ne 0 ]; then
-		echo -e "\n Please check DNS configuration"
-		exit 1
-	fi
-}
-
-# Install Cloudinit and qemu-guest-agent
+# Install Cloudinit
 function installCloudinit() {
         if [[ ${OS} == 'ubuntu' ]]; then
                 apt-get update
@@ -47,7 +30,7 @@ function installCloudinit() {
 		if dpkg -l $pkg
 		then
 			echo "$pkg installed"
-			echo 'datasource_list: [ OpenStack, None ]' | sudo -s tee /etc/cloud/cloud.cfg.d/90_dpkg.cfg
+			echo 'datasource_list: [ NoCloud, AltCloud, ConfigDrive, OpenStack, CloudStack, DigitalOcean,  Ec2, MAAS, OVF, GCE, None ]' | sudo -s tee /etc/cloud/cloud.cfg.d/90_dpkg.cfg
 			dpkg-reconfigure -f noninteractive cloud-init
 			cloud-init clean
 			cloud-init init
@@ -121,7 +104,6 @@ fi
 pkg="cloud-init"
 
 checkOS
-checkNetwork
 installCloudinit
 reconfigureNetwork
 

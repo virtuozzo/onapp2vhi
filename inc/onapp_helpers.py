@@ -5,7 +5,7 @@ import xml.etree.ElementTree as KVMxml
 
 from inc.rest_client import OnAppRequests
 from inc.helper import Helper
-from cfg.config_parser import ONAPP_CREDS, VHI_CREDS, DOMAIN_AUTH
+from cfg.config_parser import VHI_CREDS, DOMAIN_AUTH
 from inc.ssh_connector import ssh_run, SSH
 from inc.logger import logs
 from inc.utils import parse_matrix, exit_status_code_handler, generate_random_password
@@ -764,6 +764,7 @@ def activate_disk(vm_idn: str, vm_ohv_ip: str, multiply_disks=False, disk=None):
             return False
 
         # If disk is offline, activate it
+        logs.debug(msg=f'Disk Status: {disk_status}', separator=True)
         if not int(disk_status):
             hv_ssh.execute(command=f'onappstore online uuid={disk_idn} frontend_uuid={frontend_uuid}')
         return True
@@ -838,8 +839,8 @@ def create_new_vhi_vm(vhi_ssh: SSH,
     _vhi_vm_id = ''
     host_name = hostname.lower()
     onappvm_pri_ips = onapp_nics[0]['ips']
-    create_cmd = (f"{vinfra_access} service compute server create vm_{host_name}_{vm_idn}"
-                  f" --description 'vm_{host_name}_{vm_idn}' {network} --volume source=image,id={vhi_image},"
+    create_cmd = (f"{vinfra_access} service compute server create {host_name}"
+                  f" --description '{host_name}_{vm_idn}' {network} --volume source=image,id={vhi_image},"
                   f"size={onapp_disks[0]['size']} --flavor {flavour} -f json | jq -r \".id\"")
     exit_status, output = vhi_ssh.execute(command=create_cmd)
     if 'INTERNAL SERVER ERROR' in output:
