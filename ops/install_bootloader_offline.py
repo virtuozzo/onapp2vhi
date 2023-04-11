@@ -133,8 +133,8 @@ def cli():
 
 @click.command()
 @click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-@click.option('--vz_guest_tools', default=True, help="OnApp VM identifier.")
-@click.option('--cloud_init_install', default=True, help="OnApp VM identifier.")
+@click.option('--vz_guest_tools', default=True, help="Boolean flag, set `false` to NOT install vz_guest_tools")
+@click.option('--cloud_init_install', default=True, help="Boolean flag, set `false` to NOT install cloud_init_install")
 def bootloaderoffline(idn='', vz_guest_tools=True, cloud_init_install=True):
     vm_install_bootloader_offline(idn=idn, vz_guest_tools=vz_guest_tools, cloud_init_install=cloud_init_install)
 

@@ -25,8 +25,9 @@ def cli():
 @click.option('--network', default='', help="Network to be used")
 @click.option('--vm', default='', help="Comma separated virtual machines 'oih783gcvy,982h3buisb,893hviun'")
 @click.option('--project', default='', help="Project where all objects will be migrated")
-@click.option('--cloud_init_install', default='', help="Project where all objects will be migrated")
-@click.option('--vz_guest_tools_install', default='', help="Project where all objects will be migrated")
+@click.option('--cloud_init_install', default='', help="Boolean flag, set `false` to NOT install cloud_init_install")
+@click.option('--vz_guest_tools_install', default='',
+              help="Boolean flag, set `false` to NOT install vz_guest_tools_install")
 def migrate_all(user='', network='', vm='', project='', vz_guest_tools_install='true', cloud_init_install='true'):
     """
     Migrate all resources from OnApp to VHI:
