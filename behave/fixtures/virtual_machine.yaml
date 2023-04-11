@@ -1,0 +1,23 @@
+linux-vm:
+  virtual_machine:
+    label: linux vm
+    memory: 2048
+    cpus: 1
+    cpu_shares: 1
+    hostname: linuxvm
+    primary_disk_size: 5
+    required_virtual_machine_build: 1
+    template_id: Debian 10 x64
+
+windows-vm:
+  virtual_machine:
+    label: windows vm
+    memory: 2048
+    cpus: 1
+    cpu_shares: 1
+    hostname: windowsvm
+    primary_disk_size: 30
+    required_virtual_machine_build: 1
+    template_id: Windows Server 2016 x64 STD
+    licensing_type: own
+    licensing_key: N3TYV-2997C-CJF6W-CQ3HR-84464
