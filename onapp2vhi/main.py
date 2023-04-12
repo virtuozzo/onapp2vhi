@@ -1,9 +1,9 @@
 import os
 import click
 
-from inc.onapp_helpers import list_onapp_users as list_onapp_users_impl
-from inc.onapp_helpers import list_onapp_vms as list_onapp_vms_impl
-from inc.vhi_helpers import Vhi
+from onapp2vhi.inc.onapp_helpers import list_onapp_users as list_onapp_users_impl
+from onapp2vhi.inc.onapp_helpers import list_onapp_vms as list_onapp_vms_impl
+from onapp2vhi.inc.vhi_helpers import Vhi
 from onapp2vhi.ops.migrate_all import migrate_all_impl
 
 

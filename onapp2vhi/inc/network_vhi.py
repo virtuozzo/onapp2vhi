@@ -1,5 +1,5 @@
-from cfg.config_parser import VHI_CREDS, DOMAIN_AUTH
-from inc.ssh_connector import SSH
+from onapp2vhi.cfg.config_parser import VHI_CREDS, DOMAIN_AUTH
+from onapp2vhi.inc.ssh_connector import SSH
 import re
 import json
 

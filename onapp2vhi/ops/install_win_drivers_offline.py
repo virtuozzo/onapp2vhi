@@ -1,12 +1,12 @@
 import os
 import time
 
-from inc.onapp_helpers import get_onapp_vm_disks
-from inc.logger import logs
-from inc.helper import Helper
-from inc.ssh_connector import ssh_run, SSH
-from inc.utils import exit_status_code_handler
-from inc.onapp_helpers import (
+from onapp2vhi.inc.onapp_helpers import get_onapp_vm_disks
+from onapp2vhi.inc.logger import logs
+from onapp2vhi.inc.helper import Helper
+from onapp2vhi.inc.ssh_connector import ssh_run, SSH
+from onapp2vhi.inc.utils import exit_status_code_handler
+from onapp2vhi.inc.onapp_helpers import (
     get_vm_source_properties,
     get_disk_type,
     activate_disk,

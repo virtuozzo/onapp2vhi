@@ -1,9 +1,9 @@
-from inc.vhi_ssh_keys import VhiSshKeys
-from inc.vhi_helpers import Vhi
-from inc.utils import generate_random_password
-from inc.logger import logs
-from inc.helper import Helper
-from inc.onapp_helpers import (
+from onapp2vhi.inc.vhi_ssh_keys import VhiSshKeys
+from onapp2vhi.inc.vhi_helpers import Vhi
+from onapp2vhi.inc.utils import generate_random_password
+from onapp2vhi.inc.logger import logs
+from onapp2vhi.inc.helper import Helper
+from onapp2vhi.inc.onapp_helpers import (
     get_user_ssh_keys,
     get_user_data,
     get_bucket_limits,

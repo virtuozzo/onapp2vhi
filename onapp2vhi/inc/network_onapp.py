@@ -1,5 +1,5 @@
-from inc.rest_client import OnAppRequests
-from inc.logger import logs
+from onapp2vhi.inc.rest_client import OnAppRequests
+from onapp2vhi.inc.logger import logs
 from typing import Dict, List
 
 request_handler = OnAppRequests()

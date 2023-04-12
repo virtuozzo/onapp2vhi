@@ -1,11 +1,11 @@
 import os
 
-from inc.helper import Helper
-from cfg.config_parser import VHI_CREDS
-from inc.vhi_ssh_keys import VhiSshKeys
-from inc.vhi_helpers import Vhi
-from inc.logger import logs
-from inc.onapp_helpers import (
+from onapp2vhi.inc.helper import Helper
+from onapp2vhi.cfg.config_parser import VHI_CREDS
+from onapp2vhi.inc.vhi_ssh_keys import VhiSshKeys
+from onapp2vhi.inc.vhi_helpers import Vhi
+from onapp2vhi.inc.logger import logs
+from onapp2vhi.inc.onapp_helpers import (
     prepare_vhi_migration_data,
     get_user_ssh_keys,
     check_user_role,
