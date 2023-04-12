@@ -105,7 +105,7 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
     logs.info(f'File path: {vz_guest_tool_path}')
 
     if vz_guest_tools:
-        cmd = f"scp -r {vz_guest_tools} root@{_vm_hv_ip}:/mnt/prepare_win/vz-guest-tools-win.tar"
+        cmd = f"scp -r {vz_guest_tool_path} root@{_vm_hv_ip}:/mnt/prepare_win/vz-guest-tools-win.tar"
         [exit_status, output] = ssh_run(cmd)
         if not exit_status_code_handler(
                 exit_code=exit_status,
