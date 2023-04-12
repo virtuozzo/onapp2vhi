@@ -36,7 +36,7 @@ fi
 
 if  command -v update-grub &>/dev/null; then
 	rm -f /boot/grub/menu.lst
-	update-grub
+	update-grub -y
 fi
 
 #RegenerateUUID

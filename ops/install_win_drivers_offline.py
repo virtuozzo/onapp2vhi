@@ -16,7 +16,7 @@ from inc.onapp_helpers import (
 )
 
 
-def vm_install_win_drivers_offline(idn: str):
+def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_install: bool):
     if not idn:
         logs.error('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -25,6 +25,20 @@ def vm_install_win_drivers_offline(idn: str):
     _spaces = Helper.SPACES.value
     _dri_msg = 'WIN DRIVERS OFFLINE -- '
     logs.info(f'{_spaces}-- INSTALLING {_dri_msg}', header=True)
+
+    install_script = "scripts/onapp.bat_ci_vz"
+    if not vz_guest_tools and cloud_init_install:
+        logs.info(msg='Installing only `CLOUD INIT`', separator=True)
+        install_script = "scripts/onapp.bat_ci"
+    elif not cloud_init_install and vz_guest_tools:
+        logs.info(msg='Installing only `VZ GUEST TOOLS`', separator=True)
+        install_script = "scripts/onapp.bat_vz"
+    elif not cloud_init_install and not vz_guest_tools:
+        logs.info(msg='Chosen nothing to install.', separator=True)
+        install_script = ""
+
+    if not install_script:
+        return True
 
     # -- STEP 1 --
     logs.info(f'{_spaces}{_dri_msg}STEP #1 -- OnApp: get source VM properties --', header=True)
@@ -85,30 +99,32 @@ def vm_install_win_drivers_offline(idn: str):
     logs.info(f"{_spaces}{_dri_msg}STEP #6 -- OnApp: Copy drivers and scripts --", header=True)
 
     # FILES TO COPY SHOULD BE LOCATED IN PROJECT FOLDER /scripts
-    cloudbase_init = os.path.join(os.getcwd(), "scripts/CloudbaseInitSetup_Stable_x64.msi")
-    vz_guest_tools = os.path.join(os.getcwd(), "scripts/vz-guest-tools-win.tar")
-    logs.info(f'File path: {cloudbase_init}')
-    logs.info(f'File path: {vz_guest_tools}')
+    cloudbase_init_path = os.path.join(os.getcwd(), "scripts/CloudbaseInitSetup_Stable_x64.msi")
+    vz_guest_tool_path = os.path.join(os.getcwd(), "scripts/vz-guest-tools-win.tar")
+    logs.info(f'File path: {cloudbase_init_path}')
+    logs.info(f'File path: {vz_guest_tool_path}')
 
-    cmd = f"scp -r {vz_guest_tools} root@{_vm_hv_ip}:/mnt/prepare_win/vz-guest-tools-win.tar"
-    [exit_status, output] = ssh_run(cmd)
-    if not exit_status_code_handler(
-            exit_code=exit_status,
-            message=f"[install_win_drivers_offline.py | STEP 6] Something went wrong. "
-                    f"Couldn't transfer vz-guest-tools-win into VM. Output\n\t{output}"
-    ):
-        return False
+    if vz_guest_tools:
+        cmd = f"scp -r {vz_guest_tools} root@{_vm_hv_ip}:/mnt/prepare_win/vz-guest-tools-win.tar"
+        [exit_status, output] = ssh_run(cmd)
+        if not exit_status_code_handler(
+                exit_code=exit_status,
+                message=f"[install_win_drivers_offline.py | STEP 6] Something went wrong. "
+                        f"Couldn't transfer vz-guest-tools-win into VM. Output\n\t{output}"
+        ):
+            return False
 
-    cmd = f"scp -r {cloudbase_init}  root@{_vm_hv_ip}:/mnt/prepare_win/CloudbaseInitSetup_Stable_x64.msi"
-    [exit_status, output] = ssh_run(cmd)
-    if not exit_status_code_handler(
-            exit_code=exit_status,
-            message=f"[install_win_drivers_offline.py | STEP 6]"
-                    f" Something went wrong. Couldn't transfer CloudbaseInitSetup into VM. Output\n\t{output}"
-    ):
-        return False
+    if cloud_init_install:
+        cmd = f"scp -r {cloudbase_init_path}  root@{_vm_hv_ip}:/mnt/prepare_win/CloudbaseInitSetup_Stable_x64.msi"
+        [exit_status, output] = ssh_run(cmd)
+        if not exit_status_code_handler(
+                exit_code=exit_status,
+                message=f"[install_win_drivers_offline.py | STEP 6]"
+                        f" Something went wrong. Couldn't transfer CloudbaseInitSetup into VM. Output\n\t{output}"
+        ):
+            return False
 
-    cmd = f"scp -r scripts/onapp.bat root@{_vm_hv_ip}:/mnt/prepare_win/onapp.bat"
+    cmd = f"scp -r {install_script} root@{_vm_hv_ip}:/mnt/prepare_win/onapp.bat"
     [exit_status, output] = ssh_run(cmd)
     if not exit_status_code_handler(
             exit_code=exit_status,
@@ -148,8 +164,10 @@ def cli():
 
 @click.command()
 @click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-def driversoffline(idn=''):
-    vm_install_win_drivers_offline(idn=idn)
+@click.option('--vz_guest_tools', default=True, help="Boolean flag, set `false` to NOT install vz_guest_tools")
+@click.option('--cloud_init_install', default=True, help="Boolean flag, set `false` to NOT install cloud_init_install")
+def driversoffline(idn='', vz_guest_tools=True, cloud_init_install=True):
+    vm_install_win_drivers_offline(idn=idn, vz_guest_tools=vz_guest_tools, cloud_init_install=cloud_init_install)
 
 
 cli.add_command(driversoffline)

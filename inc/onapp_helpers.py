@@ -321,6 +321,7 @@ def get_all_virtual_machines(user_id: int = None):
     existing_vms = _vhi_virtual_machine_list()
     from collections import defaultdict
     vms_dict = defaultdict(list)
+    logs.info(msg=f'VHI existing VM with hostnames:\n{existing_vms}')
     for _vm in response:
         vm = _vm['virtual_machine']
         if vm["vip"]:
@@ -329,7 +330,6 @@ def get_all_virtual_machines(user_id: int = None):
         _ip_addr = _get_primary_vm_ip(vm)
 
         if vm['hostname'].lower() in existing_vms:
-            logs.info(msg=f'VHI existing VM with hostnames:\n{existing_vms}')
             msg = (f'Virtual Machine already exists on VHI side in `{VHI_CREDS["vinfra_domain"]}` domain\n\n\t\t'
                    f'VM Info [{vm["identifier"]} | {_ip_addr} | {vm["hostname"]} | {vm["label"]}]\n')
             logs.warn(msg=msg)

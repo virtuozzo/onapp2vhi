@@ -162,12 +162,9 @@ def migrate_all(user='', network='', vm='', project='', vz_guest_tools_install='
                                msg=msg_failed)
                 continue
 
-            if _vm['operating_system'] == 'linux':
-                result = bootloader_drivers(idn=_idn,
-                                            vz_guest_tools=vz_guest_tools,
-                                            cloud_init_install=cloud_init_install)
-            else:
-                result = bootloader_drivers(idn=_idn)
+            result = bootloader_drivers(idn=_idn,
+                                        vz_guest_tools=vz_guest_tools,
+                                        cloud_init_install=cloud_init_install)
             if not result:
                 vm_msg += (f'\t{_vm_number}. VM Migrated = {result}\n'
                            f'\t\t- IP "{_vm["ip_addr"]}"\n'
