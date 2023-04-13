@@ -120,7 +120,10 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
         if not exit_status_code_handler(
                 exit_code=exit_status,
                 message=f"[install_win_drivers_offline.py | STEP 6]"
-                        f" Something went wrong. Couldn't transfer CloudbaseInitSetup into VM. Output\n\t{output}"
+                        f" Something went wrong. Couldn't transfer CloudbaseInitSetup into VM\n"
+                        f"\t\tPlease download file and save into scripts/\n "
+                        f"\t\thttps://cloudbase.it/downloads/CloudbaseInitSetup_Stable_x64.msi\n"
+                        f"\t\tOutput: {output}"
         ):
             return False
 
@@ -129,7 +132,10 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
     if not exit_status_code_handler(
             exit_code=exit_status,
             message=f"[install_win_drivers_offline.py | STEP 6]"
-                    f" Something went wrong. Couldn't transfer onapp.bat into VM. Output\n\t{output}"
+                    f" Something went wrong. Couldn't transfer onapp.bat into VM.\n"
+                    f"\t\tPlease download file and save into scripts/\n "
+                    f"\t\thttp://downloads.repo.onapp.com/vz-guest-tools-win.tar\n"
+                    f"\t\tOutput: {output}"
     ):
         return False
 

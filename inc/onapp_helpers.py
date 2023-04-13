@@ -340,6 +340,8 @@ def get_all_virtual_machines(user_id: int = None):
                                         'ip_addr': _ip_addr,
                                         'operating_system': vm['operating_system'],
                                         'hostname': vm['hostname'],
+                                        'built_from_iso': vm['built_from_iso'],
+                                        'built_from_ova': vm['built_from_ova'],
                                         'label': vm['label']})
     return dict(vms_dict)
 

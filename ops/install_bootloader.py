@@ -53,7 +53,10 @@ def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install: bo
         )
         if not exit_status_code_handler(
                 exit_code=exit_status,
-                message=f'[install_bootloader.py | STEP 3] Copy {file} failed. Output:\n\t{output}'
+                message=f'[install_bootloader.py | STEP 3] Copy {file} failed.'
+                        f'Please download next file:\n'
+                        f'\t\thttp://downloads.repo.onapp.com/vz-guest-tools-lin.tar'
+                        f' Output:\n\t{output}'
         ):
             return False
 

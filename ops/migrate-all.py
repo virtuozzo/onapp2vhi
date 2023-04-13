@@ -162,9 +162,15 @@ def migrate_all(user='', network='', vm='', project='', vz_guest_tools_install='
                                msg=msg_failed)
                 continue
 
-            result = bootloader_drivers(idn=_idn,
-                                        vz_guest_tools=vz_guest_tools,
-                                        cloud_init_install=cloud_init_install)
+            if not _vm['built_from_iso'] and not _vm['built_from_ova']:
+                result = bootloader_drivers(idn=_idn,
+                                            vz_guest_tools=vz_guest_tools,
+                                            cloud_init_install=cloud_init_install)
+            else:
+                result = True
+                logs.warn(msg=f'VM [{_vm_info}] built from ISO or OVA, installation GRUB,'
+                              f' CLOUD-INIT, etc. step skipped.')
+
             if not result:
                 vm_msg += (f'\t{_vm_number}. VM Migrated = {result}\n'
                            f'\t\t- IP "{_vm["ip_addr"]}"\n'

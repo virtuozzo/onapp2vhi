@@ -55,7 +55,10 @@ def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install: b
         if not exit_status_code_handler(
                 exit_code=exit_status,
                 message=f"[install_win_drivers.py | STEP 3] Something went wrong."
-                        f" Couldn't transfer CloudbaseInitSetup into VM \nOutput: {output}"
+                        f" Couldn't transfer CloudbaseInitSetup into VM\n"
+                        f"\t\tPlease download file and save into scripts/\n "
+                        f"\t\thttps://cloudbase.it/downloads/CloudbaseInitSetup_Stable_x64.msi\n"
+                        f"\t\tOutput: {output}"
         ):
             return False
 
@@ -66,7 +69,10 @@ def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install: b
         if not exit_status_code_handler(
                 exit_code=exit_status,
                 message=f"[install_win_drivers.py | STEP 3] "
-                        f"Something went wrong. Couldn't transfer vz-guest-tools-win into VM\nOutput: {output}"
+                        f"Something went wrong. Couldn't transfer vz-guest-tools-win into VM\n"
+                        f"\t\tPlease download file and save into scripts/\n "
+                        f"\t\thttp://downloads.repo.onapp.com/vz-guest-tools-win.tar\n"
+                        f"\t\tOutput: {output}"
         ):
             return False
 
