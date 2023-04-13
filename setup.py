@@ -7,6 +7,9 @@ setup(
     author='Virtuozzo',
     author_email='onapp2vhi@virtuozzo.com',
     packages=find_packages(),
+    package_data={
+        "onapp2vhi.ops": ["scripts/*"],
+    },
     entry_points={
         "console_scripts": [
             "onapp2vhi = onapp2vhi.main:run",
