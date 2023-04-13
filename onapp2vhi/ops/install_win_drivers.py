@@ -37,8 +37,9 @@ def vm_install_win_drivers(idn: str):
     logs.info(f'{_spaces}{_dri_msg}STEP #3 -- OnApp: Upload drivers image to VM [{_vm_ip_addr}] --', header=True)
 
     # FILES TO COPY SHOULD BE LOCATED IN PROJECT FOLDER
-    cloudbase_init = os.path.join(os.getcwd(), "scripts/CloudbaseInitSetup_Stable_x64.msi")
-    vz_guest_tools = os.path.join(os.getcwd(), "scripts/vz-guest-tools-win.tar")
+    package_path = os.path.dirname(__file__)
+    cloudbase_init = os.path.join(package_path, "scripts/CloudbaseInitSetup_Stable_x64.msi")
+    vz_guest_tools = os.path.join(package_path, "scripts/vz-guest-tools-win.tar")
     logs.info(f'File path: {cloudbase_init}')
     logs.info(f'File path: {vz_guest_tools}')
     cmd = f'scp -P{ONAPP_CREDS["hv_ssh_port"]} {Helper.SCP_OPTS.value} {cloudbase_init}' \

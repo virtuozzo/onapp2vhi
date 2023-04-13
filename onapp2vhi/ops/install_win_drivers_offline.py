@@ -83,8 +83,9 @@ def vm_install_win_drivers_offline(idn: str):
     logs.info(f"{_spaces}{_dri_msg}STEP #6 -- OnApp: Copy drivers and scripts --", header=True)
 
     # FILES TO COPY SHOULD BE LOCATED IN PROJECT FOLDER /scripts
-    cloudbase_init = os.path.join(os.getcwd(), "scripts/CloudbaseInitSetup_Stable_x64.msi")
-    vz_guest_tools = os.path.join(os.getcwd(), "scripts/vz-guest-tools-win.tar")
+    package_path = os.path.dirname(__file__)
+    cloudbase_init = os.path.join(package_path, "scripts/CloudbaseInitSetup_Stable_x64.msi")
+    vz_guest_tools = os.path.join(package_path, "scripts/vz-guest-tools-win.tar")
     logs.info(f'File path: {cloudbase_init}')
     logs.info(f'File path: {vz_guest_tools}')
 
@@ -106,7 +107,7 @@ def vm_install_win_drivers_offline(idn: str):
     ):
         return False
 
-    cmd = f"scp -r scripts/onapp.bat root@{_vm_hv_ip}:/mnt/prepare_win/onapp.bat"
+    cmd = f"scp -r {package_patH}/scripts/onapp.bat root@{_vm_hv_ip}:/mnt/prepare_win/onapp.bat"
     [exit_status, output] = ssh_run(cmd)
     if not exit_status_code_handler(
             exit_code=exit_status,
