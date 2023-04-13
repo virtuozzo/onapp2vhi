@@ -176,7 +176,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
         return False
 
     _vhi_hv_ssh = SSH(**{'host': _vhi_hv_ip})
-    exit_status, output = _vhi_hv_ssh.execute(f"{VINFRA_AUTH} service compute server volume list"
+    exit_status, output = _vhi_hv_ssh.execute(f"{vinfra_access} service compute server volume list"
                                               f" --server {_vhi_vm_id} -f json | jq -c 2>/dev/null")
     vhivm_disks = json.loads(output)
     _vhi_vm_disks = {str(x['device'].split('/')[2]): str(x['id']) for x in vhivm_disks}
