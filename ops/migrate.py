@@ -15,7 +15,7 @@ from inc.onapp_helpers import (
 )
 
 
-@click.group(cls=DefaultGroup, default='migrate-all', invoke_without_command=True, default_if_no_args=True)
+@click.group(cls=DefaultGroup, default='migrate', invoke_without_command=True, default_if_no_args=True)
 def cli():
     pass
 
@@ -28,7 +28,7 @@ def cli():
 @click.option('--cloud_init_install', default='', help="Boolean flag, set `false` to NOT install cloud_init_install")
 @click.option('--vz_guest_tools_install', default='',
               help="Boolean flag, set `false` to NOT install vz_guest_tools_install")
-def migrate_all(user='', network='', vm='', project='', vz_guest_tools_install='true', cloud_init_install='true'):
+def migrate(user='', network='', vm='', project='', vz_guest_tools_install='true', cloud_init_install='true'):
     """
     Migrate all resources from OnApp to VHI:
         - OnApp Users to VHI users
@@ -208,4 +208,4 @@ def migrate_all(user='', network='', vm='', project='', vz_guest_tools_install='
     logs.info("\n")
 
 
-cli.add_command(migrate_all)
+cli.add_command(migrate)

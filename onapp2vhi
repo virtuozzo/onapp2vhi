@@ -18,7 +18,7 @@ if str(sys.argv[1]) in ("--help", "help", "man", "--h"):
     okcyan = '\033[96m'
     bold = '\033[1m'
     endc = '\033[0m'
-    _providers = ('create_service_user', 'list_onapp_users', 'list_onapp_vms', 'migrate-all')
+    _providers = ('create_service_user', 'list_onapp_users', 'list_onapp_vms', 'migrate')
     _str_prov = ''
     for i, provider in enumerate(_providers):
         if i == 0:

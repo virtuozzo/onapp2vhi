@@ -95,7 +95,7 @@
     * `create_service_user` - command will create special user under the hood for migration and save his credentials into config file
     * `list_onapp_users` - get and show all user at OnApp cloud
     * `list_onapp_vms` - get and show all virtual machines at OnApp cloud
-    * `migrate-all` - entry point to start migration
+    * `migrate` - entry point to start migration
 
 ---
 
@@ -143,23 +143,23 @@
   - Run migration script, the entry point:
       - This command will start whole migration process from OnApp CP to VHI (NOT recommended!):
         ```
-          ./onapp2vhi migrate-all
+          ./onapp2vhi migrate
         ```
       - If you want to migrate only one user and his VM's (Better choice is to migrate User by User):
         ```
-        ./onapp2vhi migrate-all --user={user_id}
+        ./onapp2vhi migrate --user={user_id}
          example:
-        ./onapp2vhi migrate-all --user=7
+        ./onapp2vhi migrate --user=7
         ```
       - If you want to migrate only 1 user and only 1 VM:
         ```
-        ./onapp2vhi migrate-all --user=7 --vm={vm_identifier}
+        ./onapp2vhi migrate --user=7 --vm={vm_identifier}
         example:
-        ./onapp2vhi migrate-all --user=7 --vm=sydarelogizozd
+        ./onapp2vhi migrate --user=7 --vm=sydarelogizozd
         ```
       - If you want to migrate only 1 user and only several VM's:
         ```
-        ./onapp2vhi migrate-all --user=7 --vm=sydarelogizozd,lidqtfwggohyzk,dkktdwypbyupjs,rktgjliulxpwqt
+        ./onapp2vhi migrate --user=7 --vm=sydarelogizozd,lidqtfwggohyzk,dkktdwypbyupjs,rktgjliulxpwqt
         ```
       - After script finished, please take a look in logs file:
         ```
@@ -173,12 +173,12 @@
       (NOTE: before such migration, please create PROJECT manually in proper Domain):
       - 
         ```
-        ./onapp2vhi migrate-all --user=7 --vm=sydarelogizozd,dkktdwypbyupjs --project={project_name}
+        ./onapp2vhi migrate --user=7 --vm=sydarelogizozd,dkktdwypbyupjs --project={project_name}
         OR
-        ./onapp2vhi migrate-all --user=7 --project=my_project
+        ./onapp2vhi migrate --user=7 --project=my_project
         ```
   - Full possible flags command:
-      - `migrate-all` - stands for starting migration process
+      - `migrate` - stands for starting migration process
       - `--user=user_id` - stands for `User ID` at OnApp side
       - `--vm=vm_identifier_1,vm_identifier_2` - comma separated `list` of Virtual Machines to be migrated(can be
         empty, then all VM's will be migrated for specified user)
@@ -190,17 +190,17 @@
        
           Full possible flags:
           ```
-          ./onapp2vhi migrate-all --user=7 --vm=sydarelogizozd,sy43relogizozd --project=my_project --network=public_network --vz_guest_tools_install=false --cloud_init_install=false
+          ./onapp2vhi migrate --user=7 --vm=sydarelogizozd,sy43relogizozd --project=my_project --network=public_network --vz_guest_tools_install=false --cloud_init_install=false
           ```        
 
           User + VM + network + disable cloud-init installation:
           ```
-          ./onapp2vhi migrate-all --user=2 --vm=sydarelogizozd --network=public_network --cloud_init_install=false
+          ./onapp2vhi migrate --user=2 --vm=sydarelogizozd --network=public_network --cloud_init_install=false
           ```
           
           User + disable vz-guest-tools installation:
           ```
-          ./onapp2vhi migrate-all --user=9 --vz_guest_tools_install=false
+          ./onapp2vhi migrate --user=9 --vz_guest_tools_install=false
           ```
 
 ---
