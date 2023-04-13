@@ -40,7 +40,8 @@ def vm_install_bootloader_offline(idn: str, vz_guest_tools: bool, cloud_init_ins
     logs.info(f'{_spaces}{_boot_msg}STEP #3 -- OnApp: check if VM is running on Hypervisor --', header=True)
     _hv_ssh = SSH(**{'host': _vm_hv_ip})
     exit_status, output = _hv_ssh.execute(f'virsh dominfo {vm_idn}')
-    xml_config = GenerateXmlConfig(vm_idn=vm_idn, hv_ip=_vm_hv_ip)
+    package_path = dirname(__file__)
+    xml_config = GenerateXmlConfig(config_path=join(package_path, 'scripts'), vm_idn=vm_idn, hv_ip=_vm_hv_ip)
     if not exit_status:
         vm_is_running = True
         logs.info("-- OnApp: VM IS RUNNING.\n ")
@@ -52,7 +53,7 @@ def vm_install_bootloader_offline(idn: str, vz_guest_tools: bool, cloud_init_ins
 
     # -- STEP 4 --
     logs.info(f'{_spaces}{_boot_msg}STEP #4 -- Copy scripts --', header=True)
-    [exit_status, output] = ssh_run(command=f"scp {_scp_opts} -r scripts root@{_vm_hv_ip}:/onapp/tools/")
+    [exit_status, output] = ssh_run(command=f"scp {_scp_opts} -r {package_path}/scripts root@{_vm_hv_ip}:/onapp/tools/")
     if not exit_status_code_handler(
             exit_code=exit_status,
             message=f'[install_bootloader_offline.py | STEP 4] Copy scripts failed. Output:\n\t{output}'

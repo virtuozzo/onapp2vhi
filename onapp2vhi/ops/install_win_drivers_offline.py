@@ -107,7 +107,7 @@ def vm_install_win_drivers_offline(idn: str):
     ):
         return False
 
-    cmd = f"scp -r {package_patH}/scripts/onapp.bat root@{_vm_hv_ip}:/mnt/prepare_win/onapp.bat"
+    cmd = f"scp -r {package_path}/scripts/onapp.bat root@{_vm_hv_ip}:/mnt/prepare_win/onapp.bat"
     [exit_status, output] = ssh_run(cmd)
     if not exit_status_code_handler(
             exit_code=exit_status,
