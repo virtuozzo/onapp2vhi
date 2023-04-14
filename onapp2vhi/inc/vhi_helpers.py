@@ -176,7 +176,8 @@ class Vhi:
         result = self._verify_user_exists(user_email=_domain_service_user['email'],
                                           domain=self.vinfra_domain)
         if result:
-            if not VHI_CREDS['vinfra_domain_user'] or VHI_CREDS['vinfra_domain_user'] == "''":
+            if not VHI_CREDS['vinfra_domain_user'] or VHI_CREDS['vinfra_domain_user'] == "''" or\
+                    VHI_CREDS['vinfra_domain_user'] != _domain_service_user['name']:
                 configs.set_new_value(section=configs.VHI,
                                       option="vinfra_domain_user",
                                       value=_domain_service_user['name'])

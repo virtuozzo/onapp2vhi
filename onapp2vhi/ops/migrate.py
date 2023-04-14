@@ -13,7 +13,7 @@ from onapp2vhi.inc.onapp_helpers import (
 )
 
 
-def migrate_all_impl(user='', network='', vm='', project='', vz_guest_tools_install='true', cloud_init_install='true'):
+def migrate_impl(user='', network='', vm='', project='', vz_guest_tools_install='true', cloud_init_install='true'):
     """
     Migrate all resources from OnApp to VHI:
         - OnApp Users to VHI users
@@ -147,12 +147,15 @@ def migrate_all_impl(user='', network='', vm='', project='', vz_guest_tools_inst
                                msg=msg_failed)
                 continue
 
-            if _vm['operating_system'] == 'linux':
+            if not _vm['built_from_iso'] and not _vm['built_from_ova']:
                 result = bootloader_drivers(idn=_idn,
                                             vz_guest_tools=vz_guest_tools,
                                             cloud_init_install=cloud_init_install)
             else:
-                result = bootloader_drivers(idn=_idn)
+                result = True
+                logs.warn(msg=f'VM [{_vm_info}] built from ISO or OVA, installation GRUB,'
+                              f' CLOUD-INIT, etc. step skipped.')
+
             if not result:
                 vm_msg += (f'\t{_vm_number}. VM Migrated = {result}\n'
                            f'\t\t- IP "{_vm["ip_addr"]}"\n'

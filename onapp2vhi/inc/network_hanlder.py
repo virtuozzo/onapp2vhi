@@ -45,7 +45,12 @@ def get_network_configuration(virtual_server_identifier: str, vinfra_project: st
         data["ip_range_id"] = next((ip_address['ip_range_id'] for ip_address in vs_ip_addresses))
         data['ip_net'] = get_ip_net(data['network_id'], data['ip_net_id'])
         data['ip_range'] = get_ip_range(data['network_id'], data['ip_net_id'], data["ip_range_id"])
-        data["ip_addresses"].insert(0, data["primary_ip"][0])  # the primary IP should be first
+        if data["primary_ip"]:
+            data["ip_addresses"].insert(0, data["primary_ip"][0])  # the primary IP should be first
+        else:
+            logs.warn(
+                f'The primary IP is not found the following IP will be set as primary: {data["ip_addresses"][0]}'
+            )
         nic = NetworkInterface(**data)
         vs_network_interfaces.add(nic)
 
