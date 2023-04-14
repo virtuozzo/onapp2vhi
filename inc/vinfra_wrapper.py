@@ -105,51 +105,7 @@ class VinfraServer(VinfraServiceCompute):
     def create(self, server_name: str, **kwargs):
         """
         https://docs.virtuozzo.com/virtuozzo_hybrid_infrastructure_4_6_admins_cmd_guide/index.html#vinfra-service-compute-server-create.html
-        --description <description>
-        Virtual machine description
-        --metadata <metadata>
-        Virtual machine metadata
-        --user-data <user-data>
-        User data file
-        --key-name <key-name>
-        Key pair to inject
-        --config-drive
-        Use an ephemeral drive
-        --count <count>
-        If count is specified and greater than 1, the name argument is treated as a naming pattern.
-        --ha-enabled {true,false}
-        Enable or disable HA for the virtual machine.
-        --placements <placements>
-        Names or IDs of placements to add the virtual machine to.
-        --network id|<id=id[,key=value,…]>
-        Create a virtual machine with a specified network.
-        Specify this option multiple times to create multiple networks.
-
-        id: attach network interface to a specified network (ID or name)
-        comma-separated key=value pairs with keys (optional):
-        mac: MAC address for network interface
-        fixed-ip: fixed IP address or None to automatically allocate an IP address.
-        This option can be used multiple times.
-        spoofing-protection-enable: enable spoofing protection for network interface
-        spoofing-protection-disable: disable spoofing protection for network interface
-        security-group: security group ID or name. This option can be used multiple times.
-        no-security-group: do not use a security group
-        --volume <source=source[,key=value,…]>
-        Create a virtual machine with a specified volume. Specify this option multiple times to create multiple volumes.
-
-        source: source type (volume, image, snapshot, or blank)
-        comma-separated key=value pairs with keys (optional):
-        id: resource ID or name for the specified source type (required for source types volume, image, and snapshot)
-        size: block device size, in gigabytes (required for source types image and blank)
-        boot-index: block device boot index (required for multiple volumes with source type volume)
-        bus: block device controller type (scsi)
-        type: block device type (disk or cdrom)
-        rm: remove block device on virtual machine termination (yes or no)
-        storage-policy: block device storage policy
-        --flavor <flavor>
-        Flavor ID or name
-        <server-name>
-        A new name for the virtual machine
+        Create virtual machine
         """
         cmd = self.vinfra_root + f' create {server_name}'
         if kwargs:
@@ -159,33 +115,11 @@ class VinfraServer(VinfraServiceCompute):
 
     def list_server(self):
         """
+        List all Virtual Machines
         https://docs.virtuozzo.com/virtuozzo_hybrid_infrastructure_4_6_admins_cmd_guide/index.html#vinfra-service-compute-server-list.html
-        --long
-        Enable access and listing of all fields of objects.
-        --limit <num>
-        The maximum number of virtual machines to list. To list all virtual machines, set the option to -1.
-        --marker <server>
-        List virtual machines after the marker.
-        --name <name>
-        List virtual machines with the specified name or use a filter. Supported filter operator: contains.
-        The filter format is <operator>:<value1>[,<value2>,…].
-        --id <id>
-        Show a server with the specified ID or list virtual machines using a filter.
-        Supported filter operator: in. The filter format is <operator>:<value1>[,<value2>,…].
-        --project <project>
-        List virtual machines that belong to the specified project ID. Can only be performed by system administrators.
-        --status <status>
-        List virtual machines with the specified status.
-        --task-status <task-status>
-        List virtual machines that have the specified task status.
-        --host <hostname>
-        List virtual machines located on a node with the specified hostname.
-        --placement <placement>
-        List virtual machines added to a placement with the specified ID or use a filter.
-        Supported filter operator: any. The filter format is <operator>:<value1>[,<value2>,…].
         """
         cmd = self.vinfra_root + ' list'
-        return self.execute(cmd)
+        return self.execute(cmd, long=True)
 
     def show(self, server_name: str):
         """
