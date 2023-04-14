@@ -3,6 +3,8 @@ import json
 import re
 import xml.etree.ElementTree as KVMxml
 
+from os.path import join
+
 from onapp2vhi.inc.rest_client import OnAppRequests
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.cfg.config_parser import VHI_CREDS, DOMAIN_AUTH

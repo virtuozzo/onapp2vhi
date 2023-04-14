@@ -1,5 +1,7 @@
 import time
 
+from os.path import dirname, join
+
 from onapp2vhi.inc.utils import exit_status_code_handler
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.ssh_connector import ssh_run, SSH
