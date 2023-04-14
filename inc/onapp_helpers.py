@@ -296,6 +296,13 @@ def _get_primary_vm_ip(vm: dict):
         return ip['address']
 
 
+def _vhi_virtual_machine_list():
+    _vs = VinfraServer(service_user=False)
+    exit_code, server_list = _vs.list_server()
+    server_list = json.loads(server_list)
+    return [vm['name'] for vm in server_list if vm['domain_id'] == VHI_CREDS['domain_id']]
+
+
 def get_all_virtual_machines(user_id: int = None):
     """
     Get list of all virtual machines and sort them by user ID
@@ -311,18 +318,30 @@ def get_all_virtual_machines(user_id: int = None):
     if not response:
         return False
 
+    existing_vms = _vhi_virtual_machine_list()
     from collections import defaultdict
     vms_dict = defaultdict(list)
+    logs.info(msg=f'VHI existing VM with hostnames:\n{existing_vms}')
     for _vm in response:
         vm = _vm['virtual_machine']
         if vm["vip"]:
             continue
 
+        _ip_addr = _get_primary_vm_ip(vm)
+
+        if vm['hostname'].lower() in existing_vms:
+            msg = (f'Virtual Machine already exists on VHI side in `{VHI_CREDS["vinfra_domain"]}` domain\n\n\t\t'
+                   f'VM Info [{vm["identifier"]} | {_ip_addr} | {vm["hostname"]} | {vm["label"]}]\n')
+            logs.warn(msg=msg)
+            continue
+
         vms_dict[vm['user_id']].append({'id': vm['identifier'],
                                         'booted': vm['booted'],
-                                        'ip_addr': _get_primary_vm_ip(vm),
+                                        'ip_addr': _ip_addr,
                                         'operating_system': vm['operating_system'],
                                         'hostname': vm['hostname'],
+                                        'built_from_iso': vm['built_from_iso'],
+                                        'built_from_ova': vm['built_from_ova'],
                                         'label': vm['label']})
     return dict(vms_dict)
 
