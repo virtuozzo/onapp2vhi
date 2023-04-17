@@ -89,6 +89,10 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
 
     _vhi_vm_id = ''
     _network = get_network_configuration(virtual_server_identifier=VM_IDn, vinfra_project=_vhiproj)
+    if not _network:
+        logs.error("The network issue is hit. Could you please check logs.")
+        return False
+
     logs.debug(f'NETWORK PARAMS: {_network}', separator=True)
     if not vm_created:
         _vhi_vm_id = create_new_vhi_vm(vhi_ssh=_vhi_ssh,
@@ -115,7 +119,7 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
 
     # -- STEP 6 --
     logs.info(f"{_spaces}{_cm_msg}STEP #6 -- VHI: define VHI VM's hypervisor and disks --", header=True)
-    exit_status, output = _vhi_ssh.execute(f"host `vinfra service compute server show {_vhi_vm_id} -f json"
+    exit_status, output = _vhi_ssh.execute(f"host `{ADMIN_AUTH} service compute server show {_vhi_vm_id} -f json"
                                            f" | jq -r .host` 2>/dev/null | awk '/ has address /{{print $NF}}'")
     if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', output):
         _vhi_hv_ip = output.strip("\n")
@@ -125,7 +129,7 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
         return False
 
     _vhi_hv_ssh = SSH(**{'host': _vhi_hv_ip})
-    exit_status, output = _vhi_hv_ssh.execute(f"{VINFRA_AUTH} service compute server volume list"
+    exit_status, output = _vhi_hv_ssh.execute(f"{vinfra_access} service compute server volume list"
                                               f" --server {_vhi_vm_id} -f json | jq -c 2>/dev/null")
     vhivm_disks = json.loads(output)
     _vhi_vm_disks = {str(x['device'].split('/')[2]): str(x['id']) for x in vhivm_disks}

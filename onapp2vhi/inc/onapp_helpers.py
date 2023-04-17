@@ -5,7 +5,7 @@ import xml.etree.ElementTree as KVMxml
 
 from onapp2vhi.inc.rest_client import OnAppRequests
 from onapp2vhi.inc.helper import Helper
-from onapp2vhi.cfg.config_parser import ONAPP_CREDS, VHI_CREDS, DOMAIN_AUTH
+from onapp2vhi.cfg.config_parser import VHI_CREDS, DOMAIN_AUTH
 from onapp2vhi.inc.ssh_connector import ssh_run, SSH
 from onapp2vhi.inc.logger import logs
 from onapp2vhi.inc.utils import parse_matrix, exit_status_code_handler, generate_random_password
@@ -296,6 +296,13 @@ def _get_primary_vm_ip(vm: dict):
         return ip['address']
 
 
+def _vhi_virtual_machine_list():
+    _vs = VinfraServer(service_user=False)
+    exit_code, server_list = _vs.list_server()
+    server_list = json.loads(server_list)
+    return [vm['name'] for vm in server_list if vm['domain_id'] == VHI_CREDS['domain_id']]
+
+
 def get_all_virtual_machines(user_id: int = None):
     """
     Get list of all virtual machines and sort them by user ID
@@ -311,18 +318,30 @@ def get_all_virtual_machines(user_id: int = None):
     if not response:
         return False
 
+    existing_vms = _vhi_virtual_machine_list()
     from collections import defaultdict
     vms_dict = defaultdict(list)
+    logs.info(msg=f'VHI existing VM with hostnames:\n{existing_vms}')
     for _vm in response:
         vm = _vm['virtual_machine']
         if vm["vip"]:
             continue
 
+        _ip_addr = _get_primary_vm_ip(vm)
+
+        if vm['hostname'].lower() in existing_vms:
+            msg = (f'Virtual Machine already exists on VHI side in `{VHI_CREDS["vinfra_domain"]}` domain\n\n\t\t'
+                   f'VM Info [{vm["identifier"]} | {_ip_addr} | {vm["hostname"]} | {vm["label"]}]\n')
+            logs.warn(msg=msg)
+            continue
+
         vms_dict[vm['user_id']].append({'id': vm['identifier'],
                                         'booted': vm['booted'],
-                                        'ip_addr': _get_primary_vm_ip(vm),
+                                        'ip_addr': _ip_addr,
                                         'operating_system': vm['operating_system'],
                                         'hostname': vm['hostname'],
+                                        'built_from_iso': vm['built_from_iso'],
+                                        'built_from_ova': vm['built_from_ova'],
                                         'label': vm['label']})
     return dict(vms_dict)
 
@@ -764,6 +783,7 @@ def activate_disk(vm_idn: str, vm_ohv_ip: str, multiply_disks=False, disk=None):
             return False
 
         # If disk is offline, activate it
+        logs.debug(msg=f'Disk Status: {disk_status}', separator=True)
         if not int(disk_status):
             hv_ssh.execute(command=f'onappstore online uuid={disk_idn} frontend_uuid={frontend_uuid}')
         return True
@@ -838,8 +858,8 @@ def create_new_vhi_vm(vhi_ssh: SSH,
     _vhi_vm_id = ''
     host_name = hostname.lower()
     onappvm_pri_ips = onapp_nics[0]['ips']
-    create_cmd = (f"{vinfra_access} service compute server create vm_{host_name}_{vm_idn}"
-                  f" --description 'vm_{host_name}_{vm_idn}' {network} --volume source=image,id={vhi_image},"
+    create_cmd = (f"{vinfra_access} service compute server create {host_name}"
+                  f" --description '{host_name}_{vm_idn}' {network} --volume source=image,id={vhi_image},"
                   f"size={onapp_disks[0]['size']} --flavor {flavour} -f json | jq -r \".id\"")
     exit_status, output = vhi_ssh.execute(command=create_cmd)
     if 'INTERNAL SERVER ERROR' in output:

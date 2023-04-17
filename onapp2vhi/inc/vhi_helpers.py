@@ -28,8 +28,6 @@ class Vhi:
     VHI_PROJECT_MEMBER = "project_admin"
 
     # API URL
-    _URL = f"{VHI_CREDS['url']}{VHI_CREDS['api_path']}"
-    _VHI_DOMAIN_API = f"{_URL}/domains/{VHI_CREDS['domain_id']}"
     _SPACES = Helper.SPACES.value
     GET = 'GET'
     POST = 'POST'
@@ -55,6 +53,13 @@ class Vhi:
                            "vcpus": vm_data['vcpus'],
                            "ram": vm_data['ram'],
                            "disk": 0})
+
+    @staticmethod
+    def set_project_value(project_name: str):
+        configs.set_new_value(section=configs.VHI, option="vinfra_project", value=project_name)
+        vinfra_auth = configs.reset_auth()
+        import inc.vinfra_wrapper as wrapper
+        wrapper.VINFRA_AUTH = vinfra_auth
 
     def clean_up_cache(self):
         _cmd = 'rm -f ~/.vinfra/backend-api.svc.vstoragedomain/*'
@@ -171,6 +176,15 @@ class Vhi:
         result = self._verify_user_exists(user_email=_domain_service_user['email'],
                                           domain=self.vinfra_domain)
         if result:
+            if not VHI_CREDS['vinfra_domain_user'] or VHI_CREDS['vinfra_domain_user'] == "''" or\
+                    VHI_CREDS['vinfra_domain_user'] != _domain_service_user['name']:
+                configs.set_new_value(section=configs.VHI,
+                                      option="vinfra_domain_user",
+                                      value=_domain_service_user['name'])
+                domain_auth = configs.reset_domain_auth()
+                import inc.vinfra_wrapper as wrapper
+                wrapper.DOMAIN_AUTH = domain_auth
+
             v_image = VinfraImage(channel_timeout=5)
             exit_status, output = v_image.images()
             if not exit_status_code_handler(exit_code=exit_status,
