@@ -58,7 +58,7 @@ class Vhi:
     def set_project_value(project_name: str):
         configs.set_new_value(section=configs.VHI, option="vinfra_project", value=project_name)
         vinfra_auth = configs.reset_auth()
-        import inc.vinfra_wrapper as wrapper
+        import onapp2vhi.inc.vinfra_wrapper as wrapper
         wrapper.VINFRA_AUTH = vinfra_auth
 
     def clean_up_cache(self):
