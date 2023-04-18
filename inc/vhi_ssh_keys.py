@@ -115,7 +115,11 @@ class VhiSshKeys:
         if not self._log_handler(response=response_2):
             return False
 
-        proj_id = [proj['id'] for proj in response_2.json()['data'] if proj['name'] == self._proj_name][0]
+        try:
+            proj_id = [proj['id'] for proj in response_2.json()['data'] if proj['name'] == self._proj_name][0]
+        except IndexError:
+            return False
+
         auth_url = self._auth_endpoint.format(self._PANEL_URL, proj_id)
         self._proj_auth_url = auth_url
         _headers.update({'x-auth-token': proj_id})
@@ -134,6 +138,8 @@ class VhiSshKeys:
         :return:
         """
         if not self._auth():
+            logs.warn(f'User [{self._login} | {self._first_name} | {self._last_name}] authentication failed'
+                      f' during SSH Keys migration. Please copy ssh keys manually.')
             return False
 
         self._log_handler(**{'method': self.GET, 'url': self.ssh_keys_url, 'headers': self._headers})

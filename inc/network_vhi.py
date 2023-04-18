@@ -1,16 +1,16 @@
 from onapp2vhi.utility.config import OnApp2VHIConfig
 from inc.ssh_connector import SSH
+import re
 import json
 
 cfg = OnApp2VHIConfig()
 
 class Network:
     def __init__(self, **kwargs):
-        self._config = cfg.get_config(cp_type="vhi")
-        self._ssh = SSH(host=self._config.cp_ip, port=self._config.cloud_ssh_port)
-        self._vinfra_project = kwargs.get("vinfra_project", self._config.vinfra_project)
-        self._vinfra_options = f'{cfg.DOMAIN_AUTH} --vinfra-domain="{self._config.vinfra_domain}"' \
-                               f' --vinfra-project="{self._vinfra_project}"'
+        self._ssh = SSH(host=cfg.vhi_conf['cp_ip'], port=cfg.vhi_conf['cloud_ssh_port'])
+        self.vinfra_project = kwargs.get('vinfra_project', '')
+        self._vinfra_options = f'{cfg.DOMAIN_AUTH} --vinfra-domain="{cfg.vhi_conf["vinfra_domain"]}"' \
+                               f' --vinfra-project="{self.vinfra_project}"'
 
         self.id = kwargs.get("id", "")
         self.name = kwargs.get("name", "")
@@ -48,25 +48,34 @@ class Network:
         return False
 
     def is_present(self):
-        cmd = f"{cfg.VINFRA_AUTH} service compute network list -f json"
+        cmd = f"{self._vinfra_options} service compute network list --long -f json"
         exit_status, output = self._ssh.execute(cmd)
         if not exit_status:
             response = output.split('\n')
-            response = json.loads("\n".join(response[:-2]))
+            try:
+                response = json.loads("\n".join(response[:-2]))
+            except json.decoder.JSONDecodeError as error:
+                print(f"Failed to parse JSON. \n {error}")
+                return False
+
             for network in response:
-                if network['cidr'] == self.cidr:
-                    self.id = network['id']
-                    return True
+                for subnet in network['subnets']:
+                    if subnet['cidr'] == self.cidr:
+                        self.id = network['id']
+                        return True
         return False
 
     def create(self):
         cmd = (f"{self._vinfra_options} service compute network create {self.name} --cidr {self.cidr}"
                f" --dns-nameserver {self.dns_nameservers} --allocation-pool {self.start_address}-{self.end_address}"
-               f"--no-dhcp --no-gateway -f json | jq -r \".id\"")
+               f" --no-dhcp --no-gateway -f json | jq -r \".id\"")
         exit_status, output = self._ssh.execute(cmd)
         if not exit_status:
-            response = output.split('\n')[0]
-            return response['id']
+            network_uuid = re.findall('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', output)
+            if not network_uuid:
+                print(f"Network has not been created\n {output}")
+                return False
+            return network_uuid[0]
         return False
 
     def attach_to_virtual_server(self, virtual_server, ip_addresses):

@@ -24,7 +24,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
 
-    VM_IDn = idn
+    vm_idn = idn
     _network = network if network else cfg.vhi_conf['network']
     _vhidom = vdom if vdom else cfg.vhi_conf['vinfra_domain']
     _vhiproj = vproj if vproj else cfg.vhi_conf['vinfra_project']
@@ -35,12 +35,12 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
 
     # -- STEP 1 --
     logs.info(f"{_spaces}{live_migration}STEP #1 -- OnApp: Get source VM properties --", header=True)
-    _vm_properties = get_vm_source_properties(vm_idn=VM_IDn)
+    _vm_properties = get_vm_source_properties(vm_idn=vm_idn)
     _vm_hv_ip = _vm_properties['hv_ip']
     _vm_ip_addr = _vm_properties['vm_ip_addr']
     _hot_migrate = _vm_properties['hot_migrate']
     vhi = vhi_obj
-    _on_app_flavor = get_onapp_vm_flavor(vm_idn=VM_IDn)
+    _on_app_flavor = get_onapp_vm_flavor(vm_idn=vm_idn)
     logs.debug(f'OnApp flavor: {_on_app_flavor}')
     result = vhi.flavor_handler(onapp_flavor=_on_app_flavor)
     if not result:
@@ -71,7 +71,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
     # -- STEP 4 --
     logs.info(f"{_spaces}{live_migration}STEP #4 -- OnApp: Check if VM is running on HV --", header=True)
     _hv_ssh = SSH(**{'host': _vm_hv_ip})
-    exit_status, output = _hv_ssh.execute(f"virsh list | grep {VM_IDn} 2>/dev/null")
+    exit_status, output = _hv_ssh.execute(f"virsh list | grep {vm_idn} 2>/dev/null")
     if not exit_status_code_handler(
             exit_code=exit_status,
             message="VM IS NOT RUNNING. PLEASE, START VM OR USE ``cold_migrate`` OPTION."
@@ -82,7 +82,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
     logs.info(f"{_spaces}{live_migration}STEP #5 -- OnApp: Get VM's XML config from OnApp hypervisor --",
               header=True)
     exit_status, output = _hv_ssh.execute(
-        f"virsh dumpxml {VM_IDn} --migratable > /tmp/{VM_IDn}.xml && cat /tmp/{VM_IDn}.xml"
+        f"virsh dumpxml {vm_idn} --migratable > /tmp/{vm_idn}.xml && cat /tmp/{vm_idn}.xml"
     )
     _vm_xml_cfg = output
     if not exit_status_code_handler(
@@ -123,7 +123,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
         _vm_id = _vm['id']
         _error_msg = (f"VM with [IP: {onappvm_pri_ip} | MAC: {onappvm_pri_mac}] ALREADY EXISTS on VHI side.\n"
                       f"VM: {cfg.vhi_conf['url']}/compute/servers/instances/{_vm_id}/")
-        if not _vm['networks'] and _vm['name'] == f'vm_{_vm_properties["hostname"].lower()}_{VM_IDn}':
+        if not _vm['networks'] and _vm['name'] == f'vm_{_vm_properties["hostname"].lower()}_{vm_idn}':
             vm_created = True
             break
 
@@ -132,12 +132,16 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
             break
 
     _vhi_vm_id = ''
-    _network = get_network_configuration(virtual_server_identifier=VM_IDn, vinfra_project=_vhiproj)
+    _network = get_network_configuration(virtual_server_identifier=vm_idn, vinfra_project=_vhiproj)
+    if not _network:
+        logs.error("The network issue is hit. Could you please check logs.")
+        return False
+
     logs.debug(f'NETWORK PARAMS: {_network}', separator=True)
     if not vm_created:
         _vhi_vm_id = create_new_vhi_vm(vhi_ssh=_vhi_ssh,
                                        vinfra_access=vinfra_access,
-                                       vm_idn=VM_IDn,
+                                       vm_idn=vm_idn,
                                        network=_network,
                                        vhi_image=_vhi_image,
                                        onapp_disks=_onapp_disks,
@@ -155,12 +159,12 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
     # -- Attach Security group to NIC
     # -- Enable Spoofing for NIC
     iface_id = get_iface_from_specific_vs(vm_name=_vhi_vm_id)
-    security_group_id = transfer_firewall_rules_to_sg(vm_idn=VM_IDn, vhiproj=_vhiproj)
+    security_group_id = transfer_firewall_rules_to_sg(vm_idn=vm_idn, vhiproj=_vhiproj)
     attach_security_group_to_nic_and_enable_spoofing(vm_name=_vhi_vm_id, iface=iface_id, sg_id=security_group_id)
 
     # -- STEP 7 --
     logs.info(f"{_spaces}{live_migration}STEP #7 -- VHI: define VM's hypervisor and disks --", header=True)
-    exit_status, output = _vhi_ssh.execute(f"host `vinfra service compute server show {_vhi_vm_id} -f json"
+    exit_status, output = _vhi_ssh.execute(f"host `{ADMIN_AUTH} service compute server show {_vhi_vm_id} -f json"
                                            f" | jq -r .host` 2>/dev/null | awk '/ has address /{{print $NF}}'")
     if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', output):
         _vhi_hv_ip = output.strip("\n")
@@ -171,7 +175,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
         return False
 
     _vhi_hv_ssh = SSH(**{'host': _vhi_hv_ip})
-    exit_status, output = _vhi_hv_ssh.execute(f"{cfg.VINFRA_AUTH} service compute server volume list"
+    exit_status, output = _vhi_hv_ssh.execute(f"{vinfra_access} service compute server volume list"
                                               f" --server {_vhi_vm_id} -f json | jq -c 2>/dev/null")
     vhivm_disks = json.loads(output)
     _vhi_vm_disks = {str(x['device'].split('/')[2]): str(x['id']) for x in vhivm_disks}
@@ -250,15 +254,15 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
                 device.remove(nic)
             nic_num += 1
     xmltree = KVMxml.ElementTree(vmxml)
-    xmltree.write(f"/tmp/{VM_IDn}.xml")
+    xmltree.write(f"/tmp/{vm_idn}.xml")
 
     # -- STEP 10 --
     logs.info(f"{_spaces}{live_migration}STEP #10 -- VHI: Upload OnApp2VHI VM migration XML to OnApp HV --",
               header=True)
     [exit_code, _output] = ssh_run(
-        command=f"scp -P{cfg.onapp_conf['hv_ssh_port']} {Helper.SCP_OPTS.value} /tmp/{VM_IDn}.xml root@{_vm_hv_ip}:/tmp/ "
+        command=f"scp -P{cfg.onapp_conf['hv_ssh_port']} {Helper.SCP_OPTS.value} /tmp/{vm_idn}.xml root@{_vm_hv_ip}:/tmp/ "
                 f"2>/dev/null ; ssh -p{cfg.onapp_conf['hv_ssh_port']} {Helper.SSH_OPTS.value} root@{_vm_hv_ip} "
-                f"'ls /tmp/{VM_IDn}.xml' 2>/dev/null"
+                f"'ls /tmp/{vm_idn}.xml' 2>/dev/null"
     )
     if not exit_status_code_handler(
             exit_code=exit_code,
@@ -272,7 +276,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
     _onappvm_disks = ",".join([str(dsk['name']) for dsk in _xml_ovm_disks])
     exit_status, output = _hv_ssh.execute(
         f"virsh migrate --live --auto-converge --unsafe --copy-storage-all --migrate-disks {_onappvm_disks}"
-        f" --xml /tmp/{VM_IDn}.xml --verbose {VM_IDn} qemu+ssh://{_vhi_hv_ip}:"
+        f" --xml /tmp/{vm_idn}.xml --verbose {vm_idn} qemu+ssh://{_vhi_hv_ip}:"
         f"{cfg.vhi_conf['hv_ssh_port']}/system?no_verify=1 tcp:{_vhi_hv_ip}", real_data=True
     )
     if not exit_status_code_handler(
@@ -286,7 +290,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
               header=True)
     # ToDo add validation to check whether VM is created
     #  "virsh info {VM_IDn}"
-    exit_status, output = _vhi_hv_ssh.execute(f"virsh destroy {VM_IDn} 2>/dev/null")
+    exit_status, output = _vhi_hv_ssh.execute(f"virsh destroy {vm_idn} 2>/dev/null")
     if not exit_status_code_handler(exit_code=exit_status,
                                     message='[live_migrate.py | STEP 12] VM "virsh destroy" on VHI node failed.'):
         return False

@@ -107,7 +107,7 @@ class SSH:
             data = self.channel.recv(NBYTES).decode("utf-8", "ignore")
             while data:
                 if real_data:
-                    logs.debug(data.strip())
+                    logs.info(msg=data.strip())
                 output += data
                 try:
                     data = self.channel.recv(NBYTES).decode("utf-8", "ignore")
@@ -120,7 +120,7 @@ class SSH:
             data = self.channel.recv_stderr(NBYTES).decode("utf-8", "ignore")
             while data:
                 if real_data:
-                    logs.debug(data.strip())
+                    logs.info(msg=data.strip())
                 output += data
                 try:
                     data = self.channel.recv_stderr(NBYTES).decode("utf-8", "ignore")

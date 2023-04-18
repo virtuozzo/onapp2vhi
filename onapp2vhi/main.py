@@ -112,11 +112,39 @@ def create_service_user():
 @run.command()
 @click.option("--user", default="", help="OnApp User, VM identifier.")
 @click.option("--network", default="", help="Network to be used")
-@click.option("--vm", default="", help="VM to be migrated")
+@click.option(
+    "--vm",
+    default="",
+    help="Comma separated virtual machines 'oih783gcvy,982h3buisb,893hviun'",
+)
 @click.option(
     "--project", default="", help="Project where all objects will be migrated"
 )
-def migrate_all(user="", network="", vm="", project=""):
-    from onapp2vhi.ops.migrate_all import migrate_all_impl
+@click.option(
+    "--cloud_init_install",
+    default="",
+    help="Boolean flag, set `false` to NOT install cloud_init_install",
+)
+@click.option(
+    "--vz_guest_tools_install",
+    default="",
+    help="Boolean flag, set `false` to NOT install vz_guest_tools_install",
+)
+def migrate(
+    user="",
+    network="",
+    vm="",
+    project="",
+    vz_guest_tools_install="true",
+    cloud_init_install="true",
+):
+    from onapp2vhi.ops.migrate import migrate_impl
 
-    migrate_all_impl(user=user, network=network, vm=vm, project=project)
+    migrate_impl(
+        user=user,
+        network=network,
+        vm=vm,
+        project=project,
+        vz_guest_tools_install=vz_guest_tools_install,
+        cloud_init_install=cloud_init_install,
+    )
