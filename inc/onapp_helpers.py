@@ -300,7 +300,7 @@ def _vhi_virtual_machine_list():
     _vs = VinfraServer(service_user=False)
     exit_code, server_list = _vs.list_server()
     server_list = json.loads(server_list)
-    return [vm['name'] for vm in server_list if vm['domain_id'] == VHI_CREDS['domain_id']]
+    return [vm['name'] for vm in server_list if vm['domain_id'] == cfg.vhi_conf['domain_id']]
 
 
 def get_all_virtual_machines(user_id: int = None):
@@ -330,7 +330,7 @@ def get_all_virtual_machines(user_id: int = None):
         _ip_addr = _get_primary_vm_ip(vm)
 
         if vm['hostname'].lower() in existing_vms:
-            msg = (f'Virtual Machine already exists on VHI side in `{VHI_CREDS["vinfra_domain"]}` domain\n\n\t\t'
+            msg = (f'Virtual Machine already exists on VHI side in `{cfg.vhi_conf["vinfra_domain"]}` domain\n\n\t\t'
                    f'VM Info [{vm["identifier"]} | {_ip_addr} | {vm["hostname"]} | {vm["label"]}]\n')
             logs.warn(msg=msg)
             continue

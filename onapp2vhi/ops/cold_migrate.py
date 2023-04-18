@@ -120,7 +120,7 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
 
     # -- STEP 6 --
     logs.info(f"{_spaces}{_cm_msg}STEP #6 -- VHI: define VHI VM's hypervisor and disks --", header=True)
-    exit_status, output = _vhi_ssh.execute(f"host `{ADMIN_AUTH} service compute server show {_vhi_vm_id} -f json"
+    exit_status, output = _vhi_ssh.execute(f"host `{cfg.ADMIN_AUTH} service compute server show {_vhi_vm_id} -f json"
                                            f" | jq -r .host` 2>/dev/null | awk '/ has address /{{print $NF}}'")
     if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', output):
         _vhi_hv_ip = output.strip("\n")
