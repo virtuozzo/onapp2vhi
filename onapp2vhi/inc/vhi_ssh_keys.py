@@ -1,9 +1,9 @@
 import requests
 import json
-from inc.helper import Helper
-from cfg.config_parser import VHI_CREDS
-from inc.logger import logs
-from inc.onapp_helpers import check_user_role
+from onapp2vhi.inc.helper import Helper
+from onapp2vhi.cfg.config_parser import VHI_CREDS
+from onapp2vhi.inc.logger import logs
+from onapp2vhi.inc.onapp_helpers import check_user_role
 
 
 class VhiSshKeys:

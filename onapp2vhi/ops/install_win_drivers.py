@@ -1,10 +1,10 @@
 import os
-from inc.logger import logs
-from inc.helper import Helper
-from cfg.config_parser import ONAPP_CREDS
-from inc.ssh_connector import ssh_run, SSH
-from inc.onapp_helpers import get_vm_source_properties
-from inc.utils import exit_status_code_handler
+from onapp2vhi.inc.logger import logs
+from onapp2vhi.inc.helper import Helper
+from onapp2vhi.cfg.config_parser import ONAPP_CREDS
+from onapp2vhi.inc.ssh_connector import ssh_run, SSH
+from onapp2vhi.inc.onapp_helpers import get_vm_source_properties
+from onapp2vhi.inc.utils import exit_status_code_handler
 
 
 def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install: bool):

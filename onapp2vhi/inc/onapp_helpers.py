@@ -3,15 +3,15 @@ import json
 import re
 import xml.etree.ElementTree as KVMxml
 
-from inc.rest_client import OnAppRequests
-from inc.helper import Helper
-from cfg.config_parser import VHI_CREDS, DOMAIN_AUTH
-from inc.ssh_connector import ssh_run, SSH
-from inc.logger import logs
-from inc.utils import parse_matrix, exit_status_code_handler, generate_random_password
+from onapp2vhi.inc.rest_client import OnAppRequests
+from onapp2vhi.inc.helper import Helper
+from onapp2vhi.cfg.config_parser import VHI_CREDS, DOMAIN_AUTH
+from onapp2vhi.inc.ssh_connector import ssh_run, SSH
+from onapp2vhi.inc.logger import logs
+from onapp2vhi.inc.utils import parse_matrix, exit_status_code_handler, generate_random_password
 from collections import namedtuple
 from typing import List, Dict
-from inc.vinfra_wrapper import (
+from onapp2vhi.inc.vinfra_wrapper import (
     VinfraSecurityGroups,
     VinfraSGRules,
     VinfraProject,
@@ -631,7 +631,7 @@ class VmHandler:
         from onapp2vhi.ops.install_bootloader_offline import vm_install_bootloader_offline
         from onapp2vhi.ops.install_win_drivers import vm_install_win_drivers
         from onapp2vhi.ops.install_win_drivers_offline import vm_install_win_drivers_offline
-        from inc.helper import Helper
+        from onapp2vhi.inc.helper import Helper
         if self._booted:
             _cmd = (f'timeout 15s ssh {Helper.SSH_OPTS.value} -p 22'
                     f' {self._user}@{self._ip_addr} -t "hostname; exit;"')

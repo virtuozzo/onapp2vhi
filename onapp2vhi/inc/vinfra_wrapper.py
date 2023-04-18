@@ -1,6 +1,6 @@
 from typing import Optional, Tuple, Dict
-from cfg.config_parser import VHI_CREDS, ADMIN_AUTH, VINFRA_AUTH, DOMAIN_AUTH
-from inc.ssh_connector import SSH, CONNECT_TIMEOUT, CHANNEL_TIMEOUT
+from onapp2vhi.cfg.config_parser import VHI_CREDS, ADMIN_AUTH, VINFRA_AUTH, DOMAIN_AUTH
+from onapp2vhi.inc.ssh_connector import SSH, CONNECT_TIMEOUT, CHANNEL_TIMEOUT
 
 
 class VinfraBase:
