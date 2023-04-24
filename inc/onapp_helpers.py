@@ -102,6 +102,9 @@ def _create_obj_list(obj_list: list, obj_name: str, default_props: list, find=''
                 continue
 
             if value in ('roles', 'role'):
+                if not _obj_dict['roles']:
+                    continue
+
                 _one_vm.append(str(_obj_dict['roles'][0]['role']['label']))
                 continue
 
@@ -483,6 +486,9 @@ def check_user_role(user_data: dict) -> str:
     """
     admin_role = ''
     for role in user_data['roles']:
+        if not role:
+            continue
+
         if role['role']['identifier'] == "admin" or len(role['role']['permissions']) >= 162:
             admin_role = True
             break
