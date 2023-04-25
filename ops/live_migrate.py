@@ -11,7 +11,8 @@ from inc.onapp_helpers import (
     get_onapp_vm_nics,
     create_new_vhi_vm,
     get_vm_source_properties,
-    transfer_firewall_rules_to_sg, get_iface_from_specific_vs, attach_security_group_to_nic_and_enable_spoofing
+    transfer_firewall_rules_to_sg, get_iface_from_specific_vs, attach_security_group_to_nic_and_enable_spoofing,
+    deactivate_disk
 )
 from inc.utils import exit_status_code_handler
 from inc.network_hanlder import get_network_configuration
@@ -297,12 +298,24 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
         return False
 
     # -- STEP 13 --
-    logs.info(f"{_spaces}{live_migration}STEP #13 -- VHI: Start original pre-created VHI VM on VHI hypervisor --",
+    logs.info(f"{_spaces}{live_migration}STEP #13 -- VHI: Deactivate VM disks at OnApp hypervisor --",
+              header=True)
+    for ovm_dsk in _onapp_disks:
+        _deactivation_props = {'disk_idn': ovm_dsk['disk_idn'],
+                               'datastore_type': ovm_dsk['datastore_type'],
+                               'path': ovm_dsk['path']}
+        deactivate_result = deactivate_disk(vm_idn='', vm_ohv_ip=_vm_hv_ip, **_deactivation_props)
+        if not deactivate_result:
+            return False
+
+    # -- STEP 14 --
+    logs.info(f"{_spaces}{live_migration}STEP #14 -- VHI: Start original pre-created VHI VM on VHI hypervisor --",
               header=True)
     exit_status, output = _vhi_hv_ssh.execute(f"{vinfra_access} service compute server start {_vhi_vm_id}"
                                               f" -f json | jq -c -r \"[ .id , .power_state ]\" 2>/dev/null")
     if not exit_status_code_handler(exit_code=exit_status,
-                                    message='[live_migrate.py | STEP 13] VM "virsh destroy" on VHI node failed.'):
+                                    message=f'[live_migrate.py | STEP 13] {vinfra_access}'
+                                            f' service compute server start {_vhi_vm_id} on VHI node failed.'):
         return False
 
     logs.info(f"The virtual server ``LIVE MIGRATION`` has completed successfully:"

@@ -3,7 +3,7 @@ from click_default_group import DefaultGroup
 
 from inc.onapp_helpers import *
 from inc.network_hanlder import get_network_configuration
-from cfg.config_parser import VINFRA_AUTH, ADMIN_AUTH, DOMAIN_AUTH
+from cfg.config_parser import ADMIN_AUTH, DOMAIN_AUTH
 
 
 def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
