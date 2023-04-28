@@ -252,8 +252,6 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
                     nic.remove(sources)
                 for tgt in nic.findall('target'):
                     tgt.attrib['dev'] = _xml_vvm_nics[0]['tap']
-            elif nic_num > 0:
-                device.remove(nic)
             nic_num += 1
     xmltree = KVMxml.ElementTree(vmxml)
     xmltree.write(f"/tmp/{vm_idn}.xml")
