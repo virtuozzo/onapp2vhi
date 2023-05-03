@@ -1,7 +1,7 @@
 import os
 from os.path import join, dirname, abspath
 from configparser import ConfigParser
-from inc.logger import logs
+from onapp2vhi.inc.logger import logs
 from typing import Dict
 
 

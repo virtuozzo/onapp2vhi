@@ -1,11 +1,11 @@
 import os
 
-from inc.helper import Helper
-from cfg.config_parser import VHI_CREDS
-from inc.vhi_ssh_keys import VhiSshKeys
-from inc.vhi_helpers import Vhi
-from inc.logger import logs
-from inc.onapp_helpers import (
+from onapp2vhi.inc.helper import Helper
+from onapp2vhi.cfg.config_parser import VHI_CREDS
+from onapp2vhi.inc.vhi_ssh_keys import VhiSshKeys
+from onapp2vhi.inc.vhi_helpers import Vhi
+from onapp2vhi.inc.logger import logs
+from onapp2vhi.inc.onapp_helpers import (
     prepare_vhi_migration_data,
     get_user_ssh_keys,
     check_user_role,
@@ -13,7 +13,7 @@ from inc.onapp_helpers import (
 )
 
 
-def migrate_all_impl(user='', network='', vm='', project=''):
+def migrate_impl(user='', network='', vm='', project='', vz_guest_tools_install='true', cloud_init_install='true'):
     """
     Migrate all resources from OnApp to VHI:
         - OnApp Users to VHI users
@@ -40,6 +40,8 @@ def migrate_all_impl(user='', network='', vm='', project=''):
     :param network: public2
     :param vm: virtual machine identifier
     :param project: project
+    :param vz_guest_tools_install: project
+    :param cloud_init_install: project
     :return:
     """
     # Arrange
@@ -56,6 +58,8 @@ def migrate_all_impl(user='', network='', vm='', project=''):
             logs.error("Please specify User ID as integer: --user=7")
             exit(1)
         user_idn = int(user)
+    vz_guest_tools = False if vz_guest_tools_install == 'false' else True
+    cloud_init_install = False if cloud_init_install == 'false' else True
     _custom_project = project
     # --Step 1--#
     # --OnApp: Get User, VM's information--#
@@ -82,7 +86,7 @@ def migrate_all_impl(user='', network='', vm='', project=''):
 
         # --Step 3--#
         # --OnApp: Start migration USER by USER--#
-        logs.info(f"{Helper.EQUAL.value} VHI: Migrate User ({full_name}) --", separator=True)
+        logs.info(f"{Helper.EQUAL.value} VHI: Migrate User ({full_name}) {Helper.EQUAL.value}", header=True)
         # If we specified custom project via --project=my_project, then creation projects step will be missed
         if not _custom_project:
             if not check_user_role(user):
@@ -90,15 +94,19 @@ def migrate_all_impl(user='', network='', vm='', project=''):
                 if not result:
                     continue
                 user.update({"project_name": vhi.project_name})
+                vhi.set_project_value(project_name=vhi.project_name)
             else:
                 _default_project = vhi.check_default_project()
                 if not _default_project:
                     continue
                 user.update({"project_name": vhi.project_name})
+                vhi.set_project_value(project_name=vhi.project_name)
         else:
             logs.warn(msg=f'You have specified CUSTOM Project name [{_custom_project}]'
                           f' please be ensure such project exist on VHI side in Domain. Otherwise command will fail!')
+            vhi.project_name = _custom_project
             user.update({"project_name": _custom_project})
+            vhi.set_project_value(project_name=vhi.project_name)
 
         result, user_pwd = vhi.create_user(user_data=user)
         if not result:
@@ -107,20 +115,27 @@ def migrate_all_impl(user='', network='', vm='', project=''):
         user.update({'password': user_pwd})
         _ssh_key = VhiSshKeys(user_obj=user, ssh_keys=get_user_ssh_keys(user))
         _ssh_result = _ssh_key.create_vhi_ssh_keys()
+        _specified_list = [_machine for _machine in vm.split(',') if _machine]
 
         # --Step 4 -- #
         # -- VHI: Migrate Users Virtual Machines depends on their OS and BOOTED status -- #
         vm_msg = ""
+        specified_vms = 0
         for _num, _vm in enumerate(user['virtual_machines']):
-            _vm_number = _num+1 if not vm else 1
-            vh = VmHandler(**_vm)
             _idn = _vm['id']
             # Here script try to find specified Virtual Machine and migrate only it
-            if vm and vm != _idn:
+            if _specified_list and _idn not in _specified_list:
                 continue
 
+            if _specified_list:
+                specified_vms += 1
+                _vm_number = specified_vms
+            else:
+                _num += 1
+                _vm_number = _num
+            vh = VmHandler(**_vm)
             _vm_info = f'{_idn}|{_vm["ip_addr"]}|{_vm["label"]}'
-            logs.info(f"{Helper.SPACES.value}-- VHI: Migrate VM #{_num} IDENTIFIER [{_vm_info}]--", header=True)
+            logs.info(f"{Helper.SPACES.value}-- VHI: Migrate VM #{_vm_number} IDENTIFIER [{_vm_info}]--", header=True)
             bootloader_drivers, vm_migrate = vh.vm_handler()
             if not bootloader_drivers and not vm_migrate:
                 logs.error('Access to online VM is denied. Possible reason - No SSH key on VM')
@@ -132,7 +147,15 @@ def migrate_all_impl(user='', network='', vm='', project=''):
                                msg=msg_failed)
                 continue
 
-            result = bootloader_drivers(idn=_idn)
+            if not _vm['built_from_iso'] and not _vm['built_from_ova']:
+                result = bootloader_drivers(idn=_idn,
+                                            vz_guest_tools=vz_guest_tools,
+                                            cloud_init_install=cloud_init_install)
+            else:
+                result = True
+                logs.warn(msg=f'VM [{_vm_info}] built from ISO or OVA, installation GRUB,'
+                              f' CLOUD-INIT, etc. step skipped.')
+
             if not result:
                 vm_msg += (f'\t{_vm_number}. VM Migrated = {result}\n'
                            f'\t\t- IP "{_vm["ip_addr"]}"\n'

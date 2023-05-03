@@ -1,8 +1,8 @@
 import requests
 import time
 
-from inc.logger import logs
-from cfg.config_parser import ONAPP_CREDS
+from onapp2vhi.inc.logger import logs
+from onapp2vhi.cfg.config_parser import ONAPP_CREDS
 
 
 class OnAppRequestsException(Exception):

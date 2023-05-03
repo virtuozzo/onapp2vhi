@@ -2,10 +2,10 @@ import json
 import time
 import xml.etree.ElementTree as KVMxml
 
-from inc.ssh_connector import ssh_run
-from inc.logger import logs
-from inc.helper import Helper
-from cfg.config_parser import ONAPP_CREDS, VHI_CREDS
+from onapp2vhi.inc.ssh_connector import ssh_run
+from onapp2vhi.inc.logger import logs
+from onapp2vhi.inc.helper import Helper
+from onapp2vhi.cfg.config_parser import ONAPP_CREDS, VHI_CREDS
 
 
 def vm_template_migrate(idn='', vhip=''):

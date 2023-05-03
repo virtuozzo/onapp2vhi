@@ -1,5 +1,5 @@
-from inc.rest_client import OnAppRequests
-from inc.logger import logs
+from onapp2vhi.inc.rest_client import OnAppRequests
+from onapp2vhi.inc.logger import logs
 from typing import Dict, List
 
 request_handler = OnAppRequests()
@@ -134,21 +134,39 @@ def get_virtual_server_ip_addresses(virtual_server_id: str, network_interface_id
     ]
 
 
-def get_network_nameserver(network_id: str) -> str:
+def get_network_nameserver(network_id: str, ipv4=True) -> str:
     """
     Get the DNS network network address
     :param network_id: Network ID to which this nameserver belongs
+    :param ipv4: get
     :return str: Contain the DNS IP address.
+    Here are some popular IPv4 and IPv6 DNS resolvers:
+
+        IPv4 DNS Resolvers:
+        Google Public DNS: IPv4 Address 8.8.8.8 and 8.8.4.4
+        Cloudflare DNS: IPv4 Address 1.1.1.1 and 1.0.0.1
+        OpenDNS: IPv4 Address 208.67.222.222 and 208.67.220.220
+
+        IPv6 DNS Resolvers:
+        Google Public DNS: IPv6 Address 2001:4860:4860::8888 and 2001:4860:4860::8844
+        Cloudflare DNS: IPv6 Address 2606:4700:4700::1111 and 2606:4700:4700::1001
+        OpenDNS: IPv6 Address 2620:119:35::35 and 2620:119:53::53
+        These resolvers can be used to resolve DNS queries for domain names in either IPv4 or IPv6 format.
     """
     _nameservers = request_handler.get(f"settings/nameservers")
-    return next(
-        (
-            nameserver["nameserver"]["address"]
-            for nameserver in _nameservers
-            if nameserver["nameserver"]["network_id"] == network_id
-        ),
-        '',
-    )
+    addresses = [nameserver["nameserver"]["address"] for nameserver in _nameservers
+                 if nameserver["nameserver"]["network_id"] == int(network_id)]
+    for address in addresses:
+        if ipv4 and '.' in address:
+            logs.info(msg=f'Found resolver for IPv4 [{address}]')
+            return address
+
+        elif not ipv4 and ':' in address:
+            logs.info(msg=f'Found resolver IPv6 [{address}]')
+            return address
+
+    logs.warn(msg=f'Resolver not found for Network ID [{network_id}] IPv4: {ipv4}')
+    return ''
 
 
 def get_network_interfaces(virtual_server_id: str):

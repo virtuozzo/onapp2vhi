@@ -1,9 +1,9 @@
-from inc.network_vhi import Network
-from inc.network_onapp import *
-from inc.logger import logs
+from onapp2vhi.inc.network_vhi import Network
+from onapp2vhi.inc.network_onapp import *
+from onapp2vhi.inc.logger import logs
 
 
-def get_network_configuration(virtual_server_identifier: str, vinfra_project: str) -> str:
+def get_network_configuration(virtual_server_identifier: str, vinfra_project: str):
 
     data = {}
     networks_cmd = []
@@ -23,25 +23,40 @@ def get_network_configuration(virtual_server_identifier: str, vinfra_project: st
                 nic["network_interface"]["network_join_id"]
             )
         network_identifier, _ = network_join.split('-')
-        vs_ip_addresses = get_virtual_server_ip_addresses(virtual_server_identifier, nic["network_interface"]["id"])
+        nic_id = nic["network_interface"]["id"]
+        vs_ip_addresses = get_virtual_server_ip_addresses(virtual_server_identifier, nic_id)
+        if not vs_ip_addresses:
+            logs.warn(f'IP addresses are not assigned to network interface with ID: {nic_id}')
+            continue
+
         data['network_identifier'] = network_identifier
         data["ipv4"] = next((ip_address['ipv4'] for ip_address in vs_ip_addresses), False)
         data["ip_addresses"] = [ip_address['address'] for ip_address in vs_ip_addresses]
+        data["primary_ip"] = [
+            ip_address['address'] for ip_address in vs_ip_addresses
+            if ip_address["primary"]
+        ]
         data["primary"] = True if nic['network_interface']['primary'] else False
-        data["ip_addresses"] = [ip_address['address'] for ip_address in vs_ip_addresses]
+        data["ip_addresses"] = [ip_address['address'] for ip_address in vs_ip_addresses if not ip_address["primary"]]
         data["mac_address"] = nic["network_interface"]["mac_address"]
         data["network_id"] = get_network_id_by_identifier(network_identifier)
-        data['network_nameserver'] = get_network_nameserver(data['network_id'])
+        data['network_nameserver'] = get_network_nameserver(data['network_id'], ipv4=True)
         data["ip_net_id"] = next((ip_address['ip_net_id'] for ip_address in vs_ip_addresses))
         data["ip_range_id"] = next((ip_address['ip_range_id'] for ip_address in vs_ip_addresses))
         data['ip_net'] = get_ip_net(data['network_id'], data['ip_net_id'])
         data['ip_range'] = get_ip_range(data['network_id'], data['ip_net_id'], data["ip_range_id"])
-
+        if data["primary_ip"]:
+            data["ip_addresses"].insert(0, data["primary_ip"][0])  # the primary IP should be first
+        else:
+            logs.warn(
+                f'The primary IP is not found the following IP will be set as primary: {data["ip_addresses"][0]}'
+            )
         nic = NetworkInterface(**data)
         vs_network_interfaces.add(nic)
 
     for network in vs_network_interfaces.get_all():
         vhi_network = Network(
+            id='',
             name=f"network_{network.network_identifier}",
             vinfra_project=vinfra_project,
             rbac_policies=[],
@@ -63,6 +78,13 @@ def get_network_configuration(virtual_server_identifier: str, vinfra_project: st
         ip_addresses = "".join([f"fixed-ip='{ip}'," for ip in network.ip_addresses])
         if not vhi_network.is_present():
             logs.warn(f"The Network not found: {vhi_network.cidr}")
+            if vhi_network.ip_version == 6:
+                logs.error(
+                    f"The {vhi_network.cidr} won't be used. Please configure the IPv6 physical network"
+                    f" or remove {ip_addresses} from virtual server: {virtual_server_identifier}"
+                )
+                return False
+
             vhi_network_id = vhi_network.create()
             secondary_network_cmd = (f" --network id={vhi_network_id},{ip_addresses}"
                                      f"mac='{vhi_network.mac_address}',spoofing-protection-disable ")
