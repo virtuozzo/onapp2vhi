@@ -39,6 +39,7 @@ def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install: bo
     scripts_info = {
         join(package_path, 'scripts/cron-cloud-install'): '/etc/cron.d/cron-cloud-install',
         join(package_path, 'scripts/cloud-install'): '/usr/bin/cloud-install',
+        join(package_path, 'scripts/vz-guest-tools-lin.tar'): '/opt/vz-guest-tools-lin.tar ',
         join(package_path, 'scripts/vz-guest-tools'): '/usr/bin/vz-guest-tools',
         join(package_path, 'scripts/PrepareVM.sh'): '/opt/PrepareVM.sh'
     }
@@ -66,7 +67,7 @@ def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install: bo
         logs.info(f'{_spaces}{_boot_msg}STEP #4 -- OnApp: Install `vz-guest-tools` inside VM [{VM_IDn}] --',
                   header=True)
         exit_status, output = _vm_ssh.execute("bash /usr/bin/vz-guest-tools")
-        
+
         # NOTE: here we removed validation for `vz-guest-tools` failure
         exit_status_code_handler(
                 exit_code=exit_status,
