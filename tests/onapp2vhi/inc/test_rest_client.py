@@ -6,7 +6,7 @@ from os.path import abspath, dirname, join, exists
 
 
 # hack hard-coded `config.cfg` file path
-project_root = abspath(join(dirname(__file__), "../../"))
+project_root = abspath(join(dirname(__file__), "../../../"))
 config_file_path = abspath(join(project_root, "onapp2vhi/cfg/config.cfg"))
 example_config_file_path = abspath(join(project_root, "onapp2vhi/cfg/config-example.cfg"))
 hard_code_hack = False
