@@ -5,22 +5,23 @@ from mock import patch, Mock, call
 from os.path import abspath, dirname, join, exists
 
 
+# hack hard-coded `config.cfg` file path
+project_root = abspath(join(dirname(__file__), "../../"))
+config_file_path = abspath(join(project_root, "onapp2vhi/cfg/config.cfg"))
+example_config_file_path = abspath(join(project_root, "onapp2vhi/cfg/config-example.cfg"))
+hard_code_hack = False
+
 def setUpModule():
-    # hack hard-coded `config.cfg` file path
-    project_root = abspath(join(dirname(__file__), "../../"))
-    config_file_path = abspath(join(project_root, "cfg/config.cfg"))
-    example_config_file_path = abspath(join(project_root, "cfg/config-example.cfg"))
+    global hard_code_hack
 
     if not exists(config_file_path):
         os.symlink(example_config_file_path, config_file_path)
+        hard_code_hack = True
 
 
 def tearDownModule():
     # clean up hard-code hack
-    project_root = abspath(join(dirname(__file__), "../../"))
-    config_file_path = abspath(join(project_root, "cfg/config.cfg"))
-
-    if not exists(config_file_path):
+    if hard_code_hack and exists(config_file_path):
         os.unlink(config_file_path)
 
 
@@ -28,8 +29,8 @@ def tearDownModule():
 # TODO! remove global inc.logger.logs references
 class OnAppRequestTest(TestCase):
 
-    @patch("inc.logger.logs")
-    @patch("inc.rest_client.ONAPP_CREDS")
+    @patch("onapp2vhi.inc.logger.logs")
+    @patch("onapp2vhi.inc.rest_client.ONAPP_CREDS")
     def setUp(self, mock_onapp_creds, mock_logs):
         mock_config = {
             "url": "https://onapp2vhi.unittest.test",
@@ -38,7 +39,7 @@ class OnAppRequestTest(TestCase):
         }
         mock_onapp_creds.__getitem__.side_effect = mock_config.__getitem__
 
-        from inc.rest_client import OnAppRequests
+        from onapp2vhi.inc.rest_client import OnAppRequests
 
         self.onapp_api = OnAppRequests()
 
@@ -73,7 +74,7 @@ class OnAppRequestTest(TestCase):
         ])
         self.assertIsNotNone(result)
 
-    @patch("inc.rest_client.logs")
+    @patch("onapp2vhi.inc.rest_client.logs")
     @patch("requests.get")
     def test_onapprequests_get_failed_authorize(self, mock_requests_get, mock_logs):
         mock_auth_response = Mock(name="mock_response",
@@ -85,7 +86,7 @@ class OnAppRequestTest(TestCase):
             mock_auth_response,
         ]
 
-        from inc.rest_client import OnAppRequestsException
+        from onapp2vhi.inc.rest_client import OnAppRequestsException
 
         with self.assertRaises(OnAppRequestsException):
             result = self.onapp_api.get('command1')
