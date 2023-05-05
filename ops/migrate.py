@@ -26,9 +26,17 @@ def cli():
 @click.option('--vm', default='', help="Comma separated virtual machines 'oih783gcvy,982h3buisb,893hviun'")
 @click.option('--project', default='', help="Project where all objects will be migrated")
 @click.option('--cloud_init_install', default='', help="Boolean flag, set `false` to NOT install cloud_init_install")
+@click.option('--placement', default='', help="Boolean flag, set `false` to NOT install cloud_init_install")
 @click.option('--vz_guest_tools_install', default='',
               help="Boolean flag, set `false` to NOT install vz_guest_tools_install")
-def migrate(user='', network='', vm='', project='', vz_guest_tools_install='true', cloud_init_install='true'):
+def migrate(user='',
+            network='',
+            vm='',
+            project='',
+            vz_guest_tools_install='true',
+            cloud_init_install='true',
+            placement='',
+            ):
     """
     Migrate all resources from OnApp to VHI:
         - OnApp Users to VHI users
@@ -57,6 +65,7 @@ def migrate(user='', network='', vm='', project='', vz_guest_tools_install='true
     :param project: project
     :param vz_guest_tools_install: project
     :param cloud_init_install: project
+    :param placement: placement "name" or "id"
     :return:
     """
     # Arrange
@@ -74,12 +83,12 @@ def migrate(user='', network='', vm='', project='', vz_guest_tools_install='true
             exit(1)
         user_idn = int(user)
     vz_guest_tools = False if vz_guest_tools_install == 'false' else True
-    cloud_init_install = False if cloud_init_install == 'false' else True
+    cloud_init = False if cloud_init_install == 'false' else True
     warn_msg = ("There are no packages on this virtual machine: vz-guest-tools or/and cloud-init"
                 "In the future, we cannot guarantee the correct operation of the Virtual Machines."
                 "Install these packages manually:\n"
                 "https://virtuozzo.atlassian.net/wiki/spaces/PROD/pages/2524741641/OnApp+-+VHI+Migration+space")
-    if not vz_guest_tools or not cloud_init_install:
+    if not vz_guest_tools or not cloud_init:
         logs.warn(msg=warn_msg)
     _custom_project = project
     # --Step 1--#
@@ -175,7 +184,7 @@ def migrate(user='', network='', vm='', project='', vz_guest_tools_install='true
             if not _vm['built_from_iso'] and not _vm['built_from_ova']:
                 result = bootloader_drivers(idn=_idn,
                                             vz_guest_tools=vz_guest_tools,
-                                            cloud_init_install=cloud_init_install)
+                                            cloud_init_install=cloud_init)
             else:
                 result = True
                 logs.warn(msg=f'VM [{_vm_info}] built from ISO or OVA, installation GRUB,'
@@ -187,7 +196,7 @@ def migrate(user='', network='', vm='', project='', vz_guest_tools_install='true
                            f'\t\t- Hostname: "{_vm["hostname"]}"\n'
                            f'\t\t- Label: "{_vm["label"]}"\n'
                            f'\t\t- Identifier: "{_idn}"\n'
-                           f'\t\t- Installation Cloud-init: {cloud_init_install}\n'
+                           f'\t\t- Installation Cloud-init: {cloud_init}\n'
                            f'\t\t- Installation bootloader: {result}\n'
                            f'\t\t- Installation vz-guest-tools : {vz_guest_tools}\n'
                            f'\t- - - - - - - - - - - - - - - - -\n')
@@ -202,14 +211,15 @@ def migrate(user='', network='', vm='', project='', vz_guest_tools_install='true
                                    vproj=vhi.project_name,
                                    vdom=VHI_CREDS['vinfra_domain'],
                                    network=network,
-                                   vhi_obj=vhi)
+                                   vhi_obj=vhi,
+                                   placement=placement)
 
             vm_msg += (f'\t{_vm_number}. Migration Status = {result_vm}\n'
                        f'\t\t- IP "{_vm["ip_addr"]}"\n'
                        f'\t\t- Hostname: "{_vm["hostname"]}"\n'
                        f'\t\t- Label: "{_vm["label"]}"\n'
                        f'\t\t- Identifier: "{_idn}"\n'
-                       f'\t\t- Installation Cloud-init: {cloud_init_install}\n'
+                       f'\t\t- Installation Cloud-init: {cloud_init}\n'
                        f'\t\t- Installation bootloader: {result}\n'
                        f'\t\t- Installation vz-guest-tools : {vz_guest_tools}\n'
                        f'\t- - - - - - - - - - - - - - - - -\n')

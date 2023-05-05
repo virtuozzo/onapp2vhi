@@ -484,3 +484,22 @@ class VinfraStoragePolicies(VinfraServiceCompute):
         """
         cmd: str = f'{self.vinfra_root} list'
         return self.execute(cmd)
+
+
+class VinfraPlacement(VinfraServiceCompute):
+
+    def __init__(self,
+                 connect_timeout: int = CONNECT_TIMEOUT,
+                 channel_timeout: int = CHANNEL_TIMEOUT):
+        super().__init__(connect_timeout=connect_timeout,
+                         channel_timeout=channel_timeout)
+        self.vinfra_root += ' placement assign'
+
+    def assign_placement_to_flavor(self, flavor: str, placement: str):
+        """
+        Assign placement to the flavor
+        # vinfra {ADMIN_AUTH} service compute placement assign --flavors flavor_2_512 test_placement1
+        :return:
+        """
+        cmd: str = f'{self.vinfra_root} --flavors {flavor} {placement}'
+        return self.execute(cmd, json=False)
