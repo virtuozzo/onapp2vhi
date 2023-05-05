@@ -1,9 +1,9 @@
 import subprocess
 import socket
 import paramiko
-from inc.logger import logs
+from onapp2vhi.inc.logger import logs
 from time import sleep
-from cfg.config_parser import SSH_KEY
+from onapp2vhi.cfg.config_parser import SSH_KEY
 
 NBYTES = 1024
 CHANNEL_TIMEOUT = 3600  # How long we keep the channel opened
@@ -104,7 +104,7 @@ class SSH:
             data = self.channel.recv(NBYTES).decode("utf-8", "ignore")
             while data:
                 if real_data:
-                    logs.debug(data.strip())
+                    logs.info(msg=data.strip())
                 output += data
                 try:
                     data = self.channel.recv(NBYTES).decode("utf-8", "ignore")
@@ -117,7 +117,7 @@ class SSH:
             data = self.channel.recv_stderr(NBYTES).decode("utf-8", "ignore")
             while data:
                 if real_data:
-                    logs.debug(data.strip())
+                    logs.info(msg=data.strip())
                 output += data
                 try:
                     data = self.channel.recv_stderr(NBYTES).decode("utf-8", "ignore")

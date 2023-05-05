@@ -1,6 +1,6 @@
 import string
 import random
-from inc.logger import logs
+from onapp2vhi.inc.logger import logs
 
 
 def _find_largest_element(some_list):
