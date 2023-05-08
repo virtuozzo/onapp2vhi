@@ -44,14 +44,14 @@ def user_migrate_impl(idn=''):
               f" last_name: {vhi_user_data['last_name']}")
     vhi = Vhi()
     if not check_user_role(vhi_user_data):
-        result = vhi.create_object(vhi_user_data, 'project')
+        result = vhi.create_project(vhi_user_data)
         if not result:
             return False
 
         _default_project = False
-    result = vhi.create_object(vhi_user_data, 'user')
+    result = vhi.create_user(vhi_user_data)
     if result:
-        _ssh_key = VhiSshKeys(vhi_user_data, get_user_ssh_keys(_user_data), default_project=_default_project)
+        _ssh_key = VhiSshKeys(vhi_user_data, get_user_ssh_keys(_user_data))
         _ssh_key.create_vhi_ssh_keys()
         logs.info(f'{Helper.SPACES.value} -- VHI: User has been migrated successfully --')
     else:
