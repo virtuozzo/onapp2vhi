@@ -11,3 +11,11 @@ def lint(session):
 def style(session):
     session.install("flake8==3.9.2")
     session.run("flake8", "onapp2vhi/")
+
+
+@nox.session
+def unittest(session):
+    session.install("nose==1.3.7", "mock==5.0.1", "requests-mock==1.10.0", ".")
+    session.run("nosetests", "--with-coverage", "--cover-inclusive")
+    session.run("coverage", "report")
+    session.run("coverage", "html")
