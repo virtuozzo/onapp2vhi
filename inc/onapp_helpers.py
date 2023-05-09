@@ -109,6 +109,9 @@ def _create_obj_list(obj_list: list, obj_name: str, default_props: list, find=''
                 continue
 
             _one_vm.append(str(_obj_dict[value]))
+        if len(_one_vm) != len(default_props):
+            continue
+
         new_list.append(_one_vm)
     return new_list
 
