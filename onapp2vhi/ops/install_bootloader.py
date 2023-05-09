@@ -1,9 +1,11 @@
+from os.path import join, dirname, exists
+
 from onapp2vhi.inc.logger import logs
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.ssh_connector import ssh_run, SSH
 from onapp2vhi.inc.onapp_helpers import get_vm_source_properties
 from onapp2vhi.inc.utils import exit_status_code_handler
-
+from onapp2vhi.utilities.web import download_file
 
 def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install: bool):
     VM_IDn = idn
@@ -33,17 +35,26 @@ def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install: bo
 
     # -- STEP 3 --
     logs.info(f'{_spaces}{_boot_msg}STEP #3 -- OnApp: Copy cloud-install into VM [{VM_IDn}] --', header=True)
-    scripts_info = {'scripts/cron-cloud-install': '/etc/cron.d/cron-cloud-install',
-                    'scripts/cloud-install': '/usr/bin/cloud-install',
-                    'scripts/vz-guest-tools-lin.tar': '/opt/vz-guest-tools-lin.tar ',
-                    'scripts/vz-guest-tools': '/usr/bin/vz-guest-tools',
-                    'scripts/PrepareVM.sh': '/opt/PrepareVM.sh'}
+    package_path = dirname(__file__)
+    scripts_info = {
+        join(package_path, 'scripts/cron-cloud-install'): '/etc/cron.d/cron-cloud-install',
+        join(package_path, 'scripts/cloud-install'): '/usr/bin/cloud-install',
+        join(package_path, 'scripts/vz-guest-tools-lin.tar'): '/opt/vz-guest-tools-lin.tar',
+        join(package_path, 'scripts/vz-guest-tools'): '/usr/bin/vz-guest-tools',
+        join(package_path, 'scripts/PrepareVM.sh'): '/opt/PrepareVM.sh'
+    }
     if not vz_guest_tools:
-        del scripts_info['scripts/vz-guest-tools-lin.tar']
-        del scripts_info['scripts/vz-guest-tools']
+        del scripts_info[join(package_path, 'scripts/vz-guest-tools')]
     if not cloud_init_install:
-        del scripts_info['scripts/cloud-install']
-        del scripts_info['scripts/cron-cloud-install']
+        del scripts_info[join(package_path, 'scripts/cloud-install')]
+        del scripts_info[join(package_path, 'scripts/cron-cloud-install')]
+
+    # check guess tools downloaded
+    linux_guest_tools_source_path = join(package_path, 'scripts/vz-guest-tools-lin.tar')
+    if not exists(linux_guest_tools_source_path):
+        download_file('http://downloads.repo.onapp.com/vz-guest-tools-lin.tar',
+                      join(package_path, 'scripts'))
+
 
     for file, path in scripts_info.items():
         [exit_status, output] = ssh_run(
@@ -63,7 +74,7 @@ def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install: bo
         logs.info(f'{_spaces}{_boot_msg}STEP #4 -- OnApp: Install `vz-guest-tools` inside VM [{VM_IDn}] --',
                   header=True)
         exit_status, output = _vm_ssh.execute("bash /usr/bin/vz-guest-tools")
-        
+
         # NOTE: here we removed validation for `vz-guest-tools` failure
         exit_status_code_handler(
                 exit_code=exit_status,

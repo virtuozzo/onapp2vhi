@@ -1,0 +1,23 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "onapp2vhi"
+dynamic = ["version"]
+readme = "README.md"
+authors = [
+    { name = "Virtuozzo", email = "onapp2vhi@virtuozzo.com" },
+]
+description = "onapp to vhi migration tool"
+dependencies = [
+    "click==7.1.2",
+    "colorlog==4.8.0",
+    "paramiko==2.11.0",
+    "requests==2.27.1",
+    "importlib-resources==1.4.0",
+]
+
+[project.scripts]
+onapp2vhi = "onapp2vhi.main:run"
+
