@@ -2,6 +2,8 @@ import json
 import time
 import xml.etree.ElementTree as KVMxml
 
+from os.path import dirname, join
+
 from onapp2vhi.inc.ssh_connector import ssh_run
 from onapp2vhi.inc.logger import logs
 from onapp2vhi.inc.helper import Helper
@@ -50,19 +52,20 @@ def vm_template_migrate(idn='', vhip=''):
             EOF" """
     ssh_run(command=cmd, comment="-- Deploy QCOW disk from template at OnApp hypervisor --")
     # Generate recovery config xml
-    tree = KVMxml.parse('scripts/recovery-tmpl.xml')
+    package_path = dirname(__file__)
+    tree = KVMxml.parse(join(package_path, 'scripts/recovery-tmpl.xml'))
     root = tree.getroot()
     for device in root.findall("devices"):
         for disk in device.findall("disk"):
             if disk.attrib['device'] == "disk":
                 for source in disk.findall('source'):
                     source.attrib['file'] = "/tmp/{disk_name}.qcow2".format(disk_name=TMPL_file_name)
-    tree.write('scripts/recovery-tmpl.xml.mg')
+    tree.write(join(package_path, 'scripts/recovery-tmpl.xml.mg'))
 
     # --OnApp: Run scp--#
     logs.info('', separator=True)
     #    logs.info("-- OnApp: Copy scripts and configs to HV [{hv_ip}] --".format(hv_ip=ONAPP_CREDS['onapp_hv_ip']))
-    _copy_cmd = (f"scp -P{ONAPP_CREDS['cp_ssh_port']} {Helper.SSH_OPTS.value} -r scripts"
+    _copy_cmd = (f"scp -P{ONAPP_CREDS['cp_ssh_port']} {Helper.SSH_OPTS.value} -r {package_path}/scripts"
                  f"  root@{ONAPP_CREDS['onapp_hv_ip']}:/onapp/tools/")
     ssh_run(command=_copy_cmd)
 

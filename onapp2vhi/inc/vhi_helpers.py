@@ -199,7 +199,7 @@ class Vhi:
                                       option="vinfra_domain_user",
                                       value=_domain_service_user['name'])
                 domain_auth = configs.reset_domain_auth()
-                import inc.vinfra_wrapper as wrapper
+                import onapp2vhi.inc.vinfra_wrapper as wrapper
                 wrapper.DOMAIN_AUTH = domain_auth
 
             v_image = VinfraImage(channel_timeout=5)

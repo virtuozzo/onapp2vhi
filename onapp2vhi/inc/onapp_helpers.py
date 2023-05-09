@@ -3,6 +3,8 @@ import json
 import re
 import xml.etree.ElementTree as KVMxml
 
+from os.path import join
+
 from onapp2vhi.inc.rest_client import OnAppRequests
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.cfg.config_parser import VHI_CREDS, DOMAIN_AUTH
@@ -662,7 +664,7 @@ class VmHandler:
 class GenerateXmlConfig:
     RECOVERY_TEMPLATE = 'ls /onapp/tools/recovery/recovery-centos-7.*.{file} | tail -1'
 
-    def __init__(self, vm_idn: str, hv_ip: str):
+    def __init__(self, config_path: str, vm_idn: str, hv_ip: str):
         """
         Generates Recovery .xml file for VM
         :param vm_idn:
@@ -673,8 +675,9 @@ class GenerateXmlConfig:
         self._kernel = 'kernel'
         self._iso = 'iso'
         self._initrd = 'initrd'
-        self._recovery_mg_file = 'scripts/recovery.xml.mg'
-        self._recovery_xml = 'scripts/recovery.xml'
+        self._config_path = config_path
+        self._recovery_mg_file = join(self._config_path, 'recovery.xml.mg')
+        self._recovery_xml = join(self._config_path, 'recovery.xml')
         self.hv_ssh = SSH(**{"host": hv_ip})
 
     def shut_down_vm(self):
@@ -691,7 +694,7 @@ class GenerateXmlConfig:
                 if disk.attrib['device'] == "cdrom":
                     device.remove(disk)
         xmltree = KVMxml.ElementTree(vm_xml)
-        _file = f"scripts/{self._vm_idn}.xml"
+        _file = join(self._config_path, f"{self._vm_idn}.xml")
         logs.info(f"Writing config into {_file}", separator=True)
         xmltree.write(_file)
         exit_status, vm_xml_cfg = self.hv_ssh.execute(command=f'virsh shutdown {self._vm_idn}')
