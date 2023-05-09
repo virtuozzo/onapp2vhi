@@ -19,7 +19,7 @@ from onapp2vhi.inc.helper import Helper
 from onapp2vhi.cfg.config_parser import ONAPP_CREDS, VHI_CREDS, VINFRA_AUTH, ADMIN_AUTH, DOMAIN_AUTH
 
 
-def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
+def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, placement=''):
     if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -42,7 +42,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
     vhi = vhi_obj
     _on_app_flavor = get_onapp_vm_flavor(vm_idn=vm_idn)
     logs.debug(f'OnApp flavor: {_on_app_flavor}')
-    result = vhi.flavor_handler(onapp_flavor=_on_app_flavor)
+    result = vhi.flavor_handler(onapp_flavor=_on_app_flavor, placement=placement)
     if not result:
         logs.warn('Flavor has NOT been created on VHI side, further process does not make sense.')
         return False

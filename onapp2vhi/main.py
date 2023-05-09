@@ -42,11 +42,14 @@ def create_service_user():
 @click.option('--vm', default='', help="Comma separated virtual machines 'oih783gcvy,982h3buisb,893hviun'")
 @click.option('--project', default='', help="Project where all objects will be migrated")
 @click.option('--cloud_init_install', default='', help="Boolean flag, set `false` to NOT install cloud_init_install")
+@click.option('--placement', default='', help="Boolean flag, set `false` to NOT install cloud_init_install")
 @click.option('--vz_guest_tools_install', default='',
               help="Boolean flag, set `false` to NOT install vz_guest_tools_install")
-def migrate(user='', network='', vm='', project='', vz_guest_tools_install='true', cloud_init_install='true'):
+def migrate(user='', network='', vm='', project='', vz_guest_tools_install='true', cloud_init_install='true', placement=''):
     migrate_impl(user=user,
         network=network,
         vm=vm, project=project,
         vz_guest_tools_install=vz_guest_tools_install,
-        cloud_init_install=cloud_init_install)
+        cloud_init_install=cloud_init_install,
+        placement=placement,
+    )

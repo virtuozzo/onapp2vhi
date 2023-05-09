@@ -109,6 +109,9 @@ def _create_obj_list(obj_list: list, obj_name: str, default_props: list, find=''
                 continue
 
             _one_vm.append(str(_obj_dict[value]))
+        if len(_one_vm) != len(default_props):
+            continue
+
         new_list.append(_one_vm)
     return new_list
 
@@ -991,3 +994,20 @@ def prepare_vhi_migration_data(user_idn=None):
                 _vhi_user_data['virtual_machines'] = vms_list
         vhi_users_data.append(_vhi_user_data)
     return vhi_users_data
+
+
+def onapp_version(full=None):
+    """
+    Get OnApp version
+    {
+        "version": "6.7.0-19"
+    }
+    :param full: set to True to get "6.7.0-19" minor version
+    :return:
+    """
+    onap_version_resp = onapp_requests.get("version")
+    version = float(onap_version_resp['version'][:3])
+    logs.info(msg=f"{_spaces} -- OnApp Version [{onap_version_resp['version']}] --", header=True)
+    if full:
+        version = onap_version_resp['version']
+    return version
