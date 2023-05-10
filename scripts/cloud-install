@@ -26,25 +26,50 @@ function checkOS() {
 function installCloudinit() {
         if [[ ${OS} == 'ubuntu' ]]; then
                 apt-get update
-                apt-get install -y cloud-init cloud-guest-utils
-		if dpkg -l $pkg
+                apt-get install -y cloud-init cloud-guest-utils net-tools
+                rm -rf /etc/cloud/cloud.cfg.d/subiquity-disable-cloudinit-networking.cfg
+                rm -rf /etc/cloud/cloud.cfg.d/99-installer.cfg
+                rm -rf /etc/netplan/00-installer-config.yaml
+		version=$(echo ${VERSION_ID} | cut -d. -f1)
+		if [ $version -ge 20 ];
 		then
-			echo "$pkg installed"
-			echo 'datasource_list: [ NoCloud, AltCloud, ConfigDrive, OpenStack, CloudStack, DigitalOcean,  Ec2, MAAS, OVF, GCE, None ]' | sudo -s tee /etc/cloud/cloud.cfg.d/90_dpkg.cfg
-			dpkg-reconfigure -f noninteractive cloud-init
-			cloud-init clean
-			cloud-init init
-			rm -rf /etc/cron.d/cron-cloud-install
+			if dpkg -l $pkg
+			then
+				echo "$pkg installed"
+				echo 'datasource_list: [ ConfigDrive, OpenStack, None ]' | sudo -s tee /etc/cloud/cloud.cfg.d/90_dpkg.cfg
+				dpkg-reconfigure -f noninteractive cloud-init
+				systemctl unmask systemd-networkd
+				systemctl restart systemd-networkd
+				cloud-init clean --seed --logs
+				cloud-init init --local
+				netplan apply
+				rm -rf /etc/cron.d/cron-cloud-install
+			else
+				echo "$pkg NOT installed"
+				exit 1
+			fi
 		else
-			echo "$pkg NOT installed"
-			exit 1
+                        if dpkg -l $pkg
+                        then
+                                echo "$pkg installed"
+                                echo 'datasource_list: [ ConfigDrive, OpenStack, None ]' | sudo -s tee /etc/cloud/cloud.cfg.d/90_dpkg.cfg
+                                dpkg-reconfigure -f noninteractive cloud-init
+                                cloud-init clean --seed --logs
+                                cloud-init init --local
+                                rm -rf /etc/cron.d/cron-cloud-install
+                        else
+                                echo "$pkg NOT installed"
+                                exit 1
+			fi
 		fi
         elif [[ ${OS} == 'debian' ]]; then
                 apt update
-                apt-get install -y cloud-init cloud-guest-utils qemu-guest-agent
+                apt-get install -y cloud-init cloud-guest-utils net-tools
                 if dpkg -l $pkg
                 then
                         echo "$pkg installed"
+                        cloud-init clean --seed --logs
+                        cloud-init init --local
                         rm -rf /etc/cron.d/cron-cloud-install
                 else
                         echo "$pkg NOT installed"
@@ -55,6 +80,8 @@ function installCloudinit() {
                 if rpm -q $pkg
                 then
                         echo "$pkg installed"
+                        cloud-init clean --seed --logs
+                        cloud-init init --local
                         rm -rf /etc/cron.d/cron-cloud-install
                 else
                         echo "$pkg NOT installed"
@@ -64,27 +91,16 @@ function installCloudinit() {
         fi
 }
 
-# Set DHCP for primary NIC
 function reconfigureNetwork() {
         if [[ ${OS} == 'ubuntu' ]]; then
                 mv /etc/network/interfaces /etc/network/onapp2vhi.interfaces
                 cat << EOF > /etc/network/interfaces
-# The loopback network interface
-auto lo
-iface lo inet loopback
-# The primary network interface
-auto eth0
-iface eth0 inet dhcp
+source /etc/network/interfaces.d/*
 EOF
         elif [[ ${OS} == 'debian' ]]; then
                 mv /etc/network/interfaces /etc/network/onapp2vhi.interfaces
                 cat << EOF > /etc/network/interfaces
-# The loopback network interface
-auto lo
-iface lo inet loopback
-# The primary network interface
-auto eth0
-iface eth0 inet dhcp
+source /etc/network/interfaces.d/*
 EOF
         elif [[ ${OS} == 'centos' ]]; then
                 mv /etc/sysconfig/network-scripts/ifcfg-eth0 /etc/sysconfig/network-scripts/onapp2vhi.ifcfg-eth0

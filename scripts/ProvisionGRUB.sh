@@ -26,6 +26,7 @@ if [ "$GRUB_VERSION" -lt 1 ];then
         grub-install --recheck $ROOT_DEV
         if  command -v update-grub &>/dev/null; then
                 rm -f /boot/grub/menu.lst
+		sed -i 's/kopt="$default_kopt"/kopt="$default_kopt net.ifnames=0 biosdevname=0"/g' /usr/sbin/update-grub
                 update-grub -y
         fi
 else
