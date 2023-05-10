@@ -95,15 +95,6 @@
     ```
     ln -s ./cfg/config.cfg /home/onapp/myenv/lib/python3.6/site-packages/cfg/config.cfg
     ```
-- Download files:
-  - http://downloads.repo.onapp.com/vz-guest-tools-lin.tar
-  - http://downloads.repo.onapp.com/vz-guest-tools-win.tar
-  - https://cloudbase.it/downloads/CloudbaseInitSetup_Stable_x64.msi
-  - Copy into `project/scripts/` folder
-    - `/scripts/vz-guest-tools-lin.tar`
-    - `/scripts/vz-guest-tools-win.tar`
-    - `/scripts/CloudbaseInitSetup_Stable_x64.msi`
-
 - run next commands under `onapp` user:
     - `su - onapp`
     - `export SSH_AUTH_SOCK=/onapp/interface/tmp/onapp-ssh-agent.socket`
@@ -155,30 +146,30 @@
 - Currently, migration tool provides next commands:
   * **Providers**:
     * `create_service_user` - command will create special user under the hood for migration and save his credentials into config file
-    * `list_onapp_users` - get and show all user at OnApp cloud
-    * `list_onapp_vms` - get and show all virtual machines at OnApp cloud
+    * `list-onapp-users` - get and show all user at OnApp cloud
+    * `list-onapp-vms` - get and show all virtual machines at OnApp cloud
     * `migrate` - entry point to start migration
 
 ---
 
 - ### Show all Virtual Servers:
   ```
-  ./onapp2vhi list_onapp_vms
+  ./onapp2vhi list-onapp-vms
   ```
 
   * By specifying "_find=_" or "_props=_" parameter to get what you want:
     Examples:
       ```
-      ./onapp2vhi list_onapp_vms --find="user_id=user_id"
-      ./onapp2vhi list_onapp_vms --props={prop1},{prop2},{prop3}
+      ./onapp2vhi list-onapp-vsm --find="user_id=user_id"
+      ./onapp2vhi list-onapp-vsm --props={prop1},{prop2},{prop3}
       ```
   * this example will show you all VM's related to user with ID=7 and columns you specified in "--props":
     ```
-    ./onapp2vhi list_onapp_vms --find="user_id=7" --props=identifier,hostname,memory,cpus,user_id,template_label,total_disk_size
+    ./onapp2vhi list-onapp-vsm --find="user_id=7" --props=identifier,hostname,memory,cpus,user_id,template_label,total_disk_size
     ```
   * this example will show you VM with specified identifier:
     ```
-    ./onapp2vhi list_onapp_vms --find="identifier=lidqtfwggohyzk" --props=identifier,hostname,memory,cpus,user_id,template_label,total_disk_size
+    ./onapp2vhi list-onapp-vsm --find="identifier=lidqtfwggohyzk" --props=identifier,hostname,memory,cpus,user_id,template_label,total_disk_size
     ```
 
 ---
@@ -188,15 +179,15 @@
 - the same logic is using for users:
 - command will show you only user with id=7, login=admin or email=admin@example.com
   ```
-    ./onapp2vhi list_onapp_users --find="id=7"
+    ./onapp2vhi list-onapp-users --find="id=7"
   OR
-    ./onapp2vhi list_onapp_users --find="login=admin"
+    ./onapp2vhi list-onapp-users --find="login=admin"
   OR
-    ./onapp2vhi list_onapp_users --find="email=admin@example.com"
+    ./onapp2vhi list-onapp-users --find="email=admin@example.com"
   ```
 - command will show you all VM's related to user with ID=7 and columns you specified in "vals":
   ```
-  ./onapp2vhi list_onapp_users --find="login=admin" --props=id,email,login,roles,first_name,last_name
+  ./onapp2vhi list-onapp-users --find="login=admin" --props=id,email,login,roles,first_name,last_name
   ```
 
 ---
