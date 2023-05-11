@@ -16,7 +16,7 @@ class OnAppCP(object):
         self.config = yaml.load(open(config_file).read(), Loader=yaml.FullLoader)
         self.auth = requests.auth.HTTPBasicAuth(self.config[user]['login'], self.config[user]['password'])
 
-    def get_all(self, entity, action=None):
+    def get_all(self, entity, action=None, returned_json=True):
         """
         Get list of item from the entity
         Example:
@@ -27,7 +27,7 @@ class OnAppCP(object):
         :param action:
         :return: json
         """
-        return self._cp_api(session.get, entity, action=action)
+        return self._cp_api(session.get, entity, action=action, returned_json=returned_json)
 
     def get(self, entity, entity_id, data=None, action=None, returned_json=True):
         """
@@ -115,20 +115,43 @@ class OnAppCP(object):
         entity = cdn_resources
         data = {"q":"key"}
 
+        :param entity:
+        :param args:
+        :param data:
+        :return: json
+        '''
+        return self._cp_api(session.get, entity, args=args, data=data, filter=filter, returned_json=returned_json)
+    
+    def search_with_search_filter(self, entity, args, filter=True,returned_json=True):
+        '''
+        Search entity with search filter
+        Example:
+        curl -i -X GET -u user:userpass -H 'Accept: application/json' -H 'Content-type: application/json'
+            --url "http://onapp.test/virtual_machines.json?search_filter[user_id]=17"
+        entity = virtual_machines
+        search_filter = search_filter[user_id]=17
+        filter = True
+
+        Example2:
+        curl -i -X GET -u user:userpass -H 'Accept: application/json' -H 'Content-type: application/json'
+            --url "http://onapp.test/virtual_machines.json?search_filter[user_id]=17&search_filter[hypervisor_id]=1"
+        entity = virtual_machines
+        search_filter = search_filter[user_id]=17&search_filter[hypervisor_id]=1
+        filter = True
+
         Example3:
         curl -i -X GET -u user:userpass -H 'Accept: application/json' -H 'Content-type: application/json'
             --url "http://onapp.test/templates.json?search_filter[query]=Windows+Server+2016+x64+STD"
         entity = templates
-        args = Windows+Server+2016+x64+STD
-        filter = True
+        search_filter = search_filter[query]=Windows+Server+2016+x64+STD
+        filter= True
 
         :param entity:
-        :param args:
-        :param data:
+        :param search_filter:
         :param filter:
         :return: json
         '''
-        return self._cp_api(session.get, entity, args=args, data=data, filter=filter, returned_json=returned_json)
+        return self._cp_api(session.get, entity, args=args, filter=filter, returned_json=returned_json)
 
     def post_action(self, entity, _id, action, data=None):
         """
@@ -179,7 +202,7 @@ class OnAppCP(object):
         if args is not None and not filter:
             url = url + "?q=" + args
         elif args is not None and filter:
-            url = url + "?search_filter[query]=" + args
+            url = url + "?" + args
 
         response = requests_func(url, data=json.dumps(data), auth=self.auth, headers=headers)
 
