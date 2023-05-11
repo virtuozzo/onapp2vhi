@@ -1,5 +1,5 @@
-from inc.onapp_helpers import *
-from inc.network_hanlder import get_network_configuration
+from onapp2vhi.inc.onapp_helpers import *
+from onapp2vhi.inc.network_hanlder import get_network_configuration
 from onapp2vhi.utility.config import OnApp2VHIConfig
 
 cfg = OnApp2VHIConfig()

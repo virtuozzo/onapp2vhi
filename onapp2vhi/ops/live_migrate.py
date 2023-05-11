@@ -2,8 +2,8 @@ import json
 import re
 import xml.etree.ElementTree as KVMxml
 
-from inc.ssh_connector import ssh_run, SSH
-from inc.onapp_helpers import (
+from onapp2vhi.inc.ssh_connector import ssh_run, SSH
+from onapp2vhi.inc.onapp_helpers import (
     get_onapp_vm_flavor,
     get_onapp_vm_disks,
     get_onapp_vm_nics,
@@ -11,10 +11,10 @@ from inc.onapp_helpers import (
     get_vm_source_properties,
     transfer_firewall_rules_to_sg, get_iface_from_specific_vs, attach_security_group_to_nic_and_enable_spoofing
 )
-from inc.utils import exit_status_code_handler
-from inc.network_hanlder import get_network_configuration
-from inc.logger import logs
-from inc.helper import Helper
+from onapp2vhi.inc.utils import exit_status_code_handler
+from onapp2vhi.inc.network_hanlder import get_network_configuration
+from onapp2vhi.inc.logger import logs
+from onapp2vhi.inc.helper import Helper
 from onapp2vhi.utility.config import OnApp2VHIConfig
 
 cfg = OnApp2VHIConfig()

@@ -1,5 +1,5 @@
 from onapp2vhi.utility.config import OnApp2VHIConfig
-from inc.ssh_connector import SSH
+from onapp2vhi.inc.ssh_connector import SSH
 import re
 import json
 

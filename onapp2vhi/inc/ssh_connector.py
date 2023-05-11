@@ -1,7 +1,7 @@
 import subprocess
 import socket
 import paramiko
-from inc.logger import logs
+from onapp2vhi.inc.logger import logs
 from time import sleep
 
 from onapp2vhi.utility.config import OnApp2VHIConfig

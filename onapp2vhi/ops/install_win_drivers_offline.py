@@ -1,12 +1,12 @@
 import os
 import time
 
-from inc.onapp_helpers import get_onapp_vm_disks
-from inc.logger import logs
-from inc.helper import Helper
-from inc.ssh_connector import ssh_run, SSH
-from inc.utils import exit_status_code_handler
-from inc.onapp_helpers import (
+from onapp2vhi.inc.onapp_helpers import get_onapp_vm_disks
+from onapp2vhi.inc.logger import logs
+from onapp2vhi.inc.helper import Helper
+from onapp2vhi.inc.ssh_connector import ssh_run, SSH
+from onapp2vhi.inc.utils import exit_status_code_handler
+from onapp2vhi.inc.onapp_helpers import (
     get_vm_source_properties,
     get_disk_type,
     activate_disk,
@@ -24,13 +24,14 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
     _dri_msg = 'WIN DRIVERS OFFLINE -- '
     logs.info(f'{_spaces}-- INSTALLING {_dri_msg}', header=True)
 
-    install_script = "scripts/onapp.bat_ci_vz"
+    package_path = os.path.dirname(__file__)
+    install_script = os.path.join(package_path, "scripts/onapp.bat_ci_vz")
     if not vz_guest_tools and cloud_init_install:
         logs.info(msg='Installing only `CLOUD INIT`', separator=True)
-        install_script = "scripts/onapp.bat_ci"
+        install_script = os.path.join(package_path, "scripts/onapp.bat_ci")
     elif not cloud_init_install and vz_guest_tools:
         logs.info(msg='Installing only `VZ GUEST TOOLS`', separator=True)
-        install_script = "scripts/onapp.bat_vz"
+        install_script = os.path.join(package_path, "scripts/onapp.bat_vz")
     elif not cloud_init_install and not vz_guest_tools:
         logs.info(msg='Chosen nothing to install.', separator=True)
         install_script = ""
@@ -97,8 +98,8 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
     logs.info(f"{_spaces}{_dri_msg}STEP #6 -- OnApp: Copy drivers and scripts --", header=True)
 
     # FILES TO COPY SHOULD BE LOCATED IN PROJECT FOLDER /scripts
-    cloudbase_init_path = os.path.join(os.getcwd(), "scripts/CloudbaseInitSetup_Stable_x64.msi")
-    vz_guest_tool_path = os.path.join(os.getcwd(), "scripts/vz-guest-tools-win.tar")
+    cloudbase_init_path = os.path.join(package_path,  "scripts/CloudbaseInitSetup_Stable_x64.msi")
+    vz_guest_tool_path = os.path.join(package_path, "scripts/vz-guest-tools-win.tar")
     logs.info(f'File path: {cloudbase_init_path}')
     logs.info(f'File path: {vz_guest_tool_path}')
 

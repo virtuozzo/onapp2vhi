@@ -2,12 +2,12 @@ import time
 import urllib3
 import json
 
-from inc.helper import Helper
+from onapp2vhi.inc.helper import Helper
 from onapp2vhi.utility.config import OnApp2VHIConfig
-from inc.logger import logs
-from inc.ssh_connector import SSH
-from inc.utils import generate_random_password, exit_status_code_handler
-from inc.vinfra_wrapper import (
+from onapp2vhi.inc.logger import logs
+from onapp2vhi.inc.ssh_connector import SSH
+from onapp2vhi.inc.utils import generate_random_password, exit_status_code_handler
+from onapp2vhi.inc.vinfra_wrapper import (
     VinfraFlavor,
     VinfraUser,
     VinfraNode,

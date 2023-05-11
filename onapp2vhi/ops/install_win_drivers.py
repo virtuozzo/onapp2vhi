@@ -1,9 +1,9 @@
 import os
-from inc.logger import logs
-from inc.helper import Helper
-from inc.ssh_connector import ssh_run, SSH
-from inc.onapp_helpers import get_vm_source_properties
-from inc.utils import exit_status_code_handler
+from onapp2vhi.inc.logger import logs
+from onapp2vhi.inc.helper import Helper
+from onapp2vhi.inc.ssh_connector import ssh_run, SSH
+from onapp2vhi.inc.onapp_helpers import get_vm_source_properties
+from onapp2vhi.inc.utils import exit_status_code_handler
 from onapp2vhi.utility.config import OnApp2VHIConfig
 
 cfg = OnApp2VHIConfig()
@@ -43,8 +43,9 @@ def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install: b
     logs.info(f'{_spaces}{_dri_msg}STEP #3 -- OnApp: Upload drivers image to VM [{_vm_ip_addr}] --', header=True)
 
     # FILES TO COPY SHOULD BE LOCATED IN PROJECT FOLDER
-    cloudbase_init_path = os.path.join(os.getcwd(), "scripts/CloudbaseInitSetup_Stable_x64.msi")
-    vz_guest_tool_path = os.path.join(os.getcwd(), "scripts/vz-guest-tools-win.tar")
+    package_path = os.path.dirname(__file__)
+    cloudbase_init_path = os.path.join(package_path, "scripts/CloudbaseInitSetup_Stable_x64.msi")
+    vz_guest_tool_path = os.path.join(package_path, "scripts/vz-guest-tools-win.tar")
     logs.info(f'File path: {cloudbase_init_path}')
     logs.info(f'File path: {vz_guest_tool_path}')
 

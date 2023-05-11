@@ -1,9 +1,9 @@
-from inc.vhi_ssh_keys import VhiSshKeys
-from inc.vhi_helpers import Vhi
-from inc.utils import generate_random_password
-from inc.logger import logs
-from inc.helper import Helper
-from inc.onapp_helpers import (
+from onapp2vhi.inc.vhi_ssh_keys import VhiSshKeys
+from onapp2vhi.inc.vhi_helpers import Vhi
+from onapp2vhi.inc.utils import generate_random_password
+from onapp2vhi.inc.logger import logs
+from onapp2vhi.inc.helper import Helper
+from onapp2vhi.inc.onapp_helpers import (
     get_user_ssh_keys,
     get_user_data,
     get_bucket_limits,
@@ -44,14 +44,14 @@ def user_migrate_impl(idn=''):
               f" last_name: {vhi_user_data['last_name']}")
     vhi = Vhi()
     if not check_user_role(vhi_user_data):
-        result = vhi.create_object(vhi_user_data, 'project')
+        result = vhi.create_project(vhi_user_data)
         if not result:
             return False
 
         _default_project = False
-    result = vhi.create_object(vhi_user_data, 'user')
+    result = vhi.create_user(vhi_user_data)
     if result:
-        _ssh_key = VhiSshKeys(vhi_user_data, get_user_ssh_keys(_user_data), default_project=_default_project)
+        _ssh_key = VhiSshKeys(vhi_user_data, get_user_ssh_keys(_user_data))
         _ssh_key.create_vhi_ssh_keys()
         logs.info(f'{Helper.SPACES.value} -- VHI: User has been migrated successfully --')
     else:
