@@ -1,0 +1,6 @@
+onapp:
+  host: onapp2vhi.onappdev.com
+  user: peipei
+  port: 2722
+  migration_tool_dir: /home/peipei/onapp2vhi/
+  virtual_env: /home/peipei/venv/bin/activate
