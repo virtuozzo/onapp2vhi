@@ -1,12 +1,13 @@
 from onapp2vhi.inc.network_vhi import Network
+from onapp2vhi.inc.onapp_helpers import onapp_version
 from onapp2vhi.inc.network_onapp import *
 from onapp2vhi.inc.logger import logs
 
 
 def get_network_configuration(virtual_server_identifier: str, vinfra_project: str):
-
     data = {}
     networks_cmd = []
+    version = onapp_version()
     vs_network_interfaces = NetworkInterfaces()
     virtual_server_hypervisor_id = get_virtual_server_hypervisor(virtual_server_identifier)
     hv_group_id = get_hypervisor_group_id(virtual_server_hypervisor_id)
@@ -31,13 +32,16 @@ def get_network_configuration(virtual_server_identifier: str, vinfra_project: st
 
         data['network_identifier'] = network_identifier
         data["ipv4"] = next((ip_address['ipv4'] for ip_address in vs_ip_addresses), False)
-        data["ip_addresses"] = [ip_address['address'] for ip_address in vs_ip_addresses]
-        data["primary_ip"] = [
-            ip_address['address'] for ip_address in vs_ip_addresses
-            if ip_address["primary"]
-        ]
+        if version <= 6.0 and nic['network_interface']['primary'] is True:
+            data["primary_ip"] = [vs_ip_addresses[0]['address']]
+        elif version > 6.0:
+            data["primary_ip"] = [
+                ip_address['address'] for ip_address in vs_ip_addresses
+                if ip_address["primary"]
+            ]
         data["primary"] = True if nic['network_interface']['primary'] else False
-        data["ip_addresses"] = [ip_address['address'] for ip_address in vs_ip_addresses if not ip_address["primary"]]
+        data["ip_addresses"] = [ip_address['address'] for ip_address in vs_ip_addresses
+                                if ip_address['address'] != data["primary_ip"]]
         data["mac_address"] = nic["network_interface"]["mac_address"]
         data["network_id"] = get_network_id_by_identifier(network_identifier)
         data['network_nameserver'] = get_network_nameserver(data['network_id'], ipv4=True)
@@ -47,6 +51,7 @@ def get_network_configuration(virtual_server_identifier: str, vinfra_project: st
         data['ip_range'] = get_ip_range(data['network_id'], data['ip_net_id'], data["ip_range_id"])
         if data["primary_ip"]:
             data["ip_addresses"].insert(0, data["primary_ip"][0])  # the primary IP should be first
+            data["ip_addresses"] = list(set(data["ip_addresses"]))  # remove IP addr duplications
         else:
             logs.warn(
                 f'The primary IP is not found the following IP will be set as primary: {data["ip_addresses"][0]}'

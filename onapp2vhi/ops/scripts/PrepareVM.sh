@@ -16,27 +16,34 @@ else
         ROOT_DEV=/dev/vda
 fi
 
-cp -f /proc/mounts /etc/mtab
-
 sed -i 's/^GRUB_DISABLE_LINUX_UUID=true/#GRUB_DISABLE_LINUX_UUID=true/' /etc/default/grub
 sed -i 's/^GRUB_DISABLE_UUID=true/#GRUB_DISABLE_UUID=true/' /etc/default/grub
 
 if [ "$GRUB_VERSION" -lt 1 ];then
+#Run grub install
         grub-install --recheck $ROOT_DEV
+        if  command -v update-grub &>/dev/null; then
+                rm -f /boot/grub/menu.lst
+                update-grub -y
+        fi
 else
-  if [ -f /boot/grub/grub.cfg ]; then
-        GRUB_CONF=/boot/grub/grub.cfg
-  elif [ -f /boot/grub2/grub.cfg  ]; then
-      GRUB_CONF=/boot/grub2/grub.cfg
-  fi
-
-        grub-install --recheck $ROOT_DEV || grub2-install --recheck $ROOT_DEV
-        grub-mkconfig -o $GRUB_CONF || grub2-mkconfig -o $GRUB_CONF
-fi
-
-if  command -v update-grub &>/dev/null; then
-	rm -f /boot/grub/menu.lst
-	update-grub -y
+        if [ -f /boot/grub/grub.cfg ]; then
+                GRUB_CONF=/boot/grub/grub.cfg
+        elif [ -f /boot/grub2/grub.cfg  ]; then
+                GRUB_CONF=/boot/grub2/grub.cfg
+        fi
+#Run grub2 install
+        if  command -v grub-install &>/dev/null; then
+                grub-install --recheck $ROOT_DEV
+        else
+                grub2-install --recheck $ROOT_DEV
+        fi
+#Run mkconfig
+        if  command -v grub-mkconfig &>/dev/null; then
+                grub-mkconfig -o $GRUB_CONF
+        else
+                grub2-mkconfig -o $GRUB_CONF
+        fi
 fi
 
 #RegenerateUUID

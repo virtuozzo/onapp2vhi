@@ -113,27 +113,23 @@ class OnAppVHILogger:
         self._logger.warning(msg)
         self._logger.warning('#' * 50)
 
-    def write_log(self, file_path: str, msg: str, new_file=False):
+    def write_log(self, file_path: str, msg: str):
         """
         Write logs into file
         :param file_path: /home/user/project/file.txt
         :param msg: "Message to be written in the file"
-        :param new_file: bool
         :return:
         """
-        _log_file = f'{file_path}.log'
-        if new_file:
-            if os.path.exists(_log_file):
+        _folder_2 = '/'.join(file_path.split('/')[:-1])
+        _folder_1 = '/'.join(file_path.split('/')[:-2])
+        for path in [_folder_1, _folder_2]:
+            if not os.path.exists(path):
+                os.mkdir(path)
                 self._logger.warning('#' * 50)
-                self._logger.warning(f'Removing old log file "{_log_file}"')
-                self._logger.warning('#' * 50)
-                os.remove(_log_file)
+                self._logger.warning(f'Creating folder to store logs "{path}"')
+                continue
 
-        _folder = '/'.join(file_path.split('/')[:-1])
-        if not os.path.exists(_folder):
-            os.mkdir(_folder)
-            self._logger.warning('#' * 50)
-            self._logger.warning(f'Creating folder to store logs "{_folder}"')
+        _log_file = f'{file_path}.log'
         with open(_log_file, 'a+') as _file:
             self._logger.warning('#' * 50)
             self._logger.warning(f'Info has been saved in "{_log_file}"')

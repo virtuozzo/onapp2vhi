@@ -43,9 +43,20 @@ def ssh_run(command: str, interactive=True, comment='', log_off=False, output=Tr
     return [exit_code, _output]
 
 
+_preferred_pubkeys = ("ssh-ed25519",
+                      "ecdsa-sha2-nistp256",
+                      "ecdsa-sha2-nistp384",
+                      "ecdsa-sha2-nistp521",
+                      "ssh-rsa",
+                      "rsa-sha2-512",
+                      "rsa-sha2-256",
+                      "ssh-dss")
+
+
 class SSH:
 
     def __init__(self, **kwargs):
+        paramiko.transport.Transport._preferred_pubkeys = _preferred_pubkeys
         self.client = paramiko.SSHClient()
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.host = kwargs.get("host")
@@ -84,6 +95,7 @@ class SSH:
                                     pkey=self.pkey,
                                     timeout=self.connect_timeout)
                 return True
+
             except paramiko.AuthenticationException as AE:
                 logs.error(f"""{AE}\n The possible issues:
                     - password is required;

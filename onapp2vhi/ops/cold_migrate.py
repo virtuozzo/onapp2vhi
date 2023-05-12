@@ -4,7 +4,7 @@ from onapp2vhi.utility.config import OnApp2VHIConfig
 
 cfg = OnApp2VHIConfig()
 
-def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
+def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, placement=''):
     # ToDo
     #  verify IP address before running script
     if not idn:
@@ -27,7 +27,7 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj):
     vhi = vhi_obj
     _on_app_flavor = get_onapp_vm_flavor(vm_idn=VM_IDn)
     logs.debug(f'OnApp flavor: {_on_app_flavor}')
-    result = vhi.flavor_handler(onapp_flavor=_on_app_flavor)
+    result = vhi.flavor_handler(onapp_flavor=_on_app_flavor, placement=placement)
     if not result:
         logs.warn('Flavor has NOT been created on VHI side, further process does not make sense.')
         return False
