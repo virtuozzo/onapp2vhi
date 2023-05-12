@@ -87,11 +87,13 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
             message=f"[install_win_drivers_offline.py | STEP 5] kpartx failed. Output\n\t{output}"
     ):
         return False
-    exit_status, output = _hv_ssh.execute(f"mkdir -p /mnt/prepare_win; mount {onappvm_disk_partition} /mnt/prepare_win")
+    exit_status, output = _hv_ssh.execute(
+        f"mkdir -p /mnt/{vm_idn}; mount -t ntfs-3g {onappvm_disk_partition} /mnt/{vm_idn}"
+    )
     if not exit_status_code_handler(
             exit_code=exit_status,
-            message=f"[install_win_drivers_offline.py | STEP 5]  mount {onappvm_disk_partition} /mnt/prepare_win"
-                    f" failed. Output\n\t{output}"
+            message=f"[install_win_drivers_offline.py | STEP 5]  mount -t ntfs-3g "
+                    f"{onappvm_disk_partition} /mnt/{vm_idn} failed. Output\n\t{output}"
     ):
         return False
 
@@ -109,7 +111,7 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
                       os.path.join(package_path, "scripts"))
 
     if vz_guest_tools:
-        cmd = f"scp -r {vz_guest_tool_path} root@{_vm_hv_ip}:/mnt/prepare_win/vz-guest-tools-win.tar"
+        cmd = f"scp -r {vz_guest_tool_path} root@{_vm_hv_ip}:/mnt/{vm_idn}/vz-guest-tools-win.tar"
         [exit_status, output] = ssh_run(cmd)
         if not exit_status_code_handler(
                 exit_code=exit_status,
@@ -123,7 +125,7 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
                       os.path.join(package_path, "scripts"))
 
     if cloud_init_install:
-        cmd = f"scp -r {cloudbase_init_path}  root@{_vm_hv_ip}:/mnt/prepare_win/CloudbaseInitSetup_Stable_x64.msi"
+        cmd = f"scp -r {cloudbase_init_path}  root@{_vm_hv_ip}:/mnt/{vm_idn}/CloudbaseInitSetup_Stable_x64.msi"
         [exit_status, output] = ssh_run(cmd)
         if not exit_status_code_handler(
                 exit_code=exit_status,
@@ -135,7 +137,7 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
         ):
             return False
 
-    cmd = f"scp -r {install_script} root@{_vm_hv_ip}:/mnt/prepare_win/onapp.bat"
+    cmd = f"scp -r {install_script} root@{_vm_hv_ip}:/mnt/{vm_idn}/onapp.bat"
     [exit_status, output] = ssh_run(cmd)
     if not exit_status_code_handler(
             exit_code=exit_status,
@@ -154,6 +156,14 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
             exit_code=exit_status,
             message=f"[install_win_drivers_offline.py | STEP 7]"
                     f" umount {onappvm_disk_partition} failed. Output\n\t{output}"
+    ):
+        return False
+
+    exit_status, output = _hv_ssh.execute(f"rmdir /mnt/{vm_idn}")
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f"[install_win_drivers_offline.py | STEP 7]"
+                    f" rmdir /mnt/{vm_idn}failed. Output\n\t{output}"
     ):
         return False
 

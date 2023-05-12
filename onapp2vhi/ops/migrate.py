@@ -13,7 +13,14 @@ from onapp2vhi.inc.onapp_helpers import (
 )
 
 
-def migrate_impl(user='', network='', vm='', project='', vz_guest_tools_install='true', cloud_init_install='true'):
+def migrate_impl(user='',
+                 network='',
+                 vm='',
+                 project='',
+                 vz_guest_tools_install='true',
+                 cloud_init_install='true',
+                 placement='',
+                ):
     """
     Migrate all resources from OnApp to VHI:
         - OnApp Users to VHI users
@@ -42,12 +49,13 @@ def migrate_impl(user='', network='', vm='', project='', vz_guest_tools_install=
     :param project: project
     :param vz_guest_tools_install: project
     :param cloud_init_install: project
+    :param placement: placement "name" or "id"
     :return:
     """
     # Arrange
     logs.info(f"{Helper.EQUAL.value} VHI: Starting Migration Session {Helper.EQUAL.value}", header=True)
     _path = os.getcwd()
-    _file_name = os.path.join(_path, 'migration_logs/migration')
+    _file_name = os.path.join(_path, 'migration_logs/{user}/migrated')
     user_idn = ''
     if not network:
         _network = VHI_CREDS['network']
@@ -59,7 +67,13 @@ def migrate_impl(user='', network='', vm='', project='', vz_guest_tools_install=
             exit(1)
         user_idn = int(user)
     vz_guest_tools = False if vz_guest_tools_install == 'false' else True
-    cloud_init_install = False if cloud_init_install == 'false' else True
+    cloud_init = False if cloud_init_install == 'false' else True
+    warn_msg = ("There are no packages on this virtual machine: vz-guest-tools or/and cloud-init"
+                "In the future, we cannot guarantee the correct operation of the Virtual Machines."
+                "Install these packages manually:\n"
+                "https://virtuozzo.atlassian.net/wiki/spaces/PROD/pages/2524741641/OnApp+-+VHI+Migration+space")
+    if not vz_guest_tools or not cloud_init:
+        logs.warn(msg=warn_msg)
     _custom_project = project
     # --Step 1--#
     # --OnApp: Get User, VM's information--#
@@ -81,7 +95,11 @@ def migrate_impl(user='', network='', vm='', project='', vz_guest_tools_install=
     for user in vhi_users_data:
         _ssh_result = False
         full_name = f"{user['first_name']} { user['last_name']}"
-        msg = 'Login: "{}"\nPassword: "{}"\nSSH Keys Migrated: {}\nMIGRATED VIRTUAL MACHINES:\n{}'
+        msg = ('Login: "{}"\n'
+               'Password: "{}"\n'
+               'SSH Keys Migrated: {}\n'
+               'MIGRATED VIRTUAL MACHINES:\n'
+               '{}')
         vhi = Vhi()
 
         # --Step 3--#
@@ -108,8 +126,8 @@ def migrate_impl(user='', network='', vm='', project='', vz_guest_tools_install=
             user.update({"project_name": _custom_project})
             vhi.set_project_value(project_name=vhi.project_name)
 
-        result, user_pwd = vhi.create_user(user_data=user)
-        if not result:
+        create_user_result, user_pwd = vhi.create_user(user_data=user)
+        if not create_user_result:
             continue
 
         user.update({'password': user_pwd})
@@ -150,20 +168,23 @@ def migrate_impl(user='', network='', vm='', project='', vz_guest_tools_install=
             if not _vm['built_from_iso'] and not _vm['built_from_ova']:
                 result = bootloader_drivers(idn=_idn,
                                             vz_guest_tools=vz_guest_tools,
-                                            cloud_init_install=cloud_init_install)
+                                            cloud_init_install=cloud_init)
             else:
                 result = True
                 logs.warn(msg=f'VM [{_vm_info}] built from ISO or OVA, installation GRUB,'
                               f' CLOUD-INIT, etc. step skipped.')
 
             if not result:
-                vm_msg += (f'\t{_vm_number}. VM Migrated = {result}\n'
+                vm_msg += (f'\t{_vm_number}. Migration Status = {result}\n'
                            f'\t\t- IP "{_vm["ip_addr"]}"\n'
                            f'\t\t- Hostname: "{_vm["hostname"]}"\n'
                            f'\t\t- Label: "{_vm["label"]}"\n'
                            f'\t\t- Identifier: "{_idn}"\n'
+                           f'\t\t- Installation Cloud-init: {cloud_init}\n'
+                           f'\t\t- Installation bootloader: {result}\n'
+                           f'\t\t- Installation vz-guest-tools : {vz_guest_tools}\n'
                            f'\t- - - - - - - - - - - - - - - - -\n')
-                logs.write_log(file_path=f"{_file_name}_user_{user['id']}",
+                logs.write_log(file_path=f"{_file_name.format(user=user['user_login'])}_user_{user['id']}",
                                msg=msg.format(user['user_login'],
                                               user['password'],
                                               _ssh_result,
@@ -174,17 +195,21 @@ def migrate_impl(user='', network='', vm='', project='', vz_guest_tools_install=
                                    vproj=vhi.project_name,
                                    vdom=VHI_CREDS['vinfra_domain'],
                                    network=network,
-                                   vhi_obj=vhi)
+                                   vhi_obj=vhi,
+                                   placement=placement)
 
-            vm_msg += (f'\t{_vm_number}. VM Migrated = {result_vm}\n'
+            vm_msg += (f'\t{_vm_number}. Migration Status = {result_vm}\n'
                        f'\t\t- IP "{_vm["ip_addr"]}"\n'
                        f'\t\t- Hostname: "{_vm["hostname"]}"\n'
                        f'\t\t- Label: "{_vm["label"]}"\n'
                        f'\t\t- Identifier: "{_idn}"\n'
+                       f'\t\t- Installation Cloud-init: {cloud_init}\n'
+                       f'\t\t- Installation bootloader: {result}\n'
+                       f'\t\t- Installation vz-guest-tools : {vz_guest_tools}\n'
                        f'\t- - - - - - - - - - - - - - - - -\n')
         # --Step 5 -- #
         # -- Finish Migration Session and put down logs  -- #
-        logs.write_log(file_path=f"{_file_name}_user_{user['id']}",
+        logs.write_log(file_path=f"{_file_name.format(user=user['user_login'])}_user_{user['id']}",
                        msg=msg.format(user['user_login'],
                                       user['password'],
                                       _ssh_result,

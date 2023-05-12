@@ -175,7 +175,7 @@
 ---
 
 - ### Show all Users:
-      onapp2vhi list-onapp-vms
+      onapp2vhi list-onapp-users
 - the same logic is using for users:
 - command will show you only user with id=7, login=admin or email=admin@example.com
   ```

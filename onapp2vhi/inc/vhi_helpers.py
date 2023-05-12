@@ -15,6 +15,7 @@ from onapp2vhi.inc.vinfra_wrapper import (
     VinfraProject,
     VinfraStoragePolicies,
     VinfraQuotas,
+    VinfraPlacement,
 )
 
 
@@ -110,15 +111,19 @@ class Vhi:
         self._vhi_ssh.execute(_change_pwd)
         return _pwd
 
-    def flavor_handler(self, onapp_flavor: dict):
+    def flavor_handler(self, onapp_flavor: dict, placement=''):
         """
         Method purpose is to verify flavor on VHI side and check whether it exists or not and create new one
-        :param onapp_flavor:
+        :param onapp_flavor: flavor object
+        :param placement: placement name or ID
         :return:
         """
         _flavor_name = onapp_flavor['name']
+        if placement:
+            _placement_name = placement
         _payload = self._vhi_flavor_payload(vm_data=onapp_flavor)
         _vinfra = VinfraFlavor(service_user=True)
+        vinfra_placement = VinfraPlacement()
         exit_status, output = _vinfra.flavor_list()
         if not exit_status_code_handler(exit_code=exit_status,
                                         message=f'Impossible to get Flavor list. Output:\n\t{output}'):
@@ -128,6 +133,12 @@ class Vhi:
         logs.debug(f'VHI existing flavors: {_vhi_flavors}')
         if _flavor_name in _vhi_flavors:
             self.flavor_name = _flavor_name
+            if placement:
+                logs.info(msg=f"{Helper.SPACES.value} -- Assigning placement to the flavor on VHI side.", header=True)
+                exit_status, output = vinfra_placement.assign_placement_to_flavor(flavor=self.flavor_name,
+                                                                                  placement=placement)
+                exit_status_code_handler(exit_code=exit_status,
+                                         message=f'Placement Assignment result. Output:\n\t{output}')
             return True
 
         exit_status, output = _vinfra.create(flavor_name=_flavor_name,
@@ -138,6 +149,12 @@ class Vhi:
             return False
 
         self.flavor_name = json.loads(output)['name']
+        if placement:
+            logs.info(msg=f"{Helper.SPACES.value} -- Assigning placement to the flavor on VHI side.", header=True)
+            exit_status, output = vinfra_placement.assign_placement_to_flavor(flavor=self.flavor_name,
+                                                                              placement=placement)
+            exit_status_code_handler(exit_code=exit_status,
+                                     message=f'Placement Assignment result. Output:\n\t{output}')
         return True
 
     def _verify_user_exists(self, user_email: str, domain: str):
