@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import click
-import onapp2vhi
 
+import onapp2vhi
 from onapp2vhi.utility.config import OnApp2VHIConfig
 from onapp2vhi.utility.template import CONFIG_TEMPLATE
 
@@ -55,9 +55,6 @@ def generate_example_config(ctx, param, value):
     callback=generate_example_config,
     help="Generate example config.ini file.",
 )
-
-
-@click.group()
 @click.version_option(onapp2vhi.__version__)
 def run(config):
     OnApp2VHIConfig.load_config(config)
@@ -80,7 +77,9 @@ def run(config):
     help="Select by specific params with --where='id=13' option.",
 )
 def list_onapp_users(props="", find=""):
-    from onapp2vhi.inc.onapp_helpers import list_onapp_users as list_onapp_users_impl
+    from onapp2vhi.inc.onapp_helpers import (
+        list_onapp_users as list_onapp_users_impl,
+    )
 
     list_onapp_users_impl(props=props, find=find)
 
@@ -101,7 +100,9 @@ def list_onapp_users(props="", find=""):
     help="Select by specific params with --where='id=13' option.",
 )
 def list_onapp_vms(props="", find=""):
-    from onapp2vhi.inc.onapp_helpers import list_onapp_vms as list_onapp_vms_impl
+    from onapp2vhi.inc.onapp_helpers import (
+        list_onapp_vms as list_onapp_vms_impl,
+    )
 
     list_onapp_vms_impl(props=props, find=find)
 
