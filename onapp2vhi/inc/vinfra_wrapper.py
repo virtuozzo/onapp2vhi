@@ -1,7 +1,7 @@
 from typing import Optional, Tuple, Dict
 
 from onapp2vhi.inc.ssh_connector import SSH, CONNECT_TIMEOUT, CHANNEL_TIMEOUT
-from onapp2vhi.utility.config import OnApp2VHIConfig
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 cfg = OnApp2VHIConfig()
 

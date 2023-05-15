@@ -10,7 +10,7 @@ from onapp2vhi.inc.onapp_helpers import (
     check_user_role,
     VmHandler
 )
-from onapp2vhi.utility.config import OnApp2VHIConfig
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 cfg = OnApp2VHIConfig()
 

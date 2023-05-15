@@ -4,7 +4,7 @@ from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.ssh_connector import ssh_run, SSH
 from onapp2vhi.inc.onapp_helpers import get_vm_source_properties
 from onapp2vhi.inc.utils import exit_status_code_handler
-from onapp2vhi.utility.config import OnApp2VHIConfig
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 cfg = OnApp2VHIConfig()
 

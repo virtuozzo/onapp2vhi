@@ -4,7 +4,7 @@ import paramiko
 from onapp2vhi.inc.logger import logs
 from time import sleep
 
-from onapp2vhi.utility.config import OnApp2VHIConfig
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 cfg = OnApp2VHIConfig()
 

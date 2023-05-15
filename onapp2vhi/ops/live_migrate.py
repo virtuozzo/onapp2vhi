@@ -16,7 +16,7 @@ from onapp2vhi.inc.utils import exit_status_code_handler
 from onapp2vhi.inc.network_hanlder import get_network_configuration
 from onapp2vhi.inc.logger import logs
 from onapp2vhi.inc.helper import Helper
-from onapp2vhi.utility.config import OnApp2VHIConfig
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 cfg = OnApp2VHIConfig()
 

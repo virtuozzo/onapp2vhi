@@ -5,7 +5,7 @@ import xml.etree.ElementTree as KVMxml
 
 from onapp2vhi.inc.rest_client import OnAppRequests
 from onapp2vhi.inc.helper import Helper
-from onapp2vhi.utility.config import OnApp2VHIConfig
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.inc.ssh_connector import ssh_run, SSH
 from onapp2vhi.inc.logger import logs
 from onapp2vhi.inc.utils import parse_matrix, exit_status_code_handler, generate_random_password

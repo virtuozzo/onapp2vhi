@@ -2,7 +2,7 @@
 import unittest
 from mock import mock_open, patch
 
-from onapp2vhi.utility.config import AttributeDict, OnApp2VHIConfig
+from onapp2vhi.utilities.config import AttributeDict, OnApp2VHIConfig
 
 # pylint: disable=no-member
 

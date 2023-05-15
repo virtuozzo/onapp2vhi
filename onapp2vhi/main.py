@@ -3,8 +3,8 @@ from pathlib import Path
 import click
 
 import onapp2vhi
-from onapp2vhi.utility.config import OnApp2VHIConfig
-from onapp2vhi.utility.template import CONFIG_TEMPLATE
+from onapp2vhi.utilities.config import OnApp2VHIConfig
+from onapp2vhi.utilities.template import CONFIG_TEMPLATE
 
 
 def search_config():
