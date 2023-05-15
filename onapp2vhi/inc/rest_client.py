@@ -4,8 +4,6 @@ import time
 from onapp2vhi.inc.logger import logs
 from onapp2vhi.utility.config import OnApp2VHIConfig
 
-cfg = OnApp2VHIConfig()
-
 
 class OnAppRequestsException(Exception):
     pass
@@ -39,6 +37,8 @@ class OnAppRequests:
     """
 
     def __init__(self):
+        cfg = OnApp2VHIConfig()
+
         self._cookie = ""
         self.log = logs
         self.url = cfg.onapp_conf["url"]
