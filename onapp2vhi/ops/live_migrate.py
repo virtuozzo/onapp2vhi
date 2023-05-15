@@ -316,5 +316,5 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
         return False
 
     logs.info(f"The virtual server ``LIVE MIGRATION`` has completed successfully:"
-              f" {cfg.vhi_conf.url}/compute/servers/instances/{_vhi_vm_id}")
+              f" {cfg.vhi_conf['url']}/compute/servers/instances/{_vhi_vm_id}")
     return True
