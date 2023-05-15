@@ -13,7 +13,7 @@ description = "onapp to vhi migration tool"
 dependencies = [
     "click==7.1.2",
     "colorlog==4.8.0",
-    "paramiko==2.11.0",
+    "paramiko==3.1.0",
     "requests==2.27.1",
     "importlib-resources==1.4.0",
 ]
