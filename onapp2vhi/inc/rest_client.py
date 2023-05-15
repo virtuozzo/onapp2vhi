@@ -2,7 +2,7 @@ import requests
 import time
 
 from onapp2vhi.inc.logger import logs
-from onapp2vhi.cfg.config_parser import ONAPP_CREDS
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 
 class OnAppRequestsException(Exception):
@@ -37,11 +37,13 @@ class OnAppRequests:
     """
 
     def __init__(self):
+        cfg = OnApp2VHIConfig()
+
         self._cookie = ""
         self.log = logs
-        self.url = ONAPP_CREDS["url"]
-        self._email = ONAPP_CREDS["email"]
-        self._api_key = ONAPP_CREDS["api_key"]
+        self.url = cfg.onapp_conf["url"]
+        self._email = cfg.onapp_conf["email"]
+        self._api_key = cfg.onapp_conf["api_key"]
         self.authorization = (self._email, self._api_key)
         self._session = ''
         self._request_id = ''

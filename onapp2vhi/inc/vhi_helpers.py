@@ -3,7 +3,7 @@ import urllib3
 import json
 
 from onapp2vhi.inc.helper import Helper
-from onapp2vhi.cfg.config_parser import VHI_CREDS, configs, ADMIN_AUTH
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.inc.logger import logs
 from onapp2vhi.inc.ssh_connector import SSH
 from onapp2vhi.inc.utils import generate_random_password, exit_status_code_handler
@@ -17,6 +17,8 @@ from onapp2vhi.inc.vinfra_wrapper import (
     VinfraQuotas,
     VinfraPlacement,
 )
+
+cfg = OnApp2VHIConfig()
 
 
 # Disable SSL verification warnings
@@ -42,11 +44,11 @@ class Vhi:
         self.project_name = ""
         self.user_id = ""
         self.flavor_name = ""
-        self.vinfra_domain = VHI_CREDS['vinfra_domain']
-        self.domain_id = VHI_CREDS['domain_id']
+        self.vinfra_domain = cfg.vhi_conf['vinfra_domain']
+        self.domain_id = cfg.vhi_conf['domain_id']
         self._storage_id = ""
         self._storage_name = ""
-        self._vhi_ssh = SSH(**{'host': VHI_CREDS['cp_ip'], 'port': VHI_CREDS['cloud_ssh_port']})
+        self._vhi_ssh = SSH(**{'host': cfg.vhi_conf['cp_ip'], 'port': cfg.vhi_conf['cloud_ssh_port']})
 
     @staticmethod
     def _vhi_flavor_payload(vm_data: dict):
@@ -57,10 +59,7 @@ class Vhi:
 
     @staticmethod
     def set_project_value(project_name: str):
-        configs.set_new_value(section=configs.VHI, option="vinfra_project", value=project_name)
-        vinfra_auth = configs.reset_auth()
-        import onapp2vhi.inc.vinfra_wrapper as wrapper
-        wrapper.VINFRA_AUTH = vinfra_auth
+        cfg.update(section="vhi", option="vinfra_project", value=project_name)
 
     def clean_up_cache(self):
         _cmd = 'rm -f ~/.vinfra/backend-api.svc.vstoragedomain/*'
@@ -80,10 +79,10 @@ class Vhi:
         :return:
         """
         _default_name = 'Default_Project'
-        _create_project = (f"{ADMIN_AUTH} domain project create '{_default_name}' "
+        _create_project = (f"{cfg.ADMIN_AUTH} domain project create '{_default_name}' "
                            f"--domain='{self.vinfra_domain}' --enable "
                            f"--description='Default project for migrations.' -f json")
-        _projects_cmd = f"{ADMIN_AUTH} domain project list --domain='{self.vinfra_domain}' -f json"
+        _projects_cmd = f"{cfg.ADMIN_AUTH} domain project list --domain='{self.vinfra_domain}' -f json"
         exit_status, output_proj = self._vhi_ssh.execute(_projects_cmd)
         if not exit_status_code_handler(exit_code=exit_status,
                                         message='Listing project failed. Please take a look manually.'):
@@ -96,7 +95,7 @@ class Vhi:
             project = json.loads(output)
             self.project_id = project['id']
             self.project_name = project['name']
-            configs.set_new_value(configs.VHI, "vinfra_project", json.loads(output)['name'])
+            cfg.update("vhi", "vinfra_project", json.loads(output)['name'])
             return True
 
         else:
@@ -106,7 +105,7 @@ class Vhi:
 
     def update_user_password(self, user_login: str):
         _pwd = generate_random_password()
-        _change_pwd = (f"echo -e '{_pwd}' | {ADMIN_AUTH} domain user set '{user_login}'"
+        _change_pwd = (f"echo -e '{_pwd}' | {cfg.ADMIN_AUTH} domain user set '{user_login}'"
                        f" --password --domain {self.vinfra_domain}")
         self._vhi_ssh.execute(_change_pwd)
         return _pwd
@@ -193,14 +192,11 @@ class Vhi:
         result = self._verify_user_exists(user_email=_domain_service_user['email'],
                                           domain=self.vinfra_domain)
         if result:
-            if not VHI_CREDS['vinfra_domain_user'] or VHI_CREDS['vinfra_domain_user'] == "''" or\
-                    VHI_CREDS['vinfra_domain_user'] != _domain_service_user['name']:
-                configs.set_new_value(section=configs.VHI,
+            if not cfg.vhi_conf['vinfra_domain_user'] or cfg.vhi_conf['vinfra_domain_user'] == "''" or\
+                    cfg.vhi_conf['vinfra_domain_user'] != _domain_service_user['name']:
+                cfg.update(section="vhi",
                                       option="vinfra_domain_user",
                                       value=_domain_service_user['name'])
-                domain_auth = configs.reset_domain_auth()
-                import onapp2vhi.inc.vinfra_wrapper as wrapper
-                wrapper.DOMAIN_AUTH = domain_auth
 
             v_image = VinfraImage(channel_timeout=5)
             exit_status, output = v_image.images()
@@ -208,10 +204,7 @@ class Vhi:
                                             message=f'Domain Service User password is wrong. Output:\n\t{output}'):
                 _new_pwd = self.update_user_password(user_login=_domain_service_user['name'])
                 logs.warn(msg='Changed password to the new one for Domain Service User')
-                configs.set_new_value(section=configs.VHI, option="vinfra_domain_pass", value=_new_pwd)
-                domain_auth = configs.reset_domain_auth()
-                import onapp2vhi.inc.vinfra_wrapper as wrapper
-                wrapper.DOMAIN_AUTH = domain_auth
+                cfg.update(section="vhi", option="vinfra_domain_pass", value=_new_pwd)
             return True
 
         exit_status, output = v_user.create(user_data=_domain_service_user, pwd=_pwd)
@@ -222,11 +215,8 @@ class Vhi:
         v_user.set(user_name=_domain_service_user['name'],
                    domain=self.vinfra_domain,
                    assign_domain=[self.vinfra_domain, 'compute'])
-        configs.set_new_value(section=configs.VHI, option="vinfra_domain_user", value=_domain_service_user['name'])
-        configs.set_new_value(section=configs.VHI, option="vinfra_domain_pass", value=_pwd)
-        domain_auth = configs.reset_domain_auth()
-        import onapp2vhi.inc.vinfra_wrapper as wrapper
-        wrapper.DOMAIN_AUTH = domain_auth
+        cfg.update(section="vhi", option="vinfra_domain_user", value=_domain_service_user['name'])
+        cfg.update(section="vhi", option="vinfra_domain_pass", value=_pwd)
         return True
 
     def create_service_user(self):
@@ -248,11 +238,8 @@ class Vhi:
                                  "domain": 'Default'}
 
         # Get List of users
-        if VHI_CREDS['vinfra_user'] != _service_user_payload['name']:
-            configs.set_new_value(section=configs.VHI, option="vinfra_user", value=_service_user_payload['name'])
-            vinfra_auth = configs.reset_auth()
-            import onapp2vhi.inc.vinfra_wrapper as wrapper
-            wrapper.VINFRA_AUTH = vinfra_auth
+        if cfg.vhi_conf['vinfra_user'] != _service_user_payload['name']:
+            cfg.update(section="vhi", option="vinfra_user", value=_service_user_payload['name'])
 
         if self.vinfra_domain != 'Default':
             domain_user = self._create_domain_service_user()
@@ -274,11 +261,8 @@ class Vhi:
                 # Generating new pwd for Service User and save it into config file, after check credentials again
                 self.vinfra_domain = 'Default'
                 new_pwd = self.update_user_password(user_login=_service_user_payload['name'])
-                self.vinfra_domain = VHI_CREDS['vinfra_domain']
-                configs.set_new_value(section=configs.VHI, option="vinfra_pass", value=new_pwd)
-                vinfra_auth = configs.reset_auth()
-                import onapp2vhi.inc.vinfra_wrapper as wrapper
-                wrapper.VINFRA_AUTH = vinfra_auth
+                self.vinfra_domain = cfg.vhi_conf['vinfra_domain']
+                cfg.update(section="vhi", option="vinfra_pass", value=new_pwd)
                 v_node = VinfraNode(channel_timeout=5)
                 exit_status, output = v_node.list_node()
                 if not exit_status_code_handler(exit_code=exit_status,
@@ -312,10 +296,7 @@ class Vhi:
             return False
 
         # Save password to cfg/config.cfg file and after that verify ability to get list of nodes
-        configs.set_new_value(section=configs.VHI, option="vinfra_pass", value=_pwd)
-        vinfra_auth = configs.reset_auth()
-        import onapp2vhi.inc.vinfra_wrapper as wrapper
-        wrapper.VINFRA_AUTH = vinfra_auth
+        cfg.update(section="vhi", option="vinfra_pass", value=_pwd)
         time.sleep(1)
         v_node = VinfraNode(channel_timeout=5)
         exit_status, output = v_node.list_node()
@@ -372,7 +353,7 @@ class Vhi:
         create_project = json.loads(output)
         self.project_id = create_project['id']
         self.project_name = create_project['name']
-        configs.set_new_value(configs.VHI, "vinfra_project", self.project_name)
+        cfg.update("vhi", "vinfra_project", self.project_name)
 
         # Storage Policies
         v_storage = VinfraStoragePolicies()

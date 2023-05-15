@@ -1,7 +1,6 @@
 import os
 
 from onapp2vhi.inc.helper import Helper
-from onapp2vhi.cfg.config_parser import VHI_CREDS
 from onapp2vhi.inc.vhi_ssh_keys import VhiSshKeys
 from onapp2vhi.inc.vhi_helpers import Vhi
 from onapp2vhi.inc.logger import logs
@@ -11,6 +10,9 @@ from onapp2vhi.inc.onapp_helpers import (
     check_user_role,
     VmHandler
 )
+from onapp2vhi.utilities.config import OnApp2VHIConfig
+
+cfg = OnApp2VHIConfig()
 
 
 def migrate_impl(user='',
@@ -58,7 +60,7 @@ def migrate_impl(user='',
     _file_name = os.path.join(_path, 'migration_logs/{user}/migrated')
     user_idn = ''
     if not network:
-        _network = VHI_CREDS['network']
+        _network = cfg.vhi_conf['network']
     else:
         _network = network
     if user:
@@ -193,7 +195,7 @@ def migrate_impl(user='',
 
             result_vm = vm_migrate(idn=_idn,
                                    vproj=vhi.project_name,
-                                   vdom=VHI_CREDS['vinfra_domain'],
+                                   vdom=cfg.vhi_conf['vinfra_domain'],
                                    network=network,
                                    vhi_obj=vhi,
                                    placement=placement)
