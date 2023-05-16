@@ -7,6 +7,8 @@ from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.utilities.template import CONFIG_TEMPLATE
 
 
+cfg = None
+
 def search_config():
     if Path("config.ini").is_file():
         return "config.ini"
@@ -57,7 +59,8 @@ def generate_example_config(ctx, param, value):
 )
 @click.version_option(onapp2vhi.__version__)
 def run(config):
-    OnApp2VHIConfig.load_config(config)
+    global cfg
+    cfg = OnApp2VHIConfig.load_config(config)
 
 
 @run.command()
@@ -81,7 +84,7 @@ def list_onapp_users(props="", find=""):
         list_onapp_users as list_onapp_users_impl,
     )
 
-    list_onapp_users_impl(props=props, find=find)
+    list_onapp_users_impl(cfg, props=props, find=find)
 
 
 @run.command()
@@ -104,14 +107,14 @@ def list_onapp_vms(props="", find=""):
         list_onapp_vms as list_onapp_vms_impl,
     )
 
-    list_onapp_vms_impl(props=props, find=find)
+    list_onapp_vms_impl(cfg, props=props, find=find)
 
 
 @run.command()
 def create_service_user():
     from onapp2vhi.inc.vhi_helpers import Vhi
 
-    vhi = Vhi()
+    vhi = Vhi(cfg)
     vhi.create_service_user()
 
 
@@ -153,6 +156,7 @@ def migrate(
     from onapp2vhi.ops.migrate import migrate_impl
 
     migrate_impl(
+        cfg,
         user=user,
         network=network,
         vm=vm,

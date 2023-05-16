@@ -6,10 +6,8 @@ from onapp2vhi.inc.onapp_helpers import get_vm_source_properties
 from onapp2vhi.inc.utils import exit_status_code_handler
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 
-cfg = OnApp2VHIConfig()
 
-
-def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install: bool):
+def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool, cloud_init_install: bool):
     if not idn:
         logs.error('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -25,7 +23,7 @@ def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install: b
 
     # -- STEP 1 --
     logs.info(f'{_spaces}{_dri_msg}STEP #1 -- OnApp: get source VM properties --', header=True)
-    _vm_properties = get_vm_source_properties(vm_idn=vm_idn)
+    _vm_properties = get_vm_source_properties(cfg, vm_idn=vm_idn)
     _vm_hv_ip = _vm_properties['hv_ip']
     _vm_ip_addr = _vm_properties['vm_ip_addr']
 

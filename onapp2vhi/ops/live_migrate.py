@@ -18,9 +18,8 @@ from onapp2vhi.inc.logger import logs
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 
-cfg = OnApp2VHIConfig()
 
-def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, placement=''):
+def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, network: str, vhi_obj, placement=''):
     if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -36,12 +35,12 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
 
     # -- STEP 1 --
     logs.info(f"{_spaces}{live_migration}STEP #1 -- OnApp: Get source VM properties --", header=True)
-    _vm_properties = get_vm_source_properties(vm_idn=vm_idn)
+    _vm_properties = get_vm_source_properties(cfg, vm_idn=vm_idn)
     _vm_hv_ip = _vm_properties['hv_ip']
     _vm_ip_addr = _vm_properties['vm_ip_addr']
     _hot_migrate = _vm_properties['hot_migrate']
     vhi = vhi_obj
-    _on_app_flavor = get_onapp_vm_flavor(vm_idn=vm_idn)
+    _on_app_flavor = get_onapp_vm_flavor(cfg, vm_idn=vm_idn)
     logs.debug(f'OnApp flavor: {_on_app_flavor}')
     result = vhi.flavor_handler(onapp_flavor=_on_app_flavor, placement=placement)
     if not result:
@@ -63,11 +62,11 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
 
     # -- STEP 2 --
     logs.info(f"{_spaces}{live_migration}STEP #2 -- OnApp: Get VM's NICs' params --", header=True)
-    _onapp_nics = get_onapp_vm_nics(idn)
+    _onapp_nics = get_onapp_vm_nics(cfg, idn)
 
     # -- STEP 3 --
     logs.info(f"{_spaces}{live_migration}STEP #3 -- OnApp: Get VM's disk info --", header=True)
-    _onapp_disks = get_onapp_vm_disks(idn)
+    _onapp_disks = get_onapp_vm_disks(cfg, idn)
 
     # -- STEP 4 --
     logs.info(f"{_spaces}{live_migration}STEP #4 -- OnApp: Check if VM is running on HV --", header=True)
@@ -133,14 +132,15 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
             break
 
     _vhi_vm_id = ''
-    _network = get_network_configuration(virtual_server_identifier=vm_idn, vinfra_project=_vhiproj)
+    _network = get_network_configuration(cfg, virtual_server_identifier=vm_idn, vinfra_project=_vhiproj)
     if not _network:
         logs.error("The network issue is hit. Could you please check logs.")
         return False
 
     logs.debug(f'NETWORK PARAMS: {_network}', separator=True)
     if not vm_created:
-        _vhi_vm_id = create_new_vhi_vm(vhi_ssh=_vhi_ssh,
+        _vhi_vm_id = create_new_vhi_vm(cfg,
+                                       vhi_ssh=_vhi_ssh,
                                        vinfra_access=vinfra_access,
                                        vm_idn=vm_idn,
                                        network=_network,
@@ -159,9 +159,9 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
 
     # -- Attach Security group to NIC
     # -- Enable Spoofing for NIC
-    iface_id = get_iface_from_specific_vs(vm_name=_vhi_vm_id)
-    security_group_id = transfer_firewall_rules_to_sg(vm_idn=vm_idn, vhiproj=_vhiproj)
-    attach_security_group_to_nic_and_enable_spoofing(vm_name=_vhi_vm_id, iface=iface_id, sg_id=security_group_id)
+    iface_id = get_iface_from_specific_vs(cfg, vm_name=_vhi_vm_id)
+    security_group_id = transfer_firewall_rules_to_sg(cfg, vm_idn=vm_idn, vhiproj=_vhiproj)
+    attach_security_group_to_nic_and_enable_spoofing(cfg, vm_name=_vhi_vm_id, iface=iface_id, sg_id=security_group_id)
 
     # -- STEP 7 --
     logs.info(f"{_spaces}{live_migration}STEP #7 -- VHI: define VM's hypervisor and disks --", header=True)

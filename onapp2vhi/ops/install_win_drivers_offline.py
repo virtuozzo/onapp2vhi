@@ -12,9 +12,10 @@ from onapp2vhi.inc.onapp_helpers import (
     activate_disk,
     deactivate_disk
 )
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 
-def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_install: bool):
+def vm_install_win_drivers_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool, cloud_init_install: bool):
     if not idn:
         logs.error('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -41,14 +42,14 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
 
     # -- STEP 1 --
     logs.info(f'{_spaces}{_dri_msg}STEP #1 -- OnApp: get source VM properties --', header=True)
-    _vm_properties = get_vm_source_properties(vm_idn=vm_idn)
+    _vm_properties = get_vm_source_properties(cfg, vm_idn=vm_idn)
     _vm_hv_ip = _vm_properties['hv_ip']
 
     # -- STEP 2 --
     logs.info(f"{_spaces}{_dri_msg}STEP #2 -- OnApp: Get VM primary disk info --", header=True)
-    _onappvm_primary_disk = get_onapp_vm_disks(vm_idn=idn, primary=True)
+    _onappvm_primary_disk = get_onapp_vm_disks(cfg, vm_idn=idn, primary=True)
     logs.info(f"OnApp VM PRIMARY DISK: {_onappvm_primary_disk}")
-    disk_type = get_disk_type(vm_idn=vm_idn)
+    disk_type = get_disk_type(cfg, vm_idn=vm_idn)
     x1 = 'X1'
     if disk_type == 'lvm':
         onappvm_disk_mapper = _onappvm_primary_disk.replace("onapp-", "onapp--").replace("/", "-").replace(
@@ -74,7 +75,7 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
 
     # -- STEP 4 --
     logs.info(f"{_spaces}{_dri_msg}STEP #4 -- OnApp: Activate VM disk --", header=True)
-    if not activate_disk(vm_idn=vm_idn, vm_ohv_ip=_vm_hv_ip):
+    if not activate_disk(cfg, vm_idn=vm_idn, vm_ohv_ip=_vm_hv_ip):
         logs.error('Disk ACTIVATION failed.')
         return False
 
@@ -165,7 +166,7 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
     ):
         return False
 
-    if not deactivate_disk(vm_idn=vm_idn, vm_ohv_ip=_vm_hv_ip):
+    if not deactivate_disk(cfg, vm_idn=vm_idn, vm_ohv_ip=_vm_hv_ip):
         logs.error('Disk DEACTIVATION failed.')
         return False
 

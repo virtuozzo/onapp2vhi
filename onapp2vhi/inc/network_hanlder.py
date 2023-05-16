@@ -1,31 +1,46 @@
 from onapp2vhi.inc.network_vhi import Network
 from onapp2vhi.inc.onapp_helpers import onapp_version
-from onapp2vhi.inc.network_onapp import *
+from onapp2vhi.inc.network_onapp import (
+    NetworkInterface,
+    NetworkInterfaces,
+    get_ip_range,
+    get_ip_net,
+    get_network_nameserver,
+    get_network_id_by_identifier,
+    get_virtual_server_ip_addresses,
+    get_virtual_server_interfaces,
+    get_virtual_server_hypervisor,
+    get_hypervisor_group_network_join,
+    get_hypervisor_group_id,
+    get_hypervisor_network_join,
+)
 from onapp2vhi.inc.logger import logs
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 
-def get_network_configuration(virtual_server_identifier: str, vinfra_project: str):
+def get_network_configuration(cfg: OnApp2VHIConfig, virtual_server_identifier: str, vinfra_project: str):
     data = {}
     networks_cmd = []
-    version = onapp_version()
+    version = onapp_version(cfg)
     vs_network_interfaces = NetworkInterfaces()
-    virtual_server_hypervisor_id = get_virtual_server_hypervisor(virtual_server_identifier)
-    hv_group_id = get_hypervisor_group_id(virtual_server_hypervisor_id)
-    virtual_server_nic = get_virtual_server_interfaces(virtual_server_identifier)
+    virtual_server_hypervisor_id = get_virtual_server_hypervisor(cfg, virtual_server_identifier)
+    hv_group_id = get_hypervisor_group_id(cfg, virtual_server_hypervisor_id)
+    virtual_server_nic = get_virtual_server_interfaces(cfg, virtual_server_identifier)
 
     for nic in virtual_server_nic:
         network_join = get_hypervisor_network_join(
-            virtual_server_hypervisor_id, nic["network_interface"]["network_join_id"]
+            cfg, virtual_server_hypervisor_id, nic["network_interface"]["network_join_id"]
         )
         if not network_join:
             logs.debug("The network is assigned to Compute Zone only", separator=True)
             network_join = get_hypervisor_group_network_join(
+                cfg,
                 hv_group_id,
                 nic["network_interface"]["network_join_id"]
             )
         network_identifier, _ = network_join.split('-')
         nic_id = nic["network_interface"]["id"]
-        vs_ip_addresses = get_virtual_server_ip_addresses(virtual_server_identifier, nic_id)
+        vs_ip_addresses = get_virtual_server_ip_addresses(cfg, virtual_server_identifier, nic_id)
         if not vs_ip_addresses:
             logs.warn(f'IP addresses are not assigned to network interface with ID: {nic_id}')
             continue
@@ -43,12 +58,12 @@ def get_network_configuration(virtual_server_identifier: str, vinfra_project: st
         data["ip_addresses"] = [ip_address['address'] for ip_address in vs_ip_addresses
                                 if ip_address['address'] != data["primary_ip"]]
         data["mac_address"] = nic["network_interface"]["mac_address"]
-        data["network_id"] = get_network_id_by_identifier(network_identifier)
-        data['network_nameserver'] = get_network_nameserver(data['network_id'], ipv4=True)
+        data["network_id"] = get_network_id_by_identifier(cfg, network_identifier)
+        data['network_nameserver'] = get_network_nameserver(cfg, data['network_id'], ipv4=True)
         data["ip_net_id"] = next((ip_address['ip_net_id'] for ip_address in vs_ip_addresses))
         data["ip_range_id"] = next((ip_address['ip_range_id'] for ip_address in vs_ip_addresses))
-        data['ip_net'] = get_ip_net(data['network_id'], data['ip_net_id'])
-        data['ip_range'] = get_ip_range(data['network_id'], data['ip_net_id'], data["ip_range_id"])
+        data['ip_net'] = get_ip_net(cfg, data['network_id'], data['ip_net_id'])
+        data['ip_range'] = get_ip_range(cfg, data['network_id'], data['ip_net_id'], data["ip_range_id"])
         if data["primary_ip"]:
             data["ip_addresses"].insert(0, data["primary_ip"][0])  # the primary IP should be first
             data["ip_addresses"] = list(set(data["ip_addresses"]))  # remove IP addr duplications
@@ -61,6 +76,7 @@ def get_network_configuration(virtual_server_identifier: str, vinfra_project: st
 
     for network in vs_network_interfaces.get_all():
         vhi_network = Network(
+            cfg,
             id='',
             name=f"network_{network.network_identifier}",
             vinfra_project=vinfra_project,

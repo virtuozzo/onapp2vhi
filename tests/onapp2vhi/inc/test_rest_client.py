@@ -5,24 +5,23 @@ from mock import patch, Mock, call
 from os.path import abspath, dirname, join, exists
 
 from onapp2vhi.inc.rest_client import OnAppRequests
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 
 # TODO! remove global inc.logger.logs references
 class OnAppRequestTest(TestCase):
 
-    @patch("onapp2vhi.inc.rest_client.OnApp2VHIConfig")
     @patch("onapp2vhi.inc.logger.logs")
-    def setUp(self, mock_logs, mock_config_ctor):
-        mock_config = Mock()
+    def setUp(self, mock_logs):
+        mock_config = Mock(spec=OnApp2VHIConfig)
         mock_config._config = Mock()
         mock_config.onapp_conf = {
             "url": "https://onapp2vhi.unittest.test",
             "email": "unittest@onapp2vhi.unittest.test",
             "api_key": "dummy_api_key",
         }
-        mock_config_ctor.return_value = mock_config
 
-        self.onapp_api = OnAppRequests()
+        self.onapp_api = OnAppRequests(mock_config)
 
     @patch("requests.get")
     def test_onapprequests_get_not_authorized(self, mock_requests_get):

@@ -1,10 +1,28 @@
-from onapp2vhi.inc.onapp_helpers import *
+import json
+import re
+import xml.etree.ElementTree as KVMxml
+
+from onapp2vhi.inc.onapp_helpers import (
+    activate_disk,
+    deactivate_disk,
+    attach_security_group_to_nic_and_enable_spoofing,
+    transfer_firewall_rules_to_sg,
+    get_iface_from_specific_vs,
+    create_new_vhi_vm,
+    get_onapp_vm_disks,
+    get_onapp_vm_nics,
+    get_onapp_vm_flavor,
+    get_vm_source_properties,
+)
+from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.network_hanlder import get_network_configuration
+from onapp2vhi.inc.logger import logs
+from onapp2vhi.inc.utils import exit_status_code_handler
+from onapp2vhi.inc.ssh_connector import SSH
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 
-cfg = OnApp2VHIConfig()
 
-def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, placement=''):
+def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, network: str, vhi_obj, placement=''):
     # ToDo
     #  verify IP address before running script
     if not idn:
@@ -22,10 +40,10 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
 
     # -- STEP 1 --
     logs.info(f"{_spaces}{_cm_msg}STEP #1 -- OnApp: Get source VM properties --", header=True)
-    _vm_properties = get_vm_source_properties(vm_idn=VM_IDn)
+    _vm_properties = get_vm_source_properties(cfg, vm_idn=VM_IDn)
     _vm_hv_ip = _vm_properties['hv_ip']
     vhi = vhi_obj
-    _on_app_flavor = get_onapp_vm_flavor(vm_idn=VM_IDn)
+    _on_app_flavor = get_onapp_vm_flavor(cfg, vm_idn=VM_IDn)
     logs.debug(f'OnApp flavor: {_on_app_flavor}')
     result = vhi.flavor_handler(onapp_flavor=_on_app_flavor, placement=placement)
     if not result:
@@ -40,11 +58,11 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
 
     # -- STEP 2 --
     logs.info(f"{_spaces}{_cm_msg}STEP #2 -- OnApp: Get VM's NICs' params --", header=True)
-    _onapp_nics = get_onapp_vm_nics(idn)
+    _onapp_nics = get_onapp_vm_nics(cfg, idn)
 
     # -- STEP 3 --
     logs.info(f"{_spaces}{_cm_msg}STEP #3 -- OnApp: get VM's disk info --", header=True)
-    _onapp_disks = get_onapp_vm_disks(idn)
+    _onapp_disks = get_onapp_vm_disks(cfg, idn)
 
     # -- STEP 4 --
     logs.info(f"{_spaces}{_cm_msg}STEP #4 -- OnApp: check if VM [{VM_IDn}] is running on HV [{_vm_hv_ip}] --",
@@ -89,14 +107,15 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
             break
 
     _vhi_vm_id = ''
-    _network = get_network_configuration(virtual_server_identifier=VM_IDn, vinfra_project=_vhiproj)
+    _network = get_network_configuration(cfg, virtual_server_identifier=VM_IDn, vinfra_project=_vhiproj)
     if not _network:
         logs.error("The network issue is hit. Could you please check logs.")
         return False
 
     logs.debug(f'NETWORK PARAMS: {_network}', separator=True)
     if not vm_created:
-        _vhi_vm_id = create_new_vhi_vm(vhi_ssh=_vhi_ssh,
+        _vhi_vm_id = create_new_vhi_vm(cfg,
+                                       vhi_ssh=_vhi_ssh,
                                        vinfra_access=vinfra_access,
                                        vm_idn=VM_IDn,
                                        network=_network,
@@ -114,9 +133,9 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
 
     # -- Attach Security group to NIC
     # -- Enable Spoofing for NIC
-    iface_id = get_iface_from_specific_vs(vm_name=_vhi_vm_id)
-    security_group_id = transfer_firewall_rules_to_sg(vm_idn=VM_IDn, vhiproj=_vhiproj)
-    attach_security_group_to_nic_and_enable_spoofing(vm_name=_vhi_vm_id, iface=iface_id, sg_id=security_group_id)
+    iface_id = get_iface_from_specific_vs(cfg, vm_name=_vhi_vm_id)
+    security_group_id = transfer_firewall_rules_to_sg(cfg, vm_idn=VM_IDn, vhiproj=_vhiproj)
+    attach_security_group_to_nic_and_enable_spoofing(cfg, vm_name=_vhi_vm_id, iface=iface_id, sg_id=security_group_id)
 
     # -- STEP 6 --
     logs.info(f"{_spaces}{_cm_msg}STEP #6 -- VHI: define VHI VM's hypervisor and disks --", header=True)
@@ -171,7 +190,7 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
     for ovm_dsk in _onapp_disks:
         store_idn = ovm_dsk['datastore_idn']
         disk_idn = ovm_dsk['disk_idn']
-        activate_disk(vm_idn=VM_IDn, vm_ohv_ip=_vm_hv_ip, multiply_disks=True, disk=ovm_dsk)
+        activate_disk(cfg, vm_idn=VM_IDn, vm_ohv_ip=_vm_hv_ip, multiply_disks=True, disk=ovm_dsk)
         exit_status, output = _hv_ssh.execute(
             f"for port in {{2048..2064}}; do nbd=`qemu-nbd -f -t --nocache --aio=native -p $port -f raw "
             f"/dev/{store_idn}/{disk_idn} --fork 2>&1` ; res=$? ; if [[ $res == 0 ]] && [[ $nbd == \"\" ]];"

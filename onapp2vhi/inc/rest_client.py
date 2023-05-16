@@ -36,9 +36,7 @@ class OnAppRequests:
     Choose your request method and give query(route) to find something
     """
 
-    def __init__(self):
-        cfg = OnApp2VHIConfig()
-
+    def __init__(self, cfg: OnApp2VHIConfig):
         self._cookie = ""
         self.log = logs
         self.url = cfg.onapp_conf["url"]
