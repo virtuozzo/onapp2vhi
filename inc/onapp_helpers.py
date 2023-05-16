@@ -885,7 +885,7 @@ def create_new_vhi_vm(vhi_ssh: SSH,
         exit_status, output = vhi_ssh.execute(
             f"for ((i=1;i<=100;i++)); do {vinfra_access} service compute server stop {_vhi_vm_id} --hard --wait"
             f" --timeout 15 -f json | jq -r -c [.name,.id,.vm_state,.power_state,.status] ;  "
-            f"pwstate=\"`vinfra service compute server show {_vhi_vm_id} -f json | jq -r .power_state `\" ; "
+            f"pwstate=\"`{vinfra_access} service compute server show {_vhi_vm_id} -f json | jq -r .power_state `\" ; "
             f"echo \"$pwstate\" ; if [[ \"$pwstate\" == \"SHUTDOWN\" ]];"
             f" then break; fi ; sleep 1; done 2>/dev/null",
             real_data=True

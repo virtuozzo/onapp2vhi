@@ -177,7 +177,7 @@ def migrate(user='',
                               f'Please install GRUB/WIN_DRIVERS via these options:'
                               f' "install_bootloader_offline --vm=\'identifier\'" |'
                               f' "install_win_drivers_offline --vm=\'identifier\'"')
-                logs.write_log(file_path=f"{_file_name}_user_{user['id']}_manual_migrate_vm",
+                logs.write_log(file_path=f"{_file_name.format(user=user['id'])}_user_{user['id']}_manual_migrate_vm",
                                msg=msg_failed)
                 continue
 
