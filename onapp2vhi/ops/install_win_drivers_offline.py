@@ -12,6 +12,7 @@ from onapp2vhi.inc.onapp_helpers import (
     activate_disk,
     deactivate_disk
 )
+from onapp2vhi.utilities.web import download_file
 
 
 def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_install: bool):
@@ -105,6 +106,10 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
     logs.info(f'File path: {cloudbase_init_path}')
     logs.info(f'File path: {vz_guest_tool_path}')
 
+    if not os.path.exists(vz_guest_tool_path):
+        download_file("http://downloads.repo.onapp.com/vz-guest-tools-win.tar",
+                      os.path.join(package_path, "scripts"))
+
     if vz_guest_tools:
         cmd = f"scp -r {vz_guest_tool_path} root@{_vm_hv_ip}:/mnt/{vm_idn}/vz-guest-tools-win.tar"
         [exit_status, output] = ssh_run(cmd)
@@ -114,6 +119,10 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
                         f"Couldn't transfer vz-guest-tools-win into VM. Output\n\t{output}"
         ):
             return False
+
+    if not os.path.exists(cloudbase_init_path):
+        download_file("https://cloudbase.it/downloads/CloudbaseInitSetup_Stable_x64.msi",
+                      os.path.join(package_path, "scripts"))
 
     if cloud_init_install:
         cmd = f"scp -r {cloudbase_init_path}  root@{_vm_hv_ip}:/mnt/{vm_idn}/CloudbaseInitSetup_Stable_x64.msi"
