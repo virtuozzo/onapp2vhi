@@ -4,6 +4,7 @@ from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.ssh_connector import ssh_run, SSH
 from onapp2vhi.inc.onapp_helpers import get_vm_source_properties
 from onapp2vhi.inc.utils import exit_status_code_handler
+from onapp2vhi.utilities.web import download_file
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 
@@ -47,6 +48,10 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool,
     logs.info(f'File path: {cloudbase_init_path}')
     logs.info(f'File path: {vz_guest_tool_path}')
 
+    if not os.path.exists(cloudbase_init_path):
+        download_file("https://cloudbase.it/downloads/CloudbaseInitSetup_Stable_x64.msi",
+                      os.path.join(package_path, "scripts"))
+
     if cloud_init_install:
         cmd = f'scp -P{cfg.onapp_conf["hv_ssh_port"]} {Helper.SCP_OPTS.value} {cloudbase_init_path}' \
               f' Administrator@{_vm_ip_addr}:C:/ 2>/dev/null'
@@ -60,6 +65,10 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool,
                         f"\t\tOutput: {output}"
         ):
             return False
+
+    if not os.path.exists(vz_guest_tool_path):
+        download_file("http://downloads.repo.onapp.com/vz-guest-tools-win.tar",
+                 os.path.join(package_path, "scripts"))
 
     if vz_guest_tools:
         cmd = f'scp -P{cfg.onapp_conf["hv_ssh_port"]} {Helper.SCP_OPTS.value}' \
