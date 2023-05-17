@@ -167,7 +167,8 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                 continue
 
             if not _vm['built_from_iso'] and not _vm['built_from_ova']:
-                result = bootloader_drivers(idn=_idn,
+                result = bootloader_drivers(cfg,
+                                            idn=_idn,
                                             vz_guest_tools=vz_guest_tools,
                                             cloud_init_install=cloud_init)
             else:
