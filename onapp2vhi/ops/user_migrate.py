@@ -21,7 +21,6 @@ def user_migrate_impl(cfg: OnApp2VHIConfig, idn=''):
         exit(1)
 
     user_property = idn
-    _default_project = True
     # OnApp URLS:
     if idn.isdigit():
         _type = 'ID'
@@ -50,7 +49,6 @@ def user_migrate_impl(cfg: OnApp2VHIConfig, idn=''):
         if not result:
             return False
 
-        _default_project = False
     result = vhi.create_user(vhi_user_data)
     if result:
         _ssh_key = VhiSshKeys(cfg, vhi_user_data, get_user_ssh_keys(cfg, _user_data))

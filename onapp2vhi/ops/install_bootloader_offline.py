@@ -32,7 +32,6 @@ def vm_install_bootloader_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools
     logs.info(f'{_spaces}{_boot_msg}STEP #1 --OnApp: get source VM properties--', header=True)
     _vm_properties = get_vm_source_properties(cfg, vm_idn=vm_idn)
     _vm_hv_ip = _vm_properties['hv_ip']
-    _vm_ip_addr = _vm_properties['vm_ip_addr']
 
     # -- STEP 2 --
     logs.info(f'{_spaces}{_boot_msg}STEP #2 -- OnApp: GET OnApp VM disk info --', header=True)
@@ -126,4 +125,3 @@ def vm_install_bootloader_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools
         return True
 
     return True
-

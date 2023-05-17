@@ -9,6 +9,7 @@ from onapp2vhi.utilities.template import CONFIG_TEMPLATE
 
 cfg = None
 
+
 def search_config():
     if Path("config.ini").is_file():
         return "config.ini"

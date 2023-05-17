@@ -118,9 +118,7 @@ class Vhi:
         :return:
         """
         _flavor_name = onapp_flavor['name']
-        if placement:
-            _placement_name = placement
-        _payload = self._vhi_flavor_payload(vm_data=onapp_flavor)
+        self._vhi_flavor_payload(vm_data=onapp_flavor)
         _vinfra = VinfraFlavor(self.cfg, service_user=True)
         vinfra_placement = VinfraPlacement(self.cfg)
         exit_status, output = _vinfra.flavor_list()
@@ -195,8 +193,8 @@ class Vhi:
             if not self.cfg.vhi_conf['vinfra_domain_user'] or self.cfg.vhi_conf['vinfra_domain_user'] == "''" or\
                     self.cfg.vhi_conf['vinfra_domain_user'] != _domain_service_user['name']:
                 self.cfg.update(section="vhi",
-                                      option="vinfra_domain_user",
-                                      value=_domain_service_user['name'])
+                                option="vinfra_domain_user",
+                                value=_domain_service_user['name'])
 
             v_image = VinfraImage(self.cfg, channel_timeout=5)
             exit_status, output = v_image.images()
@@ -274,11 +272,11 @@ class Vhi:
                 except AssertionError:
                     logs.error(f'Service User password has NOT been changed. Output from getting node list:\n{output}')
                     return False
-                logs.info(msg=f'SERVICE USER password has been updated,'
-                              f' credentials saved into `cfg/config.cfg`')
+                logs.info(msg='SERVICE USER password has been updated,'
+                              ' credentials saved into `cfg/config.cfg`')
                 return True
 
-            logs.info(msg=f'SERVICE USER credentials are valid and stored in `cfg/config.cfg`')
+            logs.info(msg='SERVICE USER credentials are valid and stored in `cfg/config.cfg`')
             return True
 
         exit_status, output = v_user.create(user_data=_service_user_payload, pwd=_pwd)
@@ -307,7 +305,7 @@ class Vhi:
             logs.error(f'Service User password has NOT been changed. Output from getting node list:\n{output}')
             return False
 
-        logs.info(msg=f'Service user has been created, credentials saved into `cfg/config.cfg`')
+        logs.info(msg='Service user has been created, credentials saved into `cfg/config.cfg`')
         return True
 
     def create_project(self, user_data: dict):

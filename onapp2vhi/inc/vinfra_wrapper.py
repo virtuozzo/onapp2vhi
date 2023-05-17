@@ -171,9 +171,9 @@ class VinfraServerInterface(VinfraServer):
         if vm_name:
             cmd += f' --server {vm_name}'
         if spoofing:
-            cmd += f' --spoofing-protection-enable '
+            cmd += ' --spoofing-protection-enable '
         else:
-            cmd += f' --spoofing-protection-disable '
+            cmd += ' --spoofing-protection-disable '
         if kwargs:
             for key, value in kwargs.items():
                 cmd += f'--{key} {value} '
@@ -186,7 +186,7 @@ class VinfraServerInterface(VinfraServer):
         --server <server>
         Virtual machine ID or name
         """
-        cmd: str = self.vinfra_root + f' list '
+        cmd: str = self.vinfra_root + ' list '
         if server_name:
             cmd += f" --server {server_name}"
         if kwargs:
@@ -310,9 +310,9 @@ class VinfraProject(VinfraDomain):
         if description:
             cmd += f' --description "{description}"'
         if enable:
-            cmd += f' --enable'
+            cmd += ' --enable'
         else:
-            cmd += f' --disable'
+            cmd += ' --disable'
         return self.execute(cmd)
 
     def projects(self, project_name: Optional[str] = None, **kwargs):

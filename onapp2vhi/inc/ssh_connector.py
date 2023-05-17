@@ -4,7 +4,6 @@ import paramiko
 from time import sleep
 
 from onapp2vhi.inc.logger import logs
-from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 
 NBYTES = 1024

@@ -103,7 +103,7 @@ class VhiSshKeys:
         if not self._log_handler(response=response):
             return False
 
-        _headers.update({f'Cookie': f'session1={response.cookies["session1"]}'})
+        _headers.update({'Cookie': f'session1={response.cookies["session1"]}'})
         _proj_url = ""
         if not check_user_role(self._user):
             _proj_url = self._user_projects_url

@@ -1,8 +1,6 @@
 import time
-import os
 from unittest import TestCase
 from mock import patch, Mock, call
-from os.path import abspath, dirname, join, exists
 
 from onapp2vhi.inc.rest_client import OnAppRequests
 from onapp2vhi.utilities.config import OnApp2VHIConfig
@@ -226,7 +224,7 @@ class OnAppRequestTest(TestCase):
                  json='data1',
                  auth=('unittest@onapp2vhi.unittest.test', 'dummy_api_key'),
                  _headers={'Accept': 'application/json',
-                          'Content-type': 'application/json; charset=utf-8',
-                          'Connection': 'keep-alive'})
+                           'Content-type': 'application/json; charset=utf-8',
+                           'Connection': 'keep-alive'})
         ])
         self.assertIsNotNone(result)

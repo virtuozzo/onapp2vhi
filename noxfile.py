@@ -10,7 +10,7 @@ def lint(session):
 @nox.session
 def style(session):
     session.install("flake8==3.9.2")
-    session.run("flake8", "onapp2vhi/")
+    session.run("flake8", "onapp2vhi/", "tests/")
 
 
 @nox.session
