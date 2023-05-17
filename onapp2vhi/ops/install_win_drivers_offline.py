@@ -65,7 +65,7 @@ def vm_install_win_drivers_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tool
 
     # -- STEP 3 --
     logs.info(f"{_spaces}{_dri_msg}STEP #3 -- OnApp: Check if VM is running on hypervisor --", header=True)
-    _hv_ssh = SSH(**{'host': _vm_hv_ip})
+    _hv_ssh = SSH(**{'host': _vm_hv_ip, 'ssh_key': cfg.ssh_key})
     exit_status, output = _hv_ssh.execute(f'virsh dominfo {vm_idn}')
     if not exit_status:
         logs.info("VM IS RUNNING.\n ")

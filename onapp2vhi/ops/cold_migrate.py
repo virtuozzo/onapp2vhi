@@ -67,7 +67,7 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
     # -- STEP 4 --
     logs.info(f"{_spaces}{_cm_msg}STEP #4 -- OnApp: check if VM [{VM_IDn}] is running on HV [{_vm_hv_ip}] --",
               header=True)
-    _hv_ssh = SSH(**{'host': _vm_hv_ip})
+    _hv_ssh = SSH(**{'host': _vm_hv_ip, 'ssh_key': cfg.ssh_key})
     exit_status, output = _hv_ssh.execute(f"virsh list | grep {VM_IDn}")
     if output:
         logs.warn("VM IS RUNNING.\n PLEASE, STOP THE VM BEFORE ITS OFFLINE MIGRATION.")
@@ -83,7 +83,7 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
     vinfra_access = f"{cfg.ADMIN_AUTH} --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
     if cfg.vhi_conf['vinfra_domain'] != 'Default':
         vinfra_access = f"{cfg.DOMAIN_AUTH}  --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
-    _vhi_ssh = SSH(**{'host': cfg.vhi_conf['cp_ip'], 'port': cfg.vhi_conf['cloud_ssh_port']})
+    _vhi_ssh = SSH(**{'host': cfg.vhi_conf['cp_ip'], 'port': cfg.vhi_conf['cloud_ssh_port'], 'ssh_key': cfg.ssh_key})
     exit_status, output = _vhi_ssh.execute(f"{cfg.ADMIN_AUTH} service compute server list --long -f json")
     if not exit_status_code_handler(
             exit_code=exit_status,
@@ -148,7 +148,7 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
         logs.error("Error: Destination Appliance network is not configured properly:")
         return False
 
-    _vhi_hv_ssh = SSH(**{'host': _vhi_hv_ip})
+    _vhi_hv_ssh = SSH(**{'host': _vhi_hv_ip, 'ssh_key': cfg.ssh_key})
     exit_status, output = _vhi_hv_ssh.execute(f"{vinfra_access} service compute server volume list"
                                               f" --server {_vhi_vm_id} -f json | jq -c 2>/dev/null")
     vhivm_disks = json.loads(output)

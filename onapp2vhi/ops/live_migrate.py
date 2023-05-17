@@ -70,7 +70,7 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
 
     # -- STEP 4 --
     logs.info(f"{_spaces}{live_migration}STEP #4 -- OnApp: Check if VM is running on HV --", header=True)
-    _hv_ssh = SSH(**{'host': _vm_hv_ip})
+    _hv_ssh = SSH(**{'host': _vm_hv_ip, 'ssh_key': cfg.ssh_key})
     exit_status, output = _hv_ssh.execute(f"virsh list | grep {vm_idn} 2>/dev/null")
     if not exit_status_code_handler(
             exit_code=exit_status,
@@ -175,7 +175,7 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
                    f" | Output: [{output}]")
         return False
 
-    _vhi_hv_ssh = SSH(**{'host': _vhi_hv_ip})
+    _vhi_hv_ssh = SSH(**{'host': _vhi_hv_ip, 'ssh_key': cfg.ssh_key})
     exit_status, output = _vhi_hv_ssh.execute(f"{vinfra_access} service compute server volume list"
                                               f" --server {_vhi_vm_id} -f json | jq -c 2>/dev/null")
     vhivm_disks = json.loads(output)

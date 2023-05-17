@@ -41,10 +41,10 @@ def vm_install_bootloader_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools
 
     # -- STEP 3 --
     logs.info(f'{_spaces}{_boot_msg}STEP #3 -- OnApp: check if VM is running on Hypervisor --', header=True)
-    _hv_ssh = SSH(**{'host': _vm_hv_ip})
+    _hv_ssh = SSH(**{'host': _vm_hv_ip, 'ssh_key': cfg.ssh_key})
     exit_status, output = _hv_ssh.execute(f'virsh dominfo {vm_idn}')
     package_path = dirname(__file__)
-    xml_config = GenerateXmlConfig(config_path=join(package_path, 'scripts'), vm_idn=vm_idn, hv_ip=_vm_hv_ip)
+    xml_config = GenerateXmlConfig(cfg, config_path=join(package_path, 'scripts'), vm_idn=vm_idn, hv_ip=_vm_hv_ip)
     if not exit_status:
         vm_is_running = True
         logs.info("-- OnApp: VM IS RUNNING.\n ")

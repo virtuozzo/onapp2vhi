@@ -30,7 +30,7 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool,
 
     # -- STEP 2 --
     logs.info(f'{_spaces}{_dri_msg}STEP #2 -- OnApp: Check if VM is running on HYPERVISOR --', header=True)
-    _hv_ssh = SSH(**{'host': _vm_hv_ip})
+    _hv_ssh = SSH(**{'host': _vm_hv_ip, 'ssh_key': cfg.ssh_key})
     exit_status, output = _hv_ssh.execute(f'virsh dominfo {vm_idn}')
     if exit_status:
         logs.error("VM is NOT running!")
@@ -86,7 +86,7 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool,
 
     # -- STEP 4 --
     logs.info(f'{_spaces}{_dri_msg}STEP #4 -- OnApp: INSTALL DRIVERS for VM[IP:{_vm_ip_addr}] --', header=True)
-    _vm_ssh = SSH(**{'host': _vm_ip_addr, 'username': 'Administrator'})
+    _vm_ssh = SSH(**{'host': _vm_ip_addr, 'username': 'Administrator', 'ssh_key': cfg.ssh_key})
     if cloud_init_install:
         exit_status, output = _vm_ssh.execute('cd C:; msiexec /i CloudbaseInitSetup_Stable_x64.msi /qn /l*v log.txt')
         if not exit_status_code_handler(

@@ -47,7 +47,9 @@ class Vhi:
         self.domain_id = self.cfg.vhi_conf['domain_id']
         self._storage_id = ""
         self._storage_name = ""
-        self._vhi_ssh = SSH(**{'host': self.cfg.vhi_conf['cp_ip'], 'port': self.cfg.vhi_conf['cloud_ssh_port']})
+        self._vhi_ssh = SSH(**{'host': self.cfg.vhi_conf['cp_ip'],
+                               'port': self.cfg.vhi_conf['cloud_ssh_port'],
+                               'ssh_key': self.cfg.ssh_key})
 
     @staticmethod
     def _vhi_flavor_payload(vm_data: dict):

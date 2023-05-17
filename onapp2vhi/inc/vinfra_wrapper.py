@@ -20,7 +20,8 @@ class VinfraBase:
             _host = cfg.vhi_conf['cp_ip']
         self.ssh = SSH(**{"host": _host,
                           "connect_timeout": connect_timeout,
-                          "channel_timeout": channel_timeout})
+                          "channel_timeout": channel_timeout,
+                          "ssh_key": cfg.ssh_key})
         self.vinfra_root = cfg.ADMIN_AUTH
         if service_user:
             self.vinfra_root = cfg.VINFRA_AUTH

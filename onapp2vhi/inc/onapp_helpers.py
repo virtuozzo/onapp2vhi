@@ -687,7 +687,7 @@ class VmHandler:
 class GenerateXmlConfig:
     RECOVERY_TEMPLATE = 'ls /onapp/tools/recovery/recovery-centos-7.*.{file} | tail -1'
 
-    def __init__(self, config_path: str, vm_idn: str, hv_ip: str):
+    def __init__(self, cfg: OnApp2VHIConfig, config_path: str, vm_idn: str, hv_ip: str):
         """
         Generates Recovery .xml file for VM
         :param vm_idn:
@@ -701,7 +701,7 @@ class GenerateXmlConfig:
         self._config_path = config_path
         self._recovery_mg_file = join(self._config_path, 'recovery.xml.mg')
         self._recovery_xml = join(self._config_path, 'recovery.xml')
-        self.hv_ssh = SSH(**{"host": hv_ip})
+        self.hv_ssh = SSH(**{"host": hv_ip, 'ssh_key': cfg.ssh_key})
 
     def shut_down_vm(self):
         """
@@ -783,7 +783,7 @@ def activate_disk(cfg: OnApp2VHIConfig, vm_idn: str, vm_ohv_ip: str, multiply_di
     :return:
     """
     logs.info(f"{_spaces}-- OnApp: HV ACTIVATING DISK --", header=True)
-    hv_ssh = SSH(**{"host": vm_ohv_ip})
+    hv_ssh = SSH(**{"host": vm_ohv_ip, 'ssh_key': cfg.ssh_key})
     ovm_dsk = disk
     ds_type = None
     store_idn = None
@@ -837,7 +837,7 @@ def deactivate_disk(cfg: OnApp2VHIConfig, vm_idn: str, vm_ohv_ip: str, **kwargs)
     :return:
     """
 
-    hv_ssh = SSH(**{"host": vm_ohv_ip})
+    hv_ssh = SSH(**{"host": vm_ohv_ip, 'ssh_key': cfg.ssh_key})
     if not kwargs:
         _onapp_disks = get_onapp_vm_disks(cfg, vm_idn)
         ovm_dsk = [_disk for _disk in _onapp_disks if _disk['primary']][0]
