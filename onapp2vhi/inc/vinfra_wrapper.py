@@ -1,30 +1,34 @@
 from typing import Optional, Tuple, Dict
-from onapp2vhi.cfg.config_parser import VHI_CREDS, ADMIN_AUTH, VINFRA_AUTH, DOMAIN_AUTH
+
 from onapp2vhi.inc.ssh_connector import SSH, CONNECT_TIMEOUT, CHANNEL_TIMEOUT
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 
 class VinfraBase:
 
-    def __init__(self, access_domain: bool = False,
+    def __init__(self,
+                 cfg: OnApp2VHIConfig,
+                 access_domain: bool = False,
                  service_user: bool = False,
                  domain_service_user: bool = False,
                  connect_timeout: int = CONNECT_TIMEOUT,
                  channel_timeout: int = CHANNEL_TIMEOUT,
                  cp_ip: bool = False):
         self.cp_ip = cp_ip
-        _host = VHI_CREDS['hv_ip']
+        _host = cfg.vhi_conf['hv_ip']
         if self.cp_ip:
-            _host = VHI_CREDS['cp_ip']
+            _host = cfg.vhi_conf['cp_ip']
         self.ssh = SSH(**{"host": _host,
                           "connect_timeout": connect_timeout,
-                          "channel_timeout": channel_timeout})
-        self.vinfra_root = ADMIN_AUTH
+                          "channel_timeout": channel_timeout,
+                          "ssh_key": cfg.ssh_key})
+        self.vinfra_root = cfg.ADMIN_AUTH
         if service_user:
-            self.vinfra_root = VINFRA_AUTH
+            self.vinfra_root = cfg.VINFRA_AUTH
         if domain_service_user:
-            self.vinfra_root = DOMAIN_AUTH
+            self.vinfra_root = cfg.DOMAIN_AUTH
         if access_domain:
-            self.vinfra_root += f" --vinfra-domain={VHI_CREDS['vinfra_domain']}"
+            self.vinfra_root += f" --vinfra-domain={cfg.vhi_conf['vinfra_domain']}"
 
     def execute(self, cmd: str, long: bool = False, json: bool = True) -> Tuple[int, str]:
         if long:
@@ -36,12 +40,15 @@ class VinfraBase:
 
 class VinfraServiceCompute(VinfraBase):
 
-    def __init__(self, service_user: bool = False,
+    def __init__(self,
+                 cfg: OnApp2VHIConfig,
+                 service_user: bool = False,
                  domain_service_user: bool = False,
                  connect_timeout: int = CONNECT_TIMEOUT,
                  access_domain: bool = False,
                  channel_timeout: int = CHANNEL_TIMEOUT):
-        super().__init__(service_user=service_user,
+        super().__init__(cfg,
+                         service_user=service_user,
                          access_domain=access_domain,
                          domain_service_user=domain_service_user,
                          connect_timeout=connect_timeout,
@@ -51,10 +58,13 @@ class VinfraServiceCompute(VinfraBase):
 
 class VinfraNode(VinfraServiceCompute):
 
-    def __init__(self, service_user: bool = True,
+    def __init__(self,
+                 cfg: OnApp2VHIConfig,
+                 service_user: bool = True,
                  connect_timeout: int = CONNECT_TIMEOUT,
                  channel_timeout: int = CHANNEL_TIMEOUT):
-        super().__init__(service_user=service_user,
+        super().__init__(cfg,
+                         service_user=service_user,
                          connect_timeout=connect_timeout,
                          channel_timeout=channel_timeout)
         self.vinfra_root += ' node'
@@ -70,11 +80,14 @@ class VinfraNode(VinfraServiceCompute):
 
 class VinfraImage(VinfraServiceCompute):
 
-    def __init__(self, access_domain: bool = True,
+    def __init__(self,
+                 cfg: OnApp2VHIConfig,
+                 access_domain: bool = True,
                  domain_service_user: bool = True,
                  connect_timeout: int = CONNECT_TIMEOUT,
                  channel_timeout: int = CHANNEL_TIMEOUT):
-        super().__init__(access_domain=access_domain,
+        super().__init__(cfg,
+                         access_domain=access_domain,
                          domain_service_user=domain_service_user,
                          connect_timeout=connect_timeout,
                          channel_timeout=channel_timeout)
@@ -91,15 +104,15 @@ class VinfraImage(VinfraServiceCompute):
 
 class VinfraDomain(VinfraBase):
 
-    def __init__(self):
-        VinfraBase.__init__(self)
+    def __init__(self, cfg: OnApp2VHIConfig):
+        VinfraBase.__init__(self, cfg)
         self.vinfra_root += ' domain'
 
 
 class VinfraServer(VinfraServiceCompute):
 
-    def __init__(self, service_user: bool = False):
-        super().__init__(service_user=service_user)
+    def __init__(self, cfg: OnApp2VHIConfig, service_user: bool = False):
+        super().__init__(cfg, service_user=service_user)
         self.vinfra_root += ' server'
 
     def create(self, server_name: str, **kwargs):
@@ -133,8 +146,8 @@ class VinfraServer(VinfraServiceCompute):
 
 class VinfraServerInterface(VinfraServer):
 
-    def __init__(self):
-        VinfraServer.__init__(self)
+    def __init__(self, cfg: OnApp2VHIConfig):
+        VinfraServer.__init__(self, cfg)
         self.vinfra_root += ' iface'
 
     def set(self, iface: str, vm_name: str = None, spoofing: bool = False, **kwargs):
@@ -184,8 +197,8 @@ class VinfraServerInterface(VinfraServer):
 
 class VinfraSecurityGroups(VinfraServiceCompute):
 
-    def __init__(self):
-        VinfraServiceCompute.__init__(self)
+    def __init__(self, cfg: OnApp2VHIConfig):
+        VinfraServiceCompute.__init__(self, cfg)
         self.vinfra_root += ' security-group'
 
     def create(self, name: str, description: Optional[str] = None):
@@ -227,8 +240,8 @@ class VinfraSecurityGroups(VinfraServiceCompute):
 
 class VinfraSGRules(VinfraServiceCompute):
 
-    def __init__(self):
-        VinfraServiceCompute.__init__(self)
+    def __init__(self, cfg: OnApp2VHIConfig):
+        VinfraServiceCompute.__init__(self, cfg)
         self.vinfra_root += ' security-group rule '
 
     def create(self, sg_name: str, **kwargs):
@@ -285,8 +298,8 @@ class VinfraSGRules(VinfraServiceCompute):
 
 class VinfraProject(VinfraDomain):
 
-    def __init__(self):
-        VinfraDomain.__init__(self)
+    def __init__(self, cfg: OnApp2VHIConfig):
+        VinfraDomain.__init__(self, cfg)
         self.vinfra_root += ' project'
 
     def create(self, project_name: str, domain: str, description: Optional[str] = None, enable=True):
@@ -329,8 +342,8 @@ class VinfraProject(VinfraDomain):
 
 class VinfraFlavor(VinfraServiceCompute):
 
-    def __init__(self, service_user: bool = False):
-        super().__init__(service_user=service_user)
+    def __init__(self, cfg: OnApp2VHIConfig, service_user: bool = False):
+        super().__init__(cfg, service_user=service_user)
         self.vinfra_root += ' flavor'
 
     def create(self, flavor_name: str, vcpus: int, ram: int):
@@ -354,8 +367,8 @@ class VinfraFlavor(VinfraServiceCompute):
 
 class VinfraUser(VinfraBase):
 
-    def __init__(self, cp_ip: bool = True):
-        super().__init__(cp_ip=cp_ip)
+    def __init__(self, cfg: OnApp2VHIConfig, cp_ip: bool = True):
+        super().__init__(cfg, cp_ip=cp_ip)
         self.vinfra_root += ' domain user'
 
     def user_list(self, domain: str):
@@ -438,10 +451,13 @@ class VinfraUser(VinfraBase):
 
 class VinfraQuotas(VinfraServiceCompute):
 
-    def __init__(self, service_user: bool = True,
+    def __init__(self,
+                 cfg: OnApp2VHIConfig,
+                 service_user: bool = True,
                  connect_timeout: int = CONNECT_TIMEOUT,
                  channel_timeout: int = CHANNEL_TIMEOUT):
-        super().__init__(service_user=service_user,
+        super().__init__(cfg,
+                         service_user=service_user,
                          connect_timeout=connect_timeout,
                          channel_timeout=channel_timeout)
         self.vinfra_root += ' quotas'
@@ -469,10 +485,13 @@ class VinfraQuotas(VinfraServiceCompute):
 
 class VinfraStoragePolicies(VinfraServiceCompute):
 
-    def __init__(self, service_user: bool = True,
+    def __init__(self,
+                 cfg: OnApp2VHIConfig,
+                 service_user: bool = True,
                  connect_timeout: int = CONNECT_TIMEOUT,
                  channel_timeout: int = CHANNEL_TIMEOUT):
-        super().__init__(service_user=service_user,
+        super().__init__(cfg,
+                         service_user=service_user,
                          connect_timeout=connect_timeout,
                          channel_timeout=channel_timeout)
         self.vinfra_root += ' storage-policy'
@@ -489,9 +508,11 @@ class VinfraStoragePolicies(VinfraServiceCompute):
 class VinfraPlacement(VinfraServiceCompute):
 
     def __init__(self,
+                 cfg: OnApp2VHIConfig,
                  connect_timeout: int = CONNECT_TIMEOUT,
                  channel_timeout: int = CHANNEL_TIMEOUT):
-        super().__init__(connect_timeout=connect_timeout,
+        super().__init__(cfg,
+                         connect_timeout=connect_timeout,
                          channel_timeout=channel_timeout)
         self.vinfra_root += ' placement assign'
 

@@ -4,44 +4,24 @@ from unittest import TestCase
 from mock import patch, Mock, call
 from os.path import abspath, dirname, join, exists
 
-
-# hack hard-coded `config.cfg` file path
-project_root = abspath(join(dirname(__file__), "../../../"))
-config_file_path = abspath(join(project_root, "onapp2vhi/cfg/config.cfg"))
-example_config_file_path = abspath(join(project_root, "onapp2vhi/cfg/config-example.cfg"))
-hard_code_hack = False
-
-def setUpModule():
-    global hard_code_hack
-
-    if not exists(config_file_path):
-        os.symlink(example_config_file_path, config_file_path)
-        hard_code_hack = True
+from onapp2vhi.inc.rest_client import OnAppRequests
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 
-def tearDownModule():
-    # clean up hard-code hack
-    if hard_code_hack and exists(config_file_path):
-        os.unlink(config_file_path)
-
-
-# TODO! remove global cfg.config_parser.ONAPP_CREDS references
 # TODO! remove global inc.logger.logs references
 class OnAppRequestTest(TestCase):
 
     @patch("onapp2vhi.inc.logger.logs")
-    @patch("onapp2vhi.inc.rest_client.ONAPP_CREDS")
-    def setUp(self, mock_onapp_creds, mock_logs):
-        mock_config = {
+    def setUp(self, mock_logs):
+        mock_config = Mock(spec=OnApp2VHIConfig)
+        mock_config._config = Mock()
+        mock_config.onapp_conf = {
             "url": "https://onapp2vhi.unittest.test",
             "email": "unittest@onapp2vhi.unittest.test",
             "api_key": "dummy_api_key",
         }
-        mock_onapp_creds.__getitem__.side_effect = mock_config.__getitem__
 
-        from onapp2vhi.inc.rest_client import OnAppRequests
-
-        self.onapp_api = OnAppRequests()
+        self.onapp_api = OnAppRequests(mock_config)
 
     @patch("requests.get")
     def test_onapprequests_get_not_authorized(self, mock_requests_get):

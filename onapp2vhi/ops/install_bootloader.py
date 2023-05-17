@@ -6,8 +6,10 @@ from onapp2vhi.inc.ssh_connector import ssh_run, SSH
 from onapp2vhi.inc.onapp_helpers import get_vm_source_properties
 from onapp2vhi.inc.utils import exit_status_code_handler
 from onapp2vhi.utilities.web import download_file
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 
-def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install: bool):
+
+def vm_install_bootloader(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool, cloud_init_install: bool):
     VM_IDn = idn
     if not idn:
         logs.error('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
@@ -20,14 +22,14 @@ def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install: bo
 
     # -- STEP 1 --
     logs.info(f'{_spaces}{_boot_msg}STEP #1 -- OnApp: get source VM properties --', header=True)
-    _vm_properties = get_vm_source_properties(vm_idn=VM_IDn)
+    _vm_properties = get_vm_source_properties(cfg, vm_idn=VM_IDn)
     _vm_hv_ip = _vm_properties['hv_ip']
     _vm_ip_addr = _vm_properties['vm_ip_addr']
 
     # -- STEP 2 --
-    _vm_ssh = SSH(**{'host': _vm_ip_addr, 'connect_timeout': 10, 'channel_timeout': 10})
+    _vm_ssh = SSH(**{'host': _vm_ip_addr, 'connect_timeout': 10, 'channel_timeout': 10, 'ssh_key': cfg.ssh_key})
     logs.info(f'{_spaces}{_boot_msg}STEP #2 -- OnApp: Check if VM is running at OnApp hypervisor --', header=True)
-    _hv_ssh = SSH(**{'host': _vm_hv_ip})
+    _hv_ssh = SSH(**{'host': _vm_hv_ip, 'ssh_key': cfg.ssh_key})
     exit_status, output = _hv_ssh.execute(f'virsh list | grep {VM_IDn}')
     if not 'running' and VM_IDn in output:
         logs.warn(f'VM {VM_IDn} is not running on the HV side. Please turn it ON and restart script.')

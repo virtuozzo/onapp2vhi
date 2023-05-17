@@ -1,7 +1,6 @@
 import os
 
 from onapp2vhi.inc.helper import Helper
-from onapp2vhi.cfg.config_parser import VHI_CREDS
 from onapp2vhi.inc.vhi_ssh_keys import VhiSshKeys
 from onapp2vhi.inc.vhi_helpers import Vhi
 from onapp2vhi.inc.logger import logs
@@ -11,9 +10,11 @@ from onapp2vhi.inc.onapp_helpers import (
     check_user_role,
     VmHandler
 )
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 
-def migrate_impl(user='',
+def migrate_impl(cfg: OnApp2VHIConfig,
+                 user='',
                  network='',
                  vm='',
                  project='',
@@ -58,7 +59,7 @@ def migrate_impl(user='',
     _file_name = os.path.join(_path, 'migration_logs/{user}/migrated')
     user_idn = ''
     if not network:
-        _network = VHI_CREDS['network']
+        _network = cfg.vhi_conf['network']
     else:
         _network = network
     if user:
@@ -77,14 +78,14 @@ def migrate_impl(user='',
     _custom_project = project
     # --Step 1--#
     # --OnApp: Get User, VM's information--#
-    vhi_users_data = prepare_vhi_migration_data(user_idn=user_idn)
+    vhi_users_data = prepare_vhi_migration_data(cfg, user_idn=user_idn)
     if not vhi_users_data:
         logs.error(msg='Collecting user data failed. Please take a look into logs.')
         return False
 
     # Here we create service user for specified domain in cfg/config.cfg
-    Vhi().clean_up_cache()
-    service_user = Vhi().create_service_user()
+    Vhi(cfg).clean_up_cache()
+    service_user = Vhi(cfg).create_service_user()
     if not service_user:
         logs.info('Stopped migration process due to above failure.')
 
@@ -100,7 +101,7 @@ def migrate_impl(user='',
                'SSH Keys Migrated: {}\n'
                'MIGRATED VIRTUAL MACHINES:\n'
                '{}')
-        vhi = Vhi()
+        vhi = Vhi(cfg)
 
         # --Step 3--#
         # --OnApp: Start migration USER by USER--#
@@ -131,7 +132,7 @@ def migrate_impl(user='',
             continue
 
         user.update({'password': user_pwd})
-        _ssh_key = VhiSshKeys(user_obj=user, ssh_keys=get_user_ssh_keys(user))
+        _ssh_key = VhiSshKeys(cfg, user_obj=user, ssh_keys=get_user_ssh_keys(cfg, user))
         _ssh_result = _ssh_key.create_vhi_ssh_keys()
         _specified_list = [_machine for _machine in vm.split(',') if _machine]
 
@@ -166,7 +167,8 @@ def migrate_impl(user='',
                 continue
 
             if not _vm['built_from_iso'] and not _vm['built_from_ova']:
-                result = bootloader_drivers(idn=_idn,
+                result = bootloader_drivers(cfg,
+                                            idn=_idn,
                                             vz_guest_tools=vz_guest_tools,
                                             cloud_init_install=cloud_init)
             else:
@@ -191,9 +193,10 @@ def migrate_impl(user='',
                                               vm_msg))
                 continue
 
-            result_vm = vm_migrate(idn=_idn,
+            result_vm = vm_migrate(cfg,
+                                   idn=_idn,
                                    vproj=vhi.project_name,
-                                   vdom=VHI_CREDS['vinfra_domain'],
+                                   vdom=cfg.vhi_conf['vinfra_domain'],
                                    network=network,
                                    vhi_obj=vhi,
                                    placement=placement)

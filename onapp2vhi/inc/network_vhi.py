@@ -1,14 +1,16 @@
-from onapp2vhi.cfg.config_parser import VHI_CREDS, DOMAIN_AUTH
-from onapp2vhi.inc.ssh_connector import SSH
 import re
 import json
 
+from onapp2vhi.inc.ssh_connector import SSH
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 class Network:
-    def __init__(self, **kwargs):
-        self._ssh = SSH(host=VHI_CREDS['cp_ip'], port=VHI_CREDS['cloud_ssh_port'])
+    def __init__(self, cfg: OnApp2VHIConfig, **kwargs):
+        self._ssh = SSH(host=cfg.vhi_conf['cp_ip'],
+                        port=cfg.vhi_conf['cloud_ssh_port'],
+                        ssh_key=cfg.ssh_key)
         self.vinfra_project = kwargs.get('vinfra_project', '')
-        self._vinfra_options = f'{DOMAIN_AUTH} --vinfra-domain="{VHI_CREDS["vinfra_domain"]}"' \
+        self._vinfra_options = f'{cfg.DOMAIN_AUTH} --vinfra-domain="{cfg.vhi_conf["vinfra_domain"]}"' \
                                f' --vinfra-project="{self.vinfra_project}"'
 
         self.id = kwargs.get("id", "")
