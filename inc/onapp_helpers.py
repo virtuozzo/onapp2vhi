@@ -774,7 +774,7 @@ def activate_disk(vm_idn: str, vm_ohv_ip: str, multiply_disks=False, disk=None):
         ds_type = ovm_dsk['datastore_type']
     if ds_type == 'is':
         # Here We are working on Hypervisor side Port is 22 and HV IP
-        logs.debug('-- OnApp HV: get frontend UUID')
+        logs.debug(f'{_spaces}-- OnApp HV: get frontend UUID')
         exit_status, output = hv_ssh.execute(command='onappstore getid')
         try:
             frontend_uuid = re.findall('\d+', re.findall('uuid=\d+', output)[0])[0]
@@ -783,17 +783,18 @@ def activate_disk(vm_idn: str, vm_ohv_ip: str, multiply_disks=False, disk=None):
             return False
 
         # Get Disk Info
-        logs.debug('-- OnApp HV: Get Disk Info')
+        logs.debug(f'{_spaces}-- OnApp HV: Get Disk Info')
         exit_status, output = hv_ssh.execute(command=f'onappstore diskinfo uuid={disk_idn}')
         try:
-            disk_status = re.findall('\d+', re.findall('status=\d+', output)[0])[0]
+            disk_status = re.search(r"\bstatus=(\d+)", output)
+            status = int(disk_status.group(1))
         except IndexError:
             logs.error(f"The status was not found. Output:\n\t{output}")
             return False
 
         # If disk is offline, activate it
-        logs.debug(msg=f'Disk Status: {disk_status}', separator=True)
-        if not int(disk_status):
+        logs.debug(msg=f'Disk Status: {status}', separator=True)
+        if not status:
             hv_ssh.execute(command=f'onappstore online uuid={disk_idn} frontend_uuid={frontend_uuid}')
         return True
 
@@ -912,7 +913,7 @@ def create_new_vhi_vm(vhi_ssh: SSH,
                     return False
 
     if len(onappvm_pri_ips) > 1:
-        logs.info("-- VHI: allocate and assign extra VHI VM's IP addresses to primary NIC--")
+        logs.info(f"{_spaces}-- VHI: allocate and assign extra VHI VM's IP addresses to primary NIC--")
         _ips_params = ''
         for ip in onappvm_pri_ips:
             _ips_params += f"--fixed-ip ip-address={ip} "
