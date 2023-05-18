@@ -16,8 +16,9 @@ from onapp2vhi.inc.utils import exit_status_code_handler
 from onapp2vhi.inc.network_hanlder import get_network_configuration
 from onapp2vhi.inc.logger import logs
 from onapp2vhi.inc.helper import Helper
-from onapp2vhi.cfg.config_parser import ONAPP_CREDS, VHI_CREDS, VINFRA_AUTH, ADMIN_AUTH, DOMAIN_AUTH
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 
+cfg = OnApp2VHIConfig()
 
 def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, placement=''):
     if not idn:
@@ -25,9 +26,9 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
         return False
 
     vm_idn = idn
-    _network = network if network else VHI_CREDS['network']
-    _vhidom = vdom if vdom else VHI_CREDS['vinfra_domain']
-    _vhiproj = vproj if vproj else VHI_CREDS['vinfra_project']
+    _network = network if network else cfg.vhi_conf['network']
+    _vhidom = vdom if vdom else cfg.vhi_conf['vinfra_domain']
+    _vhiproj = vproj if vproj else cfg.vhi_conf['vinfra_project']
 
     _spaces = Helper.SPACES.value
     live_migration = 'LIVE MIGRATION -- '
@@ -49,10 +50,10 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
 
     logs.debug(f'VHI flavor: {vhi.flavor_name}')
     _flavour = vhi.flavor_name
-    _vhi_image = VHI_CREDS['linux_image']
+    _vhi_image = cfg.vhi_conf['linux_image']
 
     if _vm_properties['vm_os'] == 'windows':
-        _vhi_image = VHI_CREDS['windows_image']
+        _vhi_image = cfg.vhi_conf['windows_image']
 
     if _hot_migrate == 'False':
         logs.error(f"{_spaces}ATTENTION hot_migrate is not allowed for VM")
@@ -109,20 +110,20 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
 
     # -- STEP 6 --
     logs.info(f"{_spaces}{live_migration}STEP #6 -- VHI: Create similar VM on VHI side --", header=True)
-    vinfra_access = f"{ADMIN_AUTH} --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
-    if VHI_CREDS['vinfra_domain'] != 'Default':
-        vinfra_access = f"{DOMAIN_AUTH}  --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
+    vinfra_access = f"{cfg.ADMIN_AUTH} --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
+    if cfg.vhi_conf['vinfra_domain'] != 'Default':
+        vinfra_access = f"{cfg.DOMAIN_AUTH}  --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
     onappvm_pri_ip = _onapp_nics[0]['ips'][0]
     onappvm_pri_mac = _onapp_nics[0]['mac']
-    _vhi_ssh = SSH(**{'host': VHI_CREDS['cp_ip'], 'port': VHI_CREDS['cloud_ssh_port']})
-    exit_status, output = _vhi_ssh.execute(f"{ADMIN_AUTH} service compute server list --long -f json")
+    _vhi_ssh = SSH(**{'host': cfg.vhi_conf['cp_ip'], 'port': cfg.vhi_conf['cloud_ssh_port']})
+    exit_status, output = _vhi_ssh.execute(f"{cfg.ADMIN_AUTH} service compute server list --long -f json")
     vhi_vms = json.loads(output)
     _error_msg = ''
     vm_created = False
     for _vm in vhi_vms:
         _vm_id = _vm['id']
         _error_msg = (f"VM with [IP: {onappvm_pri_ip} | MAC: {onappvm_pri_mac}] ALREADY EXISTS on VHI side.\n"
-                      f"VM: {VHI_CREDS['url']}/compute/servers/instances/{_vm_id}/")
+                      f"VM: {cfg.vhi_conf['url']}/compute/servers/instances/{_vm_id}/")
         if not _vm['networks'] and _vm['name'] == f'vm_{_vm_properties["hostname"].lower()}_{vm_idn}':
             vm_created = True
             break
@@ -164,7 +165,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
 
     # -- STEP 7 --
     logs.info(f"{_spaces}{live_migration}STEP #7 -- VHI: define VM's hypervisor and disks --", header=True)
-    exit_status, output = _vhi_ssh.execute(f"host `{ADMIN_AUTH} service compute server show {_vhi_vm_id} -f json"
+    exit_status, output = _vhi_ssh.execute(f"host `{cfg.ADMIN_AUTH} service compute server show {_vhi_vm_id} -f json"
                                            f" | jq -r .host` 2>/dev/null | awk '/ has address /{{print $NF}}'")
     if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', output):
         _vhi_hv_ip = output.strip("\n")
@@ -238,7 +239,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
             elif disk.attrib['device'] == "cdrom":
                 cdrom_file = disk.find('source').attrib['file']
                 disk.find('source').attrib['file'] = '/tmp/grub2.img'
-                _hv_ssh.execute(f"scp -P {ONAPP_CREDS['hv_ssh_port']} {Helper.SCP_OPTS.value}"
+                _hv_ssh.execute(f"scp -P {cfg.onapp_conf['hv_ssh_port']} {Helper.SCP_OPTS.value}"
                                 f" {cdrom_file} root@{_vhi_hv_ip}:/tmp/ 2>/dev/null ")
                 _vhi_hv_ssh.execute(f'ls /tmp/grub2* 2>/dev/null')
         nic_num = 0
@@ -258,8 +259,8 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
     logs.info(f"{_spaces}{live_migration}STEP #10 -- VHI: Upload OnApp2VHI VM migration XML to OnApp HV --",
               header=True)
     [exit_code, _output] = ssh_run(
-        command=f"scp -P{ONAPP_CREDS['hv_ssh_port']} {Helper.SCP_OPTS.value} /tmp/{vm_idn}.xml root@{_vm_hv_ip}:/tmp/ "
-                f"2>/dev/null ; ssh -p{ONAPP_CREDS['hv_ssh_port']} {Helper.SSH_OPTS.value} root@{_vm_hv_ip} "
+        command=f"scp -P{cfg.onapp_conf['hv_ssh_port']} {Helper.SCP_OPTS.value} /tmp/{vm_idn}.xml root@{_vm_hv_ip}:/tmp/ "
+                f"2>/dev/null ; ssh -p{cfg.onapp_conf['hv_ssh_port']} {Helper.SSH_OPTS.value} root@{_vm_hv_ip} "
                 f"'ls /tmp/{vm_idn}.xml' 2>/dev/null"
     )
     if not exit_status_code_handler(
@@ -275,7 +276,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
     exit_status, output = _hv_ssh.execute(
         f"virsh migrate --live --auto-converge --unsafe --copy-storage-all --migrate-disks {_onappvm_disks}"
         f" --xml /tmp/{vm_idn}.xml --verbose {vm_idn} qemu+ssh://{_vhi_hv_ip}:"
-        f"{VHI_CREDS['hv_ssh_port']}/system?no_verify=1 tcp:{_vhi_hv_ip}", real_data=True
+        f"{cfg.vhi_conf['hv_ssh_port']}/system?no_verify=1 tcp:{_vhi_hv_ip}", real_data=True
     )
     if not exit_status_code_handler(
             exit_code=exit_status,
@@ -315,5 +316,5 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
         return False
 
     logs.info(f"The virtual server ``LIVE MIGRATION`` has completed successfully:"
-              f" {VHI_CREDS.url}/compute/servers/instances/{_vhi_vm_id}")
+              f" {cfg.vhi_conf['url']}/compute/servers/instances/{_vhi_vm_id}")
     return True

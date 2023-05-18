@@ -1,6 +1,9 @@
 from typing import Optional, Tuple, Dict
-from onapp2vhi.cfg.config_parser import VHI_CREDS, ADMIN_AUTH, VINFRA_AUTH, DOMAIN_AUTH
+
 from onapp2vhi.inc.ssh_connector import SSH, CONNECT_TIMEOUT, CHANNEL_TIMEOUT
+from onapp2vhi.utilities.config import OnApp2VHIConfig
+
+cfg = OnApp2VHIConfig()
 
 
 class VinfraBase:
@@ -12,19 +15,19 @@ class VinfraBase:
                  channel_timeout: int = CHANNEL_TIMEOUT,
                  cp_ip: bool = False):
         self.cp_ip = cp_ip
-        _host = VHI_CREDS['hv_ip']
+        _host = cfg.vhi_conf['hv_ip']
         if self.cp_ip:
-            _host = VHI_CREDS['cp_ip']
+            _host = cfg.vhi_conf['cp_ip']
         self.ssh = SSH(**{"host": _host,
                           "connect_timeout": connect_timeout,
                           "channel_timeout": channel_timeout})
-        self.vinfra_root = ADMIN_AUTH
+        self.vinfra_root = cfg.ADMIN_AUTH
         if service_user:
-            self.vinfra_root = VINFRA_AUTH
+            self.vinfra_root = cfg.VINFRA_AUTH
         if domain_service_user:
-            self.vinfra_root = DOMAIN_AUTH
+            self.vinfra_root = cfg.DOMAIN_AUTH
         if access_domain:
-            self.vinfra_root += f" --vinfra-domain={VHI_CREDS['vinfra_domain']}"
+            self.vinfra_root += f" --vinfra-domain={cfg.vhi_conf['vinfra_domain']}"
 
     def execute(self, cmd: str, long: bool = False, json: bool = True) -> Tuple[int, str]:
         if long:

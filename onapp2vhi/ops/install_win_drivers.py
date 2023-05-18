@@ -1,11 +1,15 @@
 import os
 from onapp2vhi.inc.logger import logs
 from onapp2vhi.inc.helper import Helper
-from onapp2vhi.cfg.config_parser import ONAPP_CREDS
 from onapp2vhi.inc.ssh_connector import ssh_run, SSH
 from onapp2vhi.inc.onapp_helpers import get_vm_source_properties
 from onapp2vhi.inc.utils import exit_status_code_handler
+
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.utilities.web import download_file
+
+
+cfg = OnApp2VHIConfig()
 
 
 def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install: bool):
@@ -21,7 +25,7 @@ def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install: b
     if not cloud_init_install and not vz_guest_tools:
         logs.info(msg='Chosen nothing to install.', separator=True)
         return True
-    
+
     # -- STEP 1 --
     logs.info(f'{_spaces}{_dri_msg}STEP #1 -- OnApp: get source VM properties --', header=True)
     _vm_properties = get_vm_source_properties(vm_idn=vm_idn)
@@ -53,7 +57,7 @@ def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install: b
                       os.path.join(package_path, "scripts"))
 
     if cloud_init_install:
-        cmd = f'scp -P{ONAPP_CREDS["hv_ssh_port"]} {Helper.SCP_OPTS.value} {cloudbase_init_path}' \
+        cmd = f'scp -P{cfg.onapp_conf["hv_ssh_port"]} {Helper.SCP_OPTS.value} {cloudbase_init_path}' \
               f' Administrator@{_vm_ip_addr}:C:/ 2>/dev/null'
         [exit_status, output] = ssh_run(cmd)
         if not exit_status_code_handler(
@@ -71,7 +75,7 @@ def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install: b
                  os.path.join(package_path, "scripts"))
 
     if vz_guest_tools:
-        cmd = f'scp -P{ONAPP_CREDS["hv_ssh_port"]} {Helper.SCP_OPTS.value}' \
+        cmd = f'scp -P{cfg.onapp_conf["hv_ssh_port"]} {Helper.SCP_OPTS.value}' \
               f' {vz_guest_tool_path} Administrator@{_vm_ip_addr}:C:/ 2>/dev/null'
         [exit_status, output] = ssh_run(cmd)
         if not exit_status_code_handler(
