@@ -567,11 +567,19 @@ def transfer_firewall_rules_to_sg(vm_idn: str, vhiproj: str, drop: str = "DROP",
             data["protocol"] = rule.protocol
             data["remote-ip"] = rule.address
             if rule.port:  # some protocols do not need to specify ports
-                data["port-range-max"] = rule.port
-                data["port-range-min"] = rule.port
-            # create the rule
-            _, output = sgr.create(sg_name=sg_name, **data)
-            output = json.loads(output)
+                if len(rule.port.split(',')) > 1:  # some rules contain multiple ports
+                    for port in list(set(rule.port.split(','))):  # iterate by unique ports only.
+                        data["port-range-min"] = port
+                        data["port-range-max"] = port
+
+                        _, output = sgr.create(sg_name=sg_name, **data)
+                        output = json.loads(output)
+                else:
+                    data["port-range-min"] = rule.port
+                    data["port-range-max"] = rule.port
+                    # create the rule
+                    _, output = sgr.create(sg_name=sg_name, **data)
+                    output = json.loads(output)
             if not output:
                 logs.warn(msg=f"Firewall rule: {rule} was not transferred correctly")
 
