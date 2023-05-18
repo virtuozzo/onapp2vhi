@@ -114,7 +114,9 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
         vinfra_access = f"{cfg.DOMAIN_AUTH}  --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
     onappvm_pri_ip = _onapp_nics[0]['ips'][0]
     onappvm_pri_mac = _onapp_nics[0]['mac']
-    _vhi_ssh = SSH(**{'host': cfg.vhi_conf['cp_ip'], 'port': cfg.vhi_conf['cloud_ssh_port']})
+    _vhi_ssh = SSH(**{'host': cfg.vhi_conf['cp_ip'],
+                      'port': cfg.vhi_conf['cloud_ssh_port'],
+                      'ssh_key': cfg.ssh_key})
     exit_status, output = _vhi_ssh.execute(f"{cfg.ADMIN_AUTH} service compute server list --long -f json")
     vhi_vms = json.loads(output)
     _error_msg = ''
@@ -301,7 +303,7 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
         _deactivation_props = {'disk_idn': ovm_dsk['disk_idn'],
                                'datastore_type': ovm_dsk['datastore_type'],
                                'path': ovm_dsk['path']}
-        deactivate_result = deactivate_disk(vm_idn='', vm_ohv_ip=_vm_hv_ip, **_deactivation_props)
+        deactivate_result = deactivate_disk(cfg, vm_idn='', vm_ohv_ip=_vm_hv_ip, **_deactivation_props)
         if not deactivate_result:
             return False
 
