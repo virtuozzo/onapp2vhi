@@ -31,14 +31,14 @@ def step_impl(context, name):
         assert CHECK_FAILED, "error: virtual machine is not built"
 
 use_step_matcher('re')
-@then('I should see the VM listed is tally with the VMs displayed in Onapp cloud')
+@then('I should see the (?:VM|user) listed is tally with the (?:VMs?|users?) displayed in Onapp cloud')
 def step_impl(context):
     
     if len(context.data["tool"]) != len(context.data["onapp_cloud"]):
         assert CHECK_FAILED, "error: result is not tally"
 
-use_step_matcher('parse')
-@then('I should see the VM listed has the following headers')
+use_step_matcher('re')
+@then('I should see the (?:VM|user) listed has the following headers')
 def step_impl(context):
 
     arr_header = []
@@ -51,6 +51,6 @@ def step_impl(context):
         # we only want to get the first row of header
         if header in context.data["tool"][1].keys():
             match += 1
-            
+      
     if match != len(arr_header):
         assert CHECK_FAILED, "error: missing header(s)"

@@ -111,12 +111,18 @@ def get_tool_output(output):
     '''
 
     count = 1
+    found = False
+
     for row in arr_table:
         # look for row that contains "ID", it contains headers, do not loop after that
         if "ID" in row:
             arr_header = row.lower().split("|")
+            found = True
             break
         count += 1
+
+    if not found:
+        assert CHECK_FAILED, "error: no data found, please check if the user exists or if the user has VM listed in Onapp cloud"
 
     arr_data_row = []
     for i in range(count + 1, len(arr_table) - 2):
@@ -147,9 +153,51 @@ def get_tool_output(output):
 
     return dict_data_from_tool
 
+def get_tool_command(type, user_id=None, header=None):
+
+    if "VM" in type:
+        command = "list-onapp-vms "
+    else:
+        command = "list-onapp-users "
+
+    if user_id:
+        if "VM" in type:
+            command += "--find=\"user_id={user_id}\" ".format(user_id=user_id)
+        else:
+            command += "--find=\"id={user_id}\" ".format(user_id=user_id)
+
+    if header:
+        command += "--props={header}".format(header=header)
+
+    return command
+
+def get_cloud_data(context, type, user_id=None, username=None):
+
+    if user_id:
+        if "VM" in type:
+            data = context.cp.search_with_search_filter("virtual_machines", "search_filter[user_id]=%d" % user_id)
+        else:
+            data = context.cp.search("users", args=username)
+
+    else:
+        if "VM" in type:
+            data = context.cp.get_all("virtual_machines")
+        else:
+            data = context.cp.get_all("users")
+            data_copy = data
+
+            # we do not get users without roles
+            for d in data_copy:
+                if not d["user"]["roles"]:
+                    data.remove(d)
+
+            del data_copy
+
+    return data
+
 use_step_matcher('re')
-@when('I view the VMs in Onapp cloud using migration tool for user \((?P<username>[\w\s]+)\)')
-def step_impl(context, username):
+@when('I view the (?P<type>VMs?|users?) in Onapp cloud using migration tool for user \((?P<username>[\w\s]+)\)')
+def step_impl(context, type, username):
     
     user = context.cp.search("users", args=username)
     if user:
@@ -158,41 +206,44 @@ def step_impl(context, username):
         assert CHECK_FAILED, "error: user (%s) is not found" % username
 
     config = get_config()
-    output = open_ssh_connection(config["onapp"], "list-onapp-vms --find=\"user_id=%s\"" % user_id)
+    command = get_tool_command(type, user_id=user_id)
+    output = open_ssh_connection(config["onapp"], command)
     dict_data_from_tool = get_tool_output(output)
 
     context.data = {}
     context.data["tool"] = dict_data_from_tool
 
-    data_from_cloud = context.cp.search_with_search_filter("virtual_machines", "search_filter[user_id]=%d" % user_id)
+    data_from_cloud = get_cloud_data(context, type, user_id=user_id, username=username)
 
     if data_from_cloud:
         context.data["onapp_cloud"] = data_from_cloud
     else:
-        assert CHECK_FAILED, "error: no VM found"
+        assert CHECK_FAILED, "error: no {type} found".format(type=type)
 
 
 use_step_matcher('re')
-@when('I view the VMs in Onapp cloud using migration tool')
-def step_impl(context):
+@when('I view the (?P<type>VMs?|users?) in Onapp cloud using migration tool')
+def step_impl(context, type):
 
     config = get_config()
-    output = open_ssh_connection(config["onapp"], "list-onapp-vms")
+
+    command = get_tool_command(type)
+    output = open_ssh_connection(config["onapp"], command)
     dict_data_from_tool = get_tool_output(output)
 
     context.data = {}
     context.data["tool"] = dict_data_from_tool
 
-    data_from_cloud = context.cp.get_all("virtual_machines")
+    data_from_cloud = get_cloud_data(context, type)
 
     if data_from_cloud:
         context.data["onapp_cloud"] = data_from_cloud
     else:
-        assert CHECK_FAILED, "error: no VM found"
+        assert CHECK_FAILED, "error: no {type} found".format(type=type)
 
 use_step_matcher('re')
-@when('I view the VMs in Onapp cloud using migration tool for user \((?P<username>[\w\s]+)\) with following headers')
-def step_impl(context, username):
+@when('I view the (?P<type>VMs?|users?) in Onapp cloud using migration tool for user \((?P<username>[\w\s]+)\) with following headers')
+def step_impl(context, type, username):
     
     user = context.cp.search("users", args=username)
     if user:
@@ -206,24 +257,25 @@ def step_impl(context, username):
             str_header += row[heading] + ","
 
     str_header = str_header[:-1]
-    
+
     config = get_config()
-    output = open_ssh_connection(config["onapp"], "list-onapp-vms --find=\"user_id={}\" --props={}".format(user_id, str_header))
+    command = get_tool_command(type, user_id=user_id, header=str_header)
+    output = open_ssh_connection(config["onapp"], command)
     dict_data_from_tool = get_tool_output(output)
 
     context.data = {}
     context.data["tool"] = dict_data_from_tool
 
-    data_from_cloud = context.cp.search_with_search_filter("virtual_machines", "search_filter[user_id]=%d" % user_id)
+    data_from_cloud = get_cloud_data(context, type, user_id=user_id, username=username)
 
     if data_from_cloud:
         context.data["onapp_cloud"] = data_from_cloud
     else:
-        assert CHECK_FAILED, "error: no VM found"
+        assert CHECK_FAILED, "error: no {type} found".format(type=type)
 
 use_step_matcher('re')
-@when('I view the VMs in Onapp cloud using migration tool with following headers')
-def step_impl(context):
+@when('I view the (?P<type>VMs?|users?) in Onapp cloud using migration tool with following headers')
+def step_impl(context, type):
     
     str_header = ''
     for heading in context.table.headings:
@@ -231,17 +283,37 @@ def step_impl(context):
             str_header += row[heading] + ","
 
     str_header = str_header[:-1]
-    
+
     config = get_config()
-    output = open_ssh_connection(config["onapp"], "list-onapp-vms --props=%s" % str_header)
+    command = get_tool_command(type, header=str_header)
+    output = open_ssh_connection(config["onapp"], command)
     dict_data_from_tool = get_tool_output(output)
 
     context.data = {}
     context.data["tool"] = dict_data_from_tool
 
-    data_from_cloud = context.cp.get_all("virtual_machines")
+    data_from_cloud = get_cloud_data(context, type)
 
     if data_from_cloud:
         context.data["onapp_cloud"] = data_from_cloud
     else:
-        assert CHECK_FAILED, "error: no VM found"
+        assert CHECK_FAILED, "error: no {type} found".format(type=type)
+
+use_step_matcher('re')
+@when('I view the users in Onapp cloud using migration tool by using (?P<type>email|login) \((?P<data>[\w\W\s\S]+)\)')
+def step_impl(context, type, data):
+
+    data_from_cloud = context.cp.search("users", args=data)
+
+    if not data_from_cloud:
+        assert CHECK_FAILED, "error: user (%s) is not found" % data
+
+    config = get_config()
+    command = "list-onapp-users --find=\"{type}={data}\"".format(type=type, data=data)
+
+    output = open_ssh_connection(config["onapp"], command)
+    dict_data_from_tool = get_tool_output(output)
+
+    context.data = {}
+    context.data["tool"] = dict_data_from_tool
+    context.data["onapp_cloud"] = data_from_cloud
