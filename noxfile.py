@@ -19,3 +19,14 @@ def unittest(session):
     session.run("nosetests", "--with-coverage", "--cover-inclusive")
     session.run("coverage", "report")
     session.run("coverage", "html")
+
+@nox.session
+def behave(session):
+    session.install(
+        "behave==1.2.6",
+        "requests==2.27.1",
+        "pyyaml==6.0",
+        "fabric==2.7.1",
+    )
+    session.cd("behave")
+    session.run("behave")
