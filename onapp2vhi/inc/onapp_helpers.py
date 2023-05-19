@@ -5,7 +5,6 @@ import xml.etree.ElementTree as KVMxml
 
 from onapp2vhi.inc.rest_client import OnAppRequests
 from onapp2vhi.inc.helper import Helper
-from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.inc.ssh_connector import ssh_run, SSH
 from onapp2vhi.inc.logger import logs
 from onapp2vhi.inc.utils import parse_matrix, exit_status_code_handler, generate_random_password
@@ -20,11 +19,10 @@ from onapp2vhi.inc.vinfra_wrapper import (
     VinfraServerInterface,
     VinfraServer,
 )
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 
-cfg = OnApp2VHIConfig()
 
 _spaces = Helper.SPACES.value
-onapp_requests = OnAppRequests()
 
 
 class Bcolors:
@@ -118,13 +116,15 @@ def _create_obj_list(obj_list: list, obj_name: str, default_props: list, find=''
     return new_list
 
 
-def list_onapp_vms(props='', find=''):
+def list_onapp_vms(cfg: OnApp2VHIConfig, props='', find=''):
     """
     Get all virtual machines from OnApp Control Panel and show them in the terminal
     :param props: --props=identifier,hostname,memory,cpus,user_id,template_label,total_disk_size
     :param find: --find="identifier=lidqtfwggohyzk"
     :return:
     """
+    onapp_requests = OnAppRequests(cfg)
+
     default_props = ['id', 'label', 'ip_address', 'identifier', 'template_label', 'booted', 'user_id']
     if props:
         _additional_vals = props.split(",")
@@ -146,7 +146,7 @@ def list_onapp_vms(props='', find=''):
         logs.error("No Virtual Servers found.")
 
 
-def list_onapp_users(props='', find=''):
+def list_onapp_users(cfg: OnApp2VHIConfig, props='', find=''):
     """
     Get all users from OnApp Control Panel and show them in the terminal
     :param props: --props=identifier,hostname,memory,cpus,user_id,template_label,total_disk_size
@@ -157,6 +157,7 @@ def list_onapp_users(props='', find=''):
     if props:
         _additional_vals = props.split(",")
         default_props = default_props + [_val for _val in _additional_vals if _val not in default_props]
+    onapp_requests = OnAppRequests(cfg)
     _users = onapp_requests.get('users')
     if _users:
         user_list = _create_obj_list(obj_list=_users,
@@ -174,12 +175,13 @@ def list_onapp_users(props='', find=''):
         logs.error("No Users found.")
 
 
-def get_onapp_vm_nics(vm_idn: str) -> List[Dict]:
+def get_onapp_vm_nics(cfg: OnApp2VHIConfig, vm_idn: str) -> List[Dict]:
     """
     Get OnApp NIC's info
     :param vm_idn:
     :return:
     """
+    onapp_requests = OnAppRequests(cfg)
     nic_res = onapp_requests.get(f'virtual_machines/{vm_idn}/network_interfaces')
     _onapp_nics = [{'id': _ni['network_interface']['id'],
                     'mac': _ni['network_interface']['mac_address'],
@@ -198,7 +200,7 @@ def get_onapp_vm_nics(vm_idn: str) -> List[Dict]:
     return _onapp_nics
 
 
-def get_onapp_vm_disks(vm_idn: str, primary=False):
+def get_onapp_vm_disks(cfg: OnApp2VHIConfig, vm_idn: str, primary=False):
     """
     Get Virtual Machine disks and specify Data Stores
     :param vm_idn: str - "lidqtfwggohyzk"
@@ -207,6 +209,7 @@ def get_onapp_vm_disks(vm_idn: str, primary=False):
     """
     api_ds = {}
     api_vm_disks = []
+    onapp_requests = OnAppRequests(cfg)
     data_stores_response = onapp_requests.get("settings/data_stores")
     for d_store in data_stores_response:
         _ds = d_store['data_store']
@@ -235,12 +238,13 @@ def get_onapp_vm_disks(vm_idn: str, primary=False):
     return api_vm_disks
 
 
-def get_onapp_vm_flavor(vm_idn: str):
+def get_onapp_vm_flavor(cfg: OnApp2VHIConfig, vm_idn: str):
     """
     Get ram, cpu, data store
     :param vm_idn: "lidqtfwggohyzk"
     :return:
     """
+    onapp_requests = OnAppRequests(cfg)
     response = onapp_requests.get(f'virtual_machines/{vm_idn}')
     vm_props = response['virtual_machine']
     return {'vcpus': vm_props['cpus'],
@@ -248,29 +252,31 @@ def get_onapp_vm_flavor(vm_idn: str):
             'name': f"flavor_{vm_props['cpus']}_{vm_props['memory']}"}
 
 
-def _get_onapp_bucket_access_controls(bucket_id: str):
+def _get_onapp_bucket_access_controls(cfg: OnApp2VHIConfig, bucket_id: str):
     """
         Get access controls from the users bucket
         :param bucket_id: "1", "1000"
         :return: json of access controls
     """
     logs.info(f"{_spaces}-- OnApp: Get User Bucket Access Controls --   ", separator=True)
+    onapp_requests = OnAppRequests(cfg)
     return onapp_requests.get(f'billing/buckets/{bucket_id}/access_controls')
 
 
-def get_user_ssh_keys(user_data: dict) -> List:
+def get_user_ssh_keys(cfg: OnApp2VHIConfig, user_data: dict) -> List:
     """
     Get user ssh keys and return them
     :param user_data: {"id": 3, "first_name": "Test1", "last_name": "Test2", . . .}
     :return: [ssh_key1, ssh_key2]
     """
     logs.info(f"{_spaces}-- OnApp: Get User SSH keys --  ", separator=True)
+    onapp_requests = OnAppRequests(cfg)
     response = onapp_requests.get(f"users/{user_data['id']}/ssh_keys")
     _ssh_keys = [ssh_key['ssh_key']['key'] for ssh_key in response]
     return _ssh_keys
 
 
-def get_user_data(url: str, get_type, value_to_search=None, all_users=False):
+def get_user_data(cfg: OnApp2VHIConfig, url: str, get_type, value_to_search=None, all_users=False):
     """
     Get users data from OnApp platform
     :param url: /users or /users/1
@@ -280,6 +286,7 @@ def get_user_data(url: str, get_type, value_to_search=None, all_users=False):
     :return:
     """
     logs.info(f"{_spaces}-- OnApp: Get User information --  ", separator=True)
+    onapp_requests = OnAppRequests(cfg)
     response = onapp_requests.get(url)
     if not response:
         return False
@@ -304,20 +311,21 @@ def _get_primary_vm_ip(vm: dict):
         return ip['address']
 
 
-def _vhi_virtual_machine_list():
-    _vs = VinfraServer(service_user=False)
+def _vhi_virtual_machine_list(cfg: OnApp2VHIConfig):
+    _vs = VinfraServer(cfg, service_user=False)
     exit_code, server_list = _vs.list_server()
     server_list = json.loads(server_list)
     return [vm['name'] for vm in server_list if vm['domain_id'] == cfg.vhi_conf['domain_id']]
 
 
-def get_all_virtual_machines(user_id: int = None):
+def get_all_virtual_machines(cfg: OnApp2VHIConfig, user_id: int = None):
     """
     Get list of all virtual machines and sort them by user ID
     :param user_id: 4 - get that user VM's
     :return: list of VMs
     """
     logs.info(f"{_spaces}-- OnApp: Get All Virtual Machines information --  ", separator=True)
+    onapp_requests = OnAppRequests(cfg)
     if user_id:
         response = onapp_requests.get('virtual_machines', params=f'search_filter[user_id]={user_id}')
     else:
@@ -326,7 +334,7 @@ def get_all_virtual_machines(user_id: int = None):
     if not response:
         return False
 
-    existing_vms = _vhi_virtual_machine_list()
+    existing_vms = _vhi_virtual_machine_list(cfg)
     from collections import defaultdict
     vms_dict = defaultdict(list)
     logs.info(msg=f'VHI existing VM with hostnames:\n{existing_vms}')
@@ -354,12 +362,13 @@ def get_all_virtual_machines(user_id: int = None):
     return dict(vms_dict)
 
 
-def get_vm_source_properties(vm_idn: str) -> Dict:
+def get_vm_source_properties(cfg: OnApp2VHIConfig, vm_idn: str) -> Dict:
     """
     Get Virtual Machine HV IP address
     :param vm_idn:
     :return:
     """
+    onapp_requests = OnAppRequests(cfg)
     vm_properties = onapp_requests.get(f'virtual_machines/{vm_idn}')['virtual_machine']
     _vm_hv_id = vm_properties['hypervisor_id']
     _vm_os = vm_properties['operating_system']
@@ -375,14 +384,14 @@ def get_vm_source_properties(vm_idn: str) -> Dict:
             'hot_migrate': _hot_migrate, 'hostname': _vm_hostname}
 
 
-def get_bucket_limits(bucket_id: str) -> dict:
+def get_bucket_limits(cfg: OnApp2VHIConfig, bucket_id: str) -> dict:
     """
         Get Compute Zone and Data Store Zone limitations from the specific bucket
         :param bucket_id: "1", "1000"
         :return: peaks of the limits
     """
     compute_zones_in_bucket, datastore_zones_in_bucket = [], []
-    access_controls = _get_onapp_bucket_access_controls(f'{bucket_id}')
+    access_controls = _get_onapp_bucket_access_controls(cfg, f'{bucket_id}')
 
     for ac in access_controls:
         if ac['access_control']['type'] == 'compute_zone_resource' \
@@ -414,11 +423,12 @@ def get_bucket_limits(bucket_id: str) -> dict:
             "storage": -1 if max_storage_policy == float("inf") else max_storage_policy}
 
 
-def _get_onapp_nics_per_vm(vm_idn: str) -> List[NIC]:
+def _get_onapp_nics_per_vm(cfg: OnApp2VHIConfig, vm_idn: str) -> List[NIC]:
     """
     Returns list of NICs per Virtual Server
     """
     logs.info(f'{_spaces}-- OnApp: Get OnApp VM NICs  --')
+    onapp_requests = OnAppRequests(cfg)
     response = onapp_requests.get(f'virtual_machines/{vm_idn}/network_interfaces')
 
     nics = [NIC(id=nic['network_interface']['id'],
@@ -430,27 +440,29 @@ def _get_onapp_nics_per_vm(vm_idn: str) -> List[NIC]:
                 network_join=nic['network_interface']['network_join_id'],
                 default_firewall_rule=nic['network_interface']['default_firewall_rule'],
                 is_connected=nic['network_interface']['connected'],
-                ip_addr=_get_nic_ip_address(vm_idn=vm_idn, network_interface_id=nic['network_interface']['id']))
+                ip_addr=_get_nic_ip_address(cfg, vm_idn=vm_idn, network_interface_id=nic['network_interface']['id']))
             for nic in response]
     return [] if not nics else nics
 
 
-def _get_nic_ip_address(vm_idn: str, network_interface_id: str) -> str:
+def _get_nic_ip_address(cfg: OnApp2VHIConfig, vm_idn: str, network_interface_id: str) -> str:
     """
     Return the IP address for the specified NIC.
     """
     logs.info(f'{_spaces}-- OnApp: Get OnApp VM NIC IP address  --')
+    onapp_requests = OnAppRequests(cfg)
     response = onapp_requests.get(f'virtual_machines/{vm_idn}/ip_addresses')
     for nic in response:
         if nic['ip_address_join']['network_interface_id'] == network_interface_id:
             return nic['ip_address_join']['ip_address']['address']
 
 
-def get_vm_firewall_rules(vm_idn: str) -> List[FirewallRules]:
+def get_vm_firewall_rules(cfg: OnApp2VHIConfig, vm_idn: str) -> List[FirewallRules]:
     """
     Returns list of all firewall rules for all NICs
     """
     logs.info(f'{_spaces}-- OnApp: Get OnApp VM Firewall Rules  --')
+    onapp_requests = OnAppRequests(cfg)
     response = onapp_requests.get(f'virtual_machines/{vm_idn}/firewall_rules')
     firewall_rules = [FirewallRules(id=fr['firewall_rule']['id'],
                                     position=fr['firewall_rule']['position'],
@@ -467,11 +479,11 @@ def get_vm_firewall_rules(vm_idn: str) -> List[FirewallRules]:
     return [] if not firewall_rules else firewall_rules
 
 
-def get_primary_nic(vm_idn: str) -> NIC:
+def get_primary_nic(cfg: OnApp2VHIConfig, vm_idn: str) -> NIC:
     """
     Returns primary NIC, otherwise, this functions returns None
     """
-    for nic in _get_onapp_nics_per_vm(vm_idn):
+    for nic in _get_onapp_nics_per_vm(cfg, vm_idn):
         if nic.is_primary:
             return nic
 
@@ -502,7 +514,11 @@ def check_user_role(user_data: dict) -> str:
     return admin_role
 
 
-def transfer_firewall_rules_to_sg(vm_idn: str, vhiproj: str, drop: str = "DROP", accept: str = "ACCEPT"):
+def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
+                                  vm_idn: str,
+                                  vhiproj: str,
+                                  drop: str = "DROP",
+                                  accept: str = "ACCEPT"):
     """
     Transfer firewall rules to the VHI side from OnApp
     :param vm_idn: "843yjosames"
@@ -512,16 +528,16 @@ def transfer_firewall_rules_to_sg(vm_idn: str, vhiproj: str, drop: str = "DROP",
     :return:
     """
     sgr_data = {"ethertype": "IPv4"}  # VHI only supports IPv4, so this variable hardcoded
-    sg = VinfraSecurityGroups()
-    sgr = VinfraSGRules()
-    proj = VinfraProject()
+    sg = VinfraSecurityGroups(cfg)
+    sgr = VinfraSGRules(cfg)
+    proj = VinfraProject(cfg)
 
-    primary_nic = get_primary_nic(vm_idn=vm_idn)
+    primary_nic = get_primary_nic(cfg, vm_idn=vm_idn)
     if not primary_nic:
         logs.warn("Primary network interface not found!")
         return False
 
-    firewall_rules_for_vm = get_vm_firewall_rules(vm_idn=vm_idn)
+    firewall_rules_for_vm = get_vm_firewall_rules(cfg, vm_idn=vm_idn)
     firewall_rules_for_primary_nic = get_firewall_rules_for_specific_nic(nic=primary_nic, rules=firewall_rules_for_vm)
     security_group_name = f'sg_from_vs_{vm_idn}_and_nic_{primary_nic.nic_idn}'
     _, output = proj.show(domain=cfg.vhi_conf['vinfra_domain'], project_name=vhiproj)
@@ -587,14 +603,16 @@ def transfer_firewall_rules_to_sg(vm_idn: str, vhiproj: str, drop: str = "DROP",
 
 
 # init
-vs = VinfraServer()
-vsi = VinfraServerInterface()
+#vs = VinfraServer()
+#vsi = VinfraServerInterface()
 
 
-def get_iface_from_specific_vs(vm_name: str):
+def get_iface_from_specific_vs(cfg: OnApp2VHIConfig, vm_name: str):
     """
     Get iface from specific VS
     """
+    vsi = VinfraServerInterface(cfg)
+
     _, output = vsi.list_server(server_name=vm_name)
     ifaces = json.loads(output)
     if not ifaces:
@@ -603,10 +621,15 @@ def get_iface_from_specific_vs(vm_name: str):
     return ifaces[0]['id']
 
 
-def attach_security_group_to_nic_and_enable_spoofing(vm_name: str, iface: str, sg_id: str):
+def attach_security_group_to_nic_and_enable_spoofing(cfg: OnApp2VHIConfig,
+                                                     vm_name: str,
+                                                     iface: str,
+                                                     sg_id: str):
     """
     Attach SG to the specific NIC and enable spoofing
     """
+    vsi = VinfraServerInterface(cfg)
+
     if not sg_id:
         logs.error('*** Security Group has not been attached to NIC. Please check logs. ***')
         return False
@@ -664,7 +687,7 @@ class VmHandler:
 class GenerateXmlConfig:
     RECOVERY_TEMPLATE = 'ls /onapp/tools/recovery/recovery-centos-7.*.{file} | tail -1'
 
-    def __init__(self, config_path: str, vm_idn: str, hv_ip: str):
+    def __init__(self, cfg: OnApp2VHIConfig, config_path: str, vm_idn: str, hv_ip: str):
         """
         Generates Recovery .xml file for VM
         :param vm_idn:
@@ -678,7 +701,7 @@ class GenerateXmlConfig:
         self._config_path = config_path
         self._recovery_mg_file = join(self._config_path, 'recovery.xml.mg')
         self._recovery_xml = join(self._config_path, 'recovery.xml')
-        self.hv_ssh = SSH(**{"host": hv_ip})
+        self.hv_ssh = SSH(**{"host": hv_ip, 'ssh_key': cfg.ssh_key})
 
     def shut_down_vm(self):
         """
@@ -736,21 +759,21 @@ class GenerateXmlConfig:
         tree.write(self._recovery_mg_file)
 
 
-def get_disk_type(vm_idn: str) -> str:
+def get_disk_type(cfg: OnApp2VHIConfig, vm_idn: str) -> str:
     """
     Deactivate primary disk
     :param vm_idn: 'i43oijf8sdu'
     :return:
     """
     logs.info(f"{_spaces}-- OnApp: GET DISK TYPE for VM {vm_idn} --", header=True)
-    _onapp_disks = get_onapp_vm_disks(vm_idn)
+    _onapp_disks = get_onapp_vm_disks(cfg, vm_idn)
     ovm_dsk = [_disk for _disk in _onapp_disks if _disk['primary']][0]
     disk_type = ovm_dsk['datastore_type']
     logs.info(f'Disk type is: {disk_type.upper()}')
     return disk_type
 
 
-def activate_disk(vm_idn: str, vm_ohv_ip: str, multiply_disks=False, disk=None):
+def activate_disk(cfg: OnApp2VHIConfig, vm_idn: str, vm_ohv_ip: str, multiply_disks=False, disk=None):
     """
     Activate primary disk
     :param vm_idn: 'i43oijf8sdu'
@@ -760,13 +783,13 @@ def activate_disk(vm_idn: str, vm_ohv_ip: str, multiply_disks=False, disk=None):
     :return:
     """
     logs.info(f"{_spaces}-- OnApp: HV ACTIVATING DISK --", header=True)
-    hv_ssh = SSH(**{"host": vm_ohv_ip})
+    hv_ssh = SSH(**{"host": vm_ohv_ip, 'ssh_key': cfg.ssh_key})
     ovm_dsk = disk
     ds_type = None
     store_idn = None
     disk_idn = None
     if not multiply_disks:
-        _onapp_disks = get_onapp_vm_disks(vm_idn)
+        _onapp_disks = get_onapp_vm_disks(cfg, vm_idn)
         ovm_dsk = [_disk for _disk in _onapp_disks if _disk['primary']][0]
         store_idn = ovm_dsk['datastore_idn']
         disk_idn = ovm_dsk['disk_idn']
@@ -805,7 +828,7 @@ def activate_disk(vm_idn: str, vm_ohv_ip: str, multiply_disks=False, disk=None):
         return True
 
 
-def deactivate_disk(vm_idn: str, vm_ohv_ip: str, **kwargs):
+def deactivate_disk(cfg: OnApp2VHIConfig, vm_idn: str, vm_ohv_ip: str, **kwargs):
     """
     Deactivate primary disk
     :param vm_idn: Virtual Machine ID 'i43oijf8sdu'
@@ -814,9 +837,9 @@ def deactivate_disk(vm_idn: str, vm_ohv_ip: str, **kwargs):
     :return:
     """
 
-    hv_ssh = SSH(**{"host": vm_ohv_ip})
+    hv_ssh = SSH(**{"host": vm_ohv_ip, 'ssh_key': cfg.ssh_key})
     if not kwargs:
-        _onapp_disks = get_onapp_vm_disks(vm_idn)
+        _onapp_disks = get_onapp_vm_disks(cfg, vm_idn)
         ovm_dsk = [_disk for _disk in _onapp_disks if _disk['primary']][0]
         disk_idn = ovm_dsk['disk_idn']
         ds_type = ovm_dsk['datastore_type']
@@ -825,7 +848,7 @@ def deactivate_disk(vm_idn: str, vm_ohv_ip: str, **kwargs):
         ds_type = kwargs.get('datastore_type', '')
     if ds_type == 'lvm':
         if not kwargs:
-            onappvm_primary_disk = get_onapp_vm_disks(vm_idn=vm_idn, primary=True)
+            onappvm_primary_disk = get_onapp_vm_disks(cfg, vm_idn=vm_idn, primary=True)
         else:
             onappvm_primary_disk = kwargs.get('path', '')
         logs.info(f"{_spaces}-- OnApp: HV DEACTIVATING DISK [{onappvm_primary_disk}|{ds_type}] --", header=True)
@@ -844,7 +867,8 @@ def deactivate_disk(vm_idn: str, vm_ohv_ip: str, **kwargs):
         return True
 
 
-def create_new_vhi_vm(vhi_ssh: SSH,
+def create_new_vhi_vm(cfg: OnApp2VHIConfig,
+                      vhi_ssh: SSH,
                       vinfra_access: str,
                       vm_idn: str,
                       network: str,
@@ -936,7 +960,7 @@ def create_new_vhi_vm(vhi_ssh: SSH,
 DEFAULT_ONAPP_USER_NAMES = ('system_owner', 'cloud_locations_manager')
 
 
-def prepare_vhi_migration_data(user_idn=None):
+def prepare_vhi_migration_data(cfg: OnApp2VHIConfig, user_idn=None):
     """
     This method prepare user data and vm data for VHI migration
     :param user_idn:
@@ -944,14 +968,15 @@ def prepare_vhi_migration_data(user_idn=None):
     """
     # Get User data and Virtual Servers from OnApp
     if user_idn and type(user_idn) == int:
-        _user_data = get_user_data(url=f"users/{user_idn}", get_type='ID')
-        _vms_dict = get_all_virtual_machines(user_id=user_idn)
+        _user_data = get_user_data(cfg, url=f"users/{user_idn}", get_type='ID')
+        _vms_dict = get_all_virtual_machines(cfg, user_id=user_idn)
     else:
-        _user_data = get_user_data(url='users',
+        _user_data = get_user_data(cfg,
+                                   url='users',
                                    get_type='',
                                    value_to_search=None,
                                    all_users=True)
-        _vms_dict = get_all_virtual_machines()
+        _vms_dict = get_all_virtual_machines(cfg)
     if not _user_data:
         return False
 
@@ -982,7 +1007,7 @@ def prepare_vhi_migration_data(user_idn=None):
                           'roles': _user['roles'],
                           'user_login': f'{login}',
                           'project_name': f"project_{_user['email']}",
-                          'quotas': get_bucket_limits(bucket_id=_user['bucket_id']),
+                          'quotas': get_bucket_limits(cfg, bucket_id=_user['bucket_id']),
                           'virtual_machines': []}
         if user_idn and _vms_dict:
             _vhi_user_data['virtual_machines'] = _vms_dict[user_idn]
@@ -999,7 +1024,7 @@ def prepare_vhi_migration_data(user_idn=None):
     return vhi_users_data
 
 
-def onapp_version(full=None):
+def onapp_version(cfg: OnApp2VHIConfig, full=None):
     """
     Get OnApp version
     {
@@ -1008,6 +1033,8 @@ def onapp_version(full=None):
     :param full: set to True to get "6.7.0-19" minor version
     :return:
     """
+    onapp_requests = OnAppRequests(cfg)
+
     onap_version_resp = onapp_requests.get("version")
     version = float(onap_version_resp['version'][:3])
     logs.info(msg=f"{_spaces} -- OnApp Version [{onap_version_resp['version']}] --", header=True)

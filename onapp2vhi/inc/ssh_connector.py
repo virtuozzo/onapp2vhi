@@ -1,12 +1,11 @@
 import subprocess
 import socket
 import paramiko
-from onapp2vhi.inc.logger import logs
 from time import sleep
 
+from onapp2vhi.inc.logger import logs
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 
-cfg = OnApp2VHIConfig()
 
 NBYTES = 1024
 CHANNEL_TIMEOUT = 3600  # How long we keep the channel opened
@@ -64,7 +63,7 @@ class SSH:
         self.username = kwargs.get("username", "root")
         self.connect_timeout = kwargs.get("connect_timeout", CONNECT_TIMEOUT)
         self.channel_timeout = kwargs.get("channel_timeout", CHANNEL_TIMEOUT)
-        self.pkey = paramiko.RSAKey.from_private_key_file(cfg.ssh_key)
+        self.pkey = paramiko.RSAKey.from_private_key_file(kwargs.get("ssh_key"))
 
     def _port_is_open(self, timeout=10):
         logs.debug(f"Check if port {self.port} is open on {self.host} host")

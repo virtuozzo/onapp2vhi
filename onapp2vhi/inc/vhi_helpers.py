@@ -3,7 +3,6 @@ import urllib3
 import json
 
 from onapp2vhi.inc.helper import Helper
-from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.inc.logger import logs
 from onapp2vhi.inc.ssh_connector import SSH
 from onapp2vhi.inc.utils import generate_random_password, exit_status_code_handler
@@ -17,8 +16,7 @@ from onapp2vhi.inc.vinfra_wrapper import (
     VinfraQuotas,
     VinfraPlacement,
 )
-
-cfg = OnApp2VHIConfig()
+from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 
 # Disable SSL verification warnings
@@ -38,17 +36,20 @@ class Vhi:
     DELETE = 'DELETE'
     PATCH = 'PATCH'
 
-    def __init__(self):
+    def __init__(self, cfg: OnApp2VHIConfig):
+        self.cfg = cfg
         self._cookie = ""
         self.project_id = ""
         self.project_name = ""
         self.user_id = ""
         self.flavor_name = ""
-        self.vinfra_domain = cfg.vhi_conf['vinfra_domain']
-        self.domain_id = cfg.vhi_conf['domain_id']
+        self.vinfra_domain = self.cfg.vhi_conf['vinfra_domain']
+        self.domain_id = self.cfg.vhi_conf['domain_id']
         self._storage_id = ""
         self._storage_name = ""
-        self._vhi_ssh = SSH(**{'host': cfg.vhi_conf['cp_ip'], 'port': cfg.vhi_conf['cloud_ssh_port']})
+        self._vhi_ssh = SSH(**{'host': self.cfg.vhi_conf['cp_ip'],
+                               'port': self.cfg.vhi_conf['cloud_ssh_port'],
+                               'ssh_key': self.cfg.ssh_key})
 
     @staticmethod
     def _vhi_flavor_payload(vm_data: dict):
@@ -57,9 +58,8 @@ class Vhi:
                            "ram": vm_data['ram'],
                            "disk": 0})
 
-    @staticmethod
-    def set_project_value(project_name: str):
-        cfg.update(section="vhi", option="vinfra_project", value=project_name)
+    def set_project_value(self, project_name: str):
+        self.cfg.update(section="vhi", option="vinfra_project", value=project_name)
 
     def clean_up_cache(self):
         _cmd = 'rm -f ~/.vinfra/backend-api.svc.vstoragedomain/*'
@@ -79,10 +79,10 @@ class Vhi:
         :return:
         """
         _default_name = 'Default_Project'
-        _create_project = (f"{cfg.ADMIN_AUTH} domain project create '{_default_name}' "
+        _create_project = (f"{self.cfg.ADMIN_AUTH} domain project create '{_default_name}' "
                            f"--domain='{self.vinfra_domain}' --enable "
                            f"--description='Default project for migrations.' -f json")
-        _projects_cmd = f"{cfg.ADMIN_AUTH} domain project list --domain='{self.vinfra_domain}' -f json"
+        _projects_cmd = f"{self.cfg.ADMIN_AUTH} domain project list --domain='{self.vinfra_domain}' -f json"
         exit_status, output_proj = self._vhi_ssh.execute(_projects_cmd)
         if not exit_status_code_handler(exit_code=exit_status,
                                         message='Listing project failed. Please take a look manually.'):
@@ -95,7 +95,7 @@ class Vhi:
             project = json.loads(output)
             self.project_id = project['id']
             self.project_name = project['name']
-            cfg.update("vhi", "vinfra_project", json.loads(output)['name'])
+            self.cfg.update("vhi", "vinfra_project", json.loads(output)['name'])
             return True
 
         else:
@@ -105,7 +105,7 @@ class Vhi:
 
     def update_user_password(self, user_login: str):
         _pwd = generate_random_password()
-        _change_pwd = (f"echo -e '{_pwd}' | {cfg.ADMIN_AUTH} domain user set '{user_login}'"
+        _change_pwd = (f"echo -e '{_pwd}' | {self.cfg.ADMIN_AUTH} domain user set '{user_login}'"
                        f" --password --domain {self.vinfra_domain}")
         self._vhi_ssh.execute(_change_pwd)
         return _pwd
@@ -121,8 +121,8 @@ class Vhi:
         if placement:
             _placement_name = placement
         _payload = self._vhi_flavor_payload(vm_data=onapp_flavor)
-        _vinfra = VinfraFlavor(service_user=True)
-        vinfra_placement = VinfraPlacement()
+        _vinfra = VinfraFlavor(self.cfg, service_user=True)
+        vinfra_placement = VinfraPlacement(self.cfg)
         exit_status, output = _vinfra.flavor_list()
         if not exit_status_code_handler(exit_code=exit_status,
                                         message=f'Impossible to get Flavor list. Output:\n\t{output}'):
@@ -162,7 +162,7 @@ class Vhi:
         :param user_email:
         :return:
         """
-        v_user = VinfraUser()
+        v_user = VinfraUser(self.cfg)
 
         # Get List of users
         exit_status, output = v_user.user_list(domain=domain)
@@ -182,7 +182,7 @@ class Vhi:
             - vinfra domain user set test123 --assign-domain MultiDomain compute --domain=MultiDomain
         :return:
         """
-        v_user = VinfraUser(cp_ip=True)
+        v_user = VinfraUser(self.cfg, cp_ip=True)
         _pwd = generate_random_password()
         _domain_service_user = {"email": f"{self.vinfra_domain}@user.com",
                                 "name": f"dom_migration_user_{self.vinfra_domain.lower()}",
@@ -192,19 +192,19 @@ class Vhi:
         result = self._verify_user_exists(user_email=_domain_service_user['email'],
                                           domain=self.vinfra_domain)
         if result:
-            if not cfg.vhi_conf['vinfra_domain_user'] or cfg.vhi_conf['vinfra_domain_user'] == "''" or\
-                    cfg.vhi_conf['vinfra_domain_user'] != _domain_service_user['name']:
-                cfg.update(section="vhi",
+            if not self.cfg.vhi_conf['vinfra_domain_user'] or self.cfg.vhi_conf['vinfra_domain_user'] == "''" or\
+                    self.cfg.vhi_conf['vinfra_domain_user'] != _domain_service_user['name']:
+                self.cfg.update(section="vhi",
                                       option="vinfra_domain_user",
                                       value=_domain_service_user['name'])
 
-            v_image = VinfraImage(channel_timeout=5)
+            v_image = VinfraImage(self.cfg, channel_timeout=5)
             exit_status, output = v_image.images()
             if not exit_status_code_handler(exit_code=exit_status,
                                             message=f'Domain Service User password is wrong. Output:\n\t{output}'):
                 _new_pwd = self.update_user_password(user_login=_domain_service_user['name'])
                 logs.warn(msg='Changed password to the new one for Domain Service User')
-                cfg.update(section="vhi", option="vinfra_domain_pass", value=_new_pwd)
+                self.cfg.update(section="vhi", option="vinfra_domain_pass", value=_new_pwd)
             return True
 
         exit_status, output = v_user.create(user_data=_domain_service_user, pwd=_pwd)
@@ -215,8 +215,8 @@ class Vhi:
         v_user.set(user_name=_domain_service_user['name'],
                    domain=self.vinfra_domain,
                    assign_domain=[self.vinfra_domain, 'compute'])
-        cfg.update(section="vhi", option="vinfra_domain_user", value=_domain_service_user['name'])
-        cfg.update(section="vhi", option="vinfra_domain_pass", value=_pwd)
+        self.cfg.update(section="vhi", option="vinfra_domain_user", value=_domain_service_user['name'])
+        self.cfg.update(section="vhi", option="vinfra_domain_pass", value=_pwd)
         return True
 
     def create_service_user(self):
@@ -228,7 +228,7 @@ class Vhi:
         `vinfra domain user set migration_user@onapp.test.com --assign-domain Default compute --domain=Default`
         :return:
         """
-        v_user = VinfraUser(cp_ip=True)
+        v_user = VinfraUser(self.cfg, cp_ip=True)
         _pwd = generate_random_password()
         _service_user_payload = {"email": "migration_helper@user.com",
                                  "system-permissions": 'compute',
@@ -238,8 +238,8 @@ class Vhi:
                                  "domain": 'Default'}
 
         # Get List of users
-        if cfg.vhi_conf['vinfra_user'] != _service_user_payload['name']:
-            cfg.update(section="vhi", option="vinfra_user", value=_service_user_payload['name'])
+        if self.cfg.vhi_conf['vinfra_user'] != _service_user_payload['name']:
+            self.cfg.update(section="vhi", option="vinfra_user", value=_service_user_payload['name'])
 
         if self.vinfra_domain != 'Default':
             domain_user = self._create_domain_service_user()
@@ -252,7 +252,7 @@ class Vhi:
             _msg = (f'``Service User`` with Email: {_service_user_payload["email"]} exists on VHI side.'
                     f' Checking ``Service User`` credentials. . .')
             logs.info(msg=_msg, header=True)
-            vinfra_node = VinfraNode(channel_timeout=5)
+            vinfra_node = VinfraNode(self.cfg, channel_timeout=5)
             exit_status, output = vinfra_node.list_node()
             if not exit_status_code_handler(exit_code=exit_status,
                                             message=f'Service User creds are not valid. Output:\n\t{output}'):
@@ -261,9 +261,9 @@ class Vhi:
                 # Generating new pwd for Service User and save it into config file, after check credentials again
                 self.vinfra_domain = 'Default'
                 new_pwd = self.update_user_password(user_login=_service_user_payload['name'])
-                self.vinfra_domain = cfg.vhi_conf['vinfra_domain']
-                cfg.update(section="vhi", option="vinfra_pass", value=new_pwd)
-                v_node = VinfraNode(channel_timeout=5)
+                self.vinfra_domain = self.cfg.vhi_conf['vinfra_domain']
+                self.cfg.update(section="vhi", option="vinfra_pass", value=new_pwd)
+                v_node = VinfraNode(self.cfg, channel_timeout=5)
                 exit_status, output = v_node.list_node()
                 if not exit_status_code_handler(exit_code=exit_status,
                                                 message=f'Updating Service User creds failed. Output:\n\t{output}'):
@@ -296,9 +296,9 @@ class Vhi:
             return False
 
         # Save password to cfg/config.cfg file and after that verify ability to get list of nodes
-        cfg.update(section="vhi", option="vinfra_pass", value=_pwd)
+        self.cfg.update(section="vhi", option="vinfra_pass", value=_pwd)
         time.sleep(1)
-        v_node = VinfraNode(channel_timeout=5)
+        v_node = VinfraNode(self.cfg, channel_timeout=5)
         exit_status, output = v_node.list_node()
         try:
             assert exit_status_code_handler(exit_code=exit_status)
@@ -331,7 +331,7 @@ class Vhi:
         """
         project_name = user_data['project_name']
         quotas = user_data['quotas']
-        _v_project = VinfraProject()
+        _v_project = VinfraProject(self.cfg)
         exit_status, projects = _v_project.projects(**{'domain': self.vinfra_domain})
         _projects = [_proj['name'] for _proj in json.loads(projects)]
         if project_name in _projects:
@@ -353,10 +353,10 @@ class Vhi:
         create_project = json.loads(output)
         self.project_id = create_project['id']
         self.project_name = create_project['name']
-        cfg.update("vhi", "vinfra_project", self.project_name)
+        self.cfg.update("vhi", "vinfra_project", self.project_name)
 
         # Storage Policies
-        v_storage = VinfraStoragePolicies()
+        v_storage = VinfraStoragePolicies(self.cfg)
         exit_status, storage_output = v_storage.storage_policy_list()
         storage_policy_name = json.loads(storage_output)[0]['name']
         new_quotas = {}
@@ -373,7 +373,7 @@ class Vhi:
 
         # Set Quotas
         if new_quotas:
-            v_quotas = VinfraQuotas()
+            v_quotas = VinfraQuotas(self.cfg)
             logs.info(msg=f"Setting Up quotas for project [{project_name}] on VHI side.", header=True)
             exit_status, output = v_quotas.update_quotas(project_id=self.project_id, **new_quotas)
             exit_status_code_handler(exit_code=exit_status,
@@ -401,7 +401,7 @@ class Vhi:
             "virtual_machines": [. . .]
         :return:
         """
-        v_user = VinfraUser()
+        v_user = VinfraUser(self.cfg)
         self.project_name = user_data["project_name"]
         result = self._verify_user_exists(user_email=user_data['user_email'], domain=self.vinfra_domain)
         if result:
