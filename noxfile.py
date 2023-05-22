@@ -3,14 +3,14 @@ import nox
 
 @nox.session
 def lint(session):
-    session.install("pylint==2.13.9", ".")
-    session.run("pylint", "-E", "onapp2vhi/")
+    session.install("pylint==2.13.9", "mock==5.0.1", "requests-mock==1.10.0", ".")
+    session.run("pylint", "-E", "onapp2vhi/", "tests/")
 
 
 @nox.session
 def style(session):
     session.install("flake8==3.9.2")
-    session.run("flake8", "onapp2vhi/")
+    session.run("flake8", "onapp2vhi/", "tests/")
 
 
 @nox.session

@@ -243,7 +243,7 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
                 disk.find('source').attrib['file'] = '/tmp/grub2.img'
                 _hv_ssh.execute(f"scp -P {cfg.onapp_conf['hv_ssh_port']} {Helper.SCP_OPTS.value}"
                                 f" {cdrom_file} root@{_vhi_hv_ip}:/tmp/ 2>/dev/null ")
-                _vhi_hv_ssh.execute(f'ls /tmp/grub2* 2>/dev/null')
+                _vhi_hv_ssh.execute('ls /tmp/grub2* 2>/dev/null')
         nic_num = 0
         # FIXED - https://virtuozzo.atlassian.net/browse/SYS-1525
         for nic in device.findall("interface"):

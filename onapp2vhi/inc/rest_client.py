@@ -76,7 +76,7 @@ class OnAppRequests:
             self._session = response.cookies['_session_id']
             self._request_id = response.headers['X-Request-Id']
             self.authorized = True
-        except OnAppRequestsException as e:
+        except OnAppRequestsException:
             logs.error('Authorization failed. Please check out your credentials in "config.cfg" file')
             raise
 

@@ -84,11 +84,9 @@ def get_hypervisor_network_join(cfg: OnApp2VHIConfig, hypervisor_id: str, networ
     _network_joins = request_handler.get(f"settings/hypervisors/{hypervisor_id}/network_joins")
     if _network_joins:
         return next((
-                network_join["network_join"]["identifier"]
-                for network_join in _network_joins
-                if network_join["network_join"]["id"] == network_join_id
-            ), ''
-        )
+            network_join["network_join"]["identifier"]
+            for network_join in _network_joins
+            if network_join["network_join"]["id"] == network_join_id), '')
 
 
 def get_hypervisor_group_network_join(cfg: OnApp2VHIConfig, hypervisor_group_id: str, network_join_id: str) -> str:
@@ -135,8 +133,7 @@ def get_virtual_server_ip_addresses(cfg: OnApp2VHIConfig, virtual_server_id: str
     return [
         ip_address_join["ip_address_join"]["ip_address"]
         for ip_address_join in _ip_address_join
-        if ip_address_join["ip_address_join"]["network_interface_id"]
-        == network_interface_id
+        if ip_address_join["ip_address_join"]["network_interface_id"] == network_interface_id
     ]
 
 
@@ -160,7 +157,7 @@ def get_network_nameserver(cfg: OnApp2VHIConfig, network_id: str, ipv4=True) -> 
         These resolvers can be used to resolve DNS queries for domain names in either IPv4 or IPv6 format.
     """
     request_handler = OnAppRequests(cfg)
-    _nameservers = request_handler.get(f"settings/nameservers")
+    _nameservers = request_handler.get("settings/nameservers")
     addresses = [nameserver["nameserver"]["address"] for nameserver in _nameservers
                  if nameserver["nameserver"]["network_id"] == int(network_id)]
     for address in addresses:
@@ -223,7 +220,7 @@ def get_network_id_by_identifier(cfg: OnApp2VHIConfig, identifier: str) -> str:
     :return: network ID
     """
     request_handler = OnAppRequests(cfg)
-    _network = request_handler.get(f"settings/networks")
+    _network = request_handler.get("settings/networks")
     return next(
         (
             network["network"]["id"]

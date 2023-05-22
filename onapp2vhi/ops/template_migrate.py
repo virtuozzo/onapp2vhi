@@ -8,6 +8,7 @@ from onapp2vhi.inc.logger import logs
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 
+
 def vm_template_migrate(cfg: OnApp2VHIConfig, idn='', vhip=''):
     if not idn:
         logs.info('You need to pass OnApp template label value through --template-label=? parameter ')
@@ -119,4 +120,3 @@ def vm_template_migrate(cfg: OnApp2VHIConfig, idn='', vhip=''):
             f"root@{cfg.onapp_conf['onapp_hv_ip']} 'rm -rf /tmp/{TMPL_file_name}.qcow2 ' ")
     # logs.info(CMD)
     ssh_run(command=_cmd)
-

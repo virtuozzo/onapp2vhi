@@ -68,7 +68,7 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool,
 
     if not os.path.exists(vz_guest_tool_path):
         download_file("http://downloads.repo.onapp.com/vz-guest-tools-win.tar",
-                 os.path.join(package_path, "scripts"))
+                      os.path.join(package_path, "scripts"))
 
     if vz_guest_tools:
         cmd = f'scp -P{cfg.onapp_conf["hv_ssh_port"]} {Helper.SCP_OPTS.value}' \
@@ -104,7 +104,7 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool,
         )
         if not exit_status_code_handler(
                 exit_code=exit_status,
-                message=f"[install_win_drivers.py | STEP 4] installation failed `vz-guest-tools-win.tar`"
+                message="[install_win_drivers.py | STEP 4] installation failed `vz-guest-tools-win.tar`"
         ):
             return False
 

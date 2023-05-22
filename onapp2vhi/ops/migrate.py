@@ -21,7 +21,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                  vz_guest_tools_install='true',
                  cloud_init_install='true',
                  placement='',
-                ):
+                 ):
     """
     Migrate all resources from OnApp to VHI:
         - OnApp Users to VHI users
@@ -58,10 +58,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
     _path = os.getcwd()
     _file_name = os.path.join(_path, 'migration_logs/{user}/migrated')
     user_idn = ''
-    if not network:
-        _network = cfg.vhi_conf['network']
-    else:
-        _network = network
+
     if user:
         if not user.isdigit():
             logs.error("Please specify User ID as integer: --user=7")

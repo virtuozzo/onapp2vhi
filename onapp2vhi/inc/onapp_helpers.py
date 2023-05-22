@@ -545,7 +545,7 @@ def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
     _, sg_list = sg.list_security_group(**{'project': proj_id})
     sg_list = json.loads(sg_list)
     if not firewall_rules_for_primary_nic:
-        logs.debug(msg=f'No rules for transfer!')
+        logs.debug(msg='No rules for transfer!')
         for sg in sg_list:
             if sg['name'] == 'default':
                 # return only default security group ID
@@ -570,7 +570,7 @@ def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
     _, output = sg.list_security_group(**{'name': f"{sg_name}"})
     output = json.loads(output)
     if not output:
-        logs.error(msg=f"Security group hasn't been created")
+        logs.error(msg="Security group hasn't been created")
         return False
 
     custom_sg_id = output[0]['id']

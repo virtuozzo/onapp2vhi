@@ -4,6 +4,7 @@ import json
 from onapp2vhi.inc.ssh_connector import SSH
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 
+
 class Network:
     def __init__(self, cfg: OnApp2VHIConfig, **kwargs):
         self._ssh = SSH(host=cfg.vhi_conf['cp_ip'],
