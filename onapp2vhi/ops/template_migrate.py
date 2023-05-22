@@ -1,17 +1,15 @@
 import json
 import time
 import xml.etree.ElementTree as KVMxml
+from os.path import dirname, join
 
 from onapp2vhi.inc.ssh_connector import ssh_run
 from onapp2vhi.inc.logger import logs
 from onapp2vhi.inc.helper import Helper
-from os.path import dirname, join
-
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 
-cfg = OnApp2VHIConfig()
 
-def vm_template_migrate(idn='', vhip=''):
+def vm_template_migrate(cfg: OnApp2VHIConfig, idn='', vhip=''):
     if not idn:
         logs.info('You need to pass OnApp template label value through --template-label=? parameter ')
         exit(17)
@@ -122,4 +120,3 @@ def vm_template_migrate(idn='', vhip=''):
             f"root@{cfg.onapp_conf['onapp_hv_ip']} 'rm -rf /tmp/{TMPL_file_name}.qcow2 ' ")
     # logs.info(CMD)
     ssh_run(command=_cmd)
-

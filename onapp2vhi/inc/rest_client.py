@@ -36,9 +36,7 @@ class OnAppRequests:
     Choose your request method and give query(route) to find something
     """
 
-    def __init__(self):
-        cfg = OnApp2VHIConfig()
-
+    def __init__(self, cfg: OnApp2VHIConfig):
         self._cookie = ""
         self.log = logs
         self.url = cfg.onapp_conf["url"]
@@ -78,7 +76,7 @@ class OnAppRequests:
             self._session = response.cookies['_session_id']
             self._request_id = response.headers['X-Request-Id']
             self.authorized = True
-        except OnAppRequestsException as e:
+        except OnAppRequestsException:
             logs.error('Authorization failed. Please check out your credentials in "config.cfg" file')
             raise
 

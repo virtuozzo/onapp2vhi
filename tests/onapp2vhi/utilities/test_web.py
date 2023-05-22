@@ -1,6 +1,5 @@
 import requests_mock
 from unittest import TestCase
-from mock import patch, Mock
 from requests.exceptions import HTTPError
 
 from onapp2vhi.utilities.web import download_file
@@ -22,5 +21,5 @@ class DownloadFileTestCase(TestCase):
                           content=b'qwreuqpwiufsd',
                           status_code=404)
 
-        with self.assertRaises(HTTPError) as e:
-            result = download_file('http://onapp2vhi.unittest.dev/file/sample.txt', '/tmp')
+        with self.assertRaises(HTTPError):
+            download_file('http://onapp2vhi.unittest.dev/file/sample.txt', '/tmp')

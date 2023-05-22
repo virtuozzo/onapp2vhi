@@ -4,15 +4,11 @@ from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.ssh_connector import ssh_run, SSH
 from onapp2vhi.inc.onapp_helpers import get_vm_source_properties
 from onapp2vhi.inc.utils import exit_status_code_handler
-
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.utilities.web import download_file
 
 
-cfg = OnApp2VHIConfig()
-
-
-def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install: bool):
+def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool, cloud_init_install: bool):
     if not idn:
         logs.error('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -28,13 +24,13 @@ def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install: b
 
     # -- STEP 1 --
     logs.info(f'{_spaces}{_dri_msg}STEP #1 -- OnApp: get source VM properties --', header=True)
-    _vm_properties = get_vm_source_properties(vm_idn=vm_idn)
+    _vm_properties = get_vm_source_properties(cfg, vm_idn=vm_idn)
     _vm_hv_ip = _vm_properties['hv_ip']
     _vm_ip_addr = _vm_properties['vm_ip_addr']
 
     # -- STEP 2 --
     logs.info(f'{_spaces}{_dri_msg}STEP #2 -- OnApp: Check if VM is running on HYPERVISOR --', header=True)
-    _hv_ssh = SSH(**{'host': _vm_hv_ip})
+    _hv_ssh = SSH(**{'host': _vm_hv_ip, 'ssh_key': cfg.ssh_key})
     exit_status, output = _hv_ssh.execute(f'virsh dominfo {vm_idn}')
     if exit_status:
         logs.error("VM is NOT running!")
@@ -72,7 +68,7 @@ def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install: b
 
     if not os.path.exists(vz_guest_tool_path):
         download_file("http://downloads.repo.onapp.com/vz-guest-tools-win.tar",
-                 os.path.join(package_path, "scripts"))
+                      os.path.join(package_path, "scripts"))
 
     if vz_guest_tools:
         cmd = f'scp -P{cfg.onapp_conf["hv_ssh_port"]} {Helper.SCP_OPTS.value}' \
@@ -90,7 +86,7 @@ def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install: b
 
     # -- STEP 4 --
     logs.info(f'{_spaces}{_dri_msg}STEP #4 -- OnApp: INSTALL DRIVERS for VM[IP:{_vm_ip_addr}] --', header=True)
-    _vm_ssh = SSH(**{'host': _vm_ip_addr, 'username': 'Administrator'})
+    _vm_ssh = SSH(**{'host': _vm_ip_addr, 'username': 'Administrator', 'ssh_key': cfg.ssh_key})
     if cloud_init_install:
         exit_status, output = _vm_ssh.execute('cd C:; msiexec /i CloudbaseInitSetup_Stable_x64.msi /qn /l*v log.txt')
         if not exit_status_code_handler(
@@ -108,7 +104,7 @@ def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install: b
         )
         if not exit_status_code_handler(
                 exit_code=exit_status,
-                message=f"[install_win_drivers.py | STEP 4] installation failed `vz-guest-tools-win.tar`"
+                message="[install_win_drivers.py | STEP 4] installation failed `vz-guest-tools-win.tar`"
         ):
             return False
 

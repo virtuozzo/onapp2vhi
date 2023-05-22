@@ -1,13 +1,15 @@
-from onapp2vhi.utilities.config import OnApp2VHIConfig
-from onapp2vhi.inc.ssh_connector import SSH
 import re
 import json
 
-cfg = OnApp2VHIConfig()
+from onapp2vhi.inc.ssh_connector import SSH
+from onapp2vhi.utilities.config import OnApp2VHIConfig
+
 
 class Network:
-    def __init__(self, **kwargs):
-        self._ssh = SSH(host=cfg.vhi_conf['cp_ip'], port=cfg.vhi_conf['cloud_ssh_port'])
+    def __init__(self, cfg: OnApp2VHIConfig, **kwargs):
+        self._ssh = SSH(host=cfg.vhi_conf['cp_ip'],
+                        port=cfg.vhi_conf['cloud_ssh_port'],
+                        ssh_key=cfg.ssh_key)
         self.vinfra_project = kwargs.get('vinfra_project', '')
         self._vinfra_options = f'{cfg.DOMAIN_AUTH} --vinfra-domain="{cfg.vhi_conf["vinfra_domain"]}"' \
                                f' --vinfra-project="{self.vinfra_project}"'

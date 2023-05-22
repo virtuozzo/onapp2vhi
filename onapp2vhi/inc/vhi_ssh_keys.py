@@ -6,23 +6,22 @@ from onapp2vhi.inc.logger import logs
 from onapp2vhi.inc.onapp_helpers import check_user_role
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 
-cfg = OnApp2VHIConfig()
-
 
 class VhiSshKeys:
     """
     Object is used to migrate User SSH Keys from OnApp platform to VHI platform.
     It takes as input arguments user object and list of ssh keys
     """
-    _URL = f"{cfg.vhi_conf['url']}{cfg.vhi_conf['api_path']}"
-    _PANEL_URL = f"{cfg.vhi_conf['panel_url']}{cfg.vhi_conf['api_path']}"
     GET = 'GET'
     POST = 'POST'
     PUT = 'PUT'
     DELETE = 'DELETE'
     PATCH = 'PATCH'
 
-    def __init__(self, user_obj: dict, ssh_keys: list):
+    def __init__(self, cfg: OnApp2VHIConfig, user_obj: dict, ssh_keys: list):
+        self._URL = f"{cfg.vhi_conf['url']}{cfg.vhi_conf['api_path']}"
+        self. _PANEL_URL = f"{cfg.vhi_conf['panel_url']}{cfg.vhi_conf['api_path']}"
+
         self._user = user_obj
         self._login = self._user['user_login']
         self._first_name = self._user['first_name']
@@ -104,7 +103,7 @@ class VhiSshKeys:
         if not self._log_handler(response=response):
             return False
 
-        _headers.update({f'Cookie': f'session1={response.cookies["session1"]}'})
+        _headers.update({'Cookie': f'session1={response.cookies["session1"]}'})
         _proj_url = ""
         if not check_user_role(self._user):
             _proj_url = self._user_projects_url
