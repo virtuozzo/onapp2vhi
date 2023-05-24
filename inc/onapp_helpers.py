@@ -327,7 +327,6 @@ def get_all_virtual_machines(user_id: int = None):
     existing_vms = _vhi_virtual_machine_list()
     from collections import defaultdict
     vms_dict = defaultdict(list)
-    logs.info(msg=f'VHI existing VM with hostnames:\n{existing_vms}')
     for _vm in response:
         vm = _vm['virtual_machine']
         _ip_addr = _get_primary_vm_ip(vm)
