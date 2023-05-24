@@ -330,9 +330,6 @@ def get_all_virtual_machines(user_id: int = None):
     logs.info(msg=f'VHI existing VM with hostnames:\n{existing_vms}')
     for _vm in response:
         vm = _vm['virtual_machine']
-        if vm["vip"]:
-            continue
-
         _ip_addr = _get_primary_vm_ip(vm)
 
         if vm['hostname'].lower() in existing_vms:
