@@ -125,9 +125,9 @@ FOR /F "usebackq tokens=1-13,* delims=.-: " %%a IN (`"route print | C:\Windows\S
         _gateway = f'''
 ping -n 5 127.0.0.1
 
-IF NOT EXIST C:\Windows\System32\DriverStore ("FOR /f "usebackq tokens=1,2 delims=,_"  %%a IN (`"getmac /v /FO CSV | C:\Windows\System32\\find.exe /I "{kwargs["mac_dash"]}""`) DO netsh interface ipv6 set route ::/0 interface=%%a nexthop={kwargs["gateway"]} metric=0
+IF NOT EXIST C:\Windows\System32\DriverStore (FOR /f "usebackq tokens=1,2 delims=,_"  %%a IN (`"getmac /v /FO CSV | C:\Windows\System32\\find.exe /I "{kwargs["mac_dash"]}""`) DO netsh interface ipv6 add route ::/0 interface=%%a nexthop={kwargs["gateway"]} metric=0
 ) ELSE (
-FOR /F "usebackq tokens=1-13,* delims=.-: " %%a IN (`"route print | C:\Windows\System32\\find.exe /I "{kwargs["mac_space"]}""`) DO netsh interface ipv6 set route ::/0 interface=%%a nexthop={kwargs["gateway"]} metric=0 store=persistent
+FOR /F "usebackq tokens=1-13,* delims=.-: " %%a IN (`"route print | C:\Windows\System32\\find.exe /I "{kwargs["mac_space"]}""`) DO netsh interface ipv6 add route ::/0 interface=%%a nexthop={kwargs["gateway"]} metric=0 store=persistent
 )
 
         '''
@@ -161,9 +161,9 @@ FOR /F "usebackq tokens=1-13,* delims=.-: " %%a IN (`"route print | C:\Windows\S
 ping -n 5 127.0.0.1
     
 IF NOT EXIST C:\Windows\System32\DriverStore (
-FOR /f "usebackq tokens=1,2 delims=,_"  %%a IN (`"getmac /v /FO CSV | C:\Windows\System32\\find.exe /I "{kwargs["mac_dash"]}""`) DO netsh interface ipv6 set dnsservers interface=%%a address={kwargs["dns"]}
+FOR /f "usebackq tokens=1,2 delims=,_"  %%a IN (`"getmac /v /FO CSV | C:\Windows\System32\\find.exe /I "{kwargs["mac_dash"]}""`) DO netsh interface ipv6 add dnsservers interface=%%a address={kwargs["dns"]}
 ) ELSE (
-FOR /F usebackq tokens=1-13,* delims=.-: " %%a IN (`"route print | C:\Windows\System32\\find.exe /I {kwargs["mac_space"]}""`) DO netsh interface ipv6 set dns interface=%%a address={kwargs["dns"]}
+FOR /F usebackq tokens=1-13,* delims=.-: " %%a IN (`"route print | C:\Windows\System32\\find.exe /I {kwargs["mac_space"]}""`) DO netsh interface ipv6 add dns interface=%%a address={kwargs["dns"]}
             )
             
             '''
