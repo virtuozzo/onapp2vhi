@@ -33,6 +33,7 @@ function installCloudinit() {
                 rm -rf /etc/cloud/cloud.cfg.d/subiquity-disable-cloudinit-networking.cfg
                 rm -rf /etc/cloud/cloud.cfg.d/99-installer.cfg
                 rm -rf /etc/netplan/00-installer-config.yaml
+		echo "ssh_deletekeys: false" > /etc/cloud/cloud.cfg.d/nodeletekeys.cfg
                 mv /etc/network/interfaces /etc/network/onapp2vhi.interfaces
                 cat << EOF > /etc/network/interfaces
 source /etc/network/interfaces.d/*
@@ -45,11 +46,9 @@ EOF
 				echo "$pkg installed"
 				echo 'datasource_list: [ ConfigDrive, OpenStack, None ]' | sudo -s tee /etc/cloud/cloud.cfg.d/90_dpkg.cfg
 				dpkg-reconfigure -f noninteractive cloud-init
-				systemctl unmask systemd-networkd
-				systemctl restart systemd-networkd
+				sed -i "s/'netplan', 'eni'/'eni'/g" /etc/cloud/cloud.cfg
 				cloud-init clean --seed --logs
 				cloud-init init --local
-				netplan apply
 				rm -rf /etc/cron.d/cron-cloud-install
 			else
 				echo "$pkg NOT installed"
@@ -72,6 +71,7 @@ EOF
         elif [[ ${OS} == 'debian' ]]; then
                 apt update
                 apt-get install -y cloud-init cloud-guest-utils net-tools
+		echo "ssh_deletekeys: false" > /etc/cloud/cloud.cfg.d/nodeletekeys.cfg
                 mv /etc/network/interfaces /etc/network/onapp2vhi.interfaces
                 cat << EOF > /etc/network/interfaces
 source /etc/network/interfaces.d/*
@@ -89,6 +89,7 @@ EOF
         elif [[ ${OS} == 'centos' ]]; then
 		mv /etc/sysconfig/network-scripts/ifcfg-eth0 /etc/sysconfig/network-scripts/onapp2vhi.ifcfg-eth0
                 yum -y install cloud-init cloud-utils-growpart
+		echo "ssh_deletekeys: false" > /etc/cloud/cloud.cfg.d/nodeletekeys.cfg
                 if rpm -q $pkg
                 then
                         echo "$pkg installed"
