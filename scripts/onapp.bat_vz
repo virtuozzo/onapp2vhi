@@ -4,3 +4,4 @@ cd /d C:\vz-guest-tools-win
 c:\vz-guest-tools-win\setupMain.exe
 c:\cygwin\bin\rm -rf c:/vz-guest-tools-win
 c:\cygwin\bin\rm -rf c:/onapp.bat
+c:\vhi_rebuild_network.bat

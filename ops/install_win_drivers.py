@@ -2,6 +2,7 @@ import os
 import click
 from click_default_group import DefaultGroup
 from inc.logger import logs
+from inc.windows_network_reconfig import WindowsNetworkReconfig
 from inc.helper import Helper
 from cfg.config_parser import ONAPP_CREDS
 from inc.ssh_connector import ssh_run, SSH
@@ -45,8 +46,10 @@ def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install: b
     # FILES TO COPY SHOULD BE LOCATED IN PROJECT FOLDER
     cloudbase_init_path = os.path.join(os.getcwd(), "scripts/CloudbaseInitSetup_Stable_x64.msi")
     vz_guest_tool_path = os.path.join(os.getcwd(), "scripts/vz-guest-tools-win.tar")
+    onapp_bat = os.path.join(os.getcwd(), "scripts/onapp.bat")
     logs.info(f'File path: {cloudbase_init_path}')
     logs.info(f'File path: {vz_guest_tool_path}')
+    logs.info(f'File path: {onapp_bat}')
 
     if cloud_init_install:
         cmd = f'scp -P{ONAPP_CREDS["hv_ssh_port"]} {Helper.SCP_OPTS.value} {cloudbase_init_path}' \
@@ -77,13 +80,43 @@ def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install: b
             return False
 
     # -- STEP 4 --
-    logs.info(f'{_spaces}{_dri_msg}STEP #4 -- OnApp: INSTALL DRIVERS for VM[IP:{_vm_ip_addr}] --', header=True)
+    logs.info(f'{_spaces}{_dri_msg}STEP #4 -- OnApp: Creating File to Rebuild'
+              f' Windows Networks for VM[IP:{_vm_ip_addr}|ID: {vm_idn}] --', header=True)
+    windows_reconfig = WindowsNetworkReconfig(vm_identifier=vm_idn)
+    result = windows_reconfig.create_file()
+    if not result:
+        return False
+
+    cmd = f'scp -P{ONAPP_CREDS["hv_ssh_port"]} {Helper.SCP_OPTS.value} {windows_reconfig.file}' \
+          f' Administrator@{_vm_ip_addr}:C:/vhi_rebuild_network.bat 2>/dev/null'
+    [exit_status, output] = ssh_run(cmd)
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f"[install_win_drivers.py | STEP 4] Something went wrong."
+                    f" Couldn't transfer {windows_reconfig.file} into VM\n"
+                    f"\t\tOutput: {output}"
+    ):
+        return False
+
+    cmd = f'scp -P{ONAPP_CREDS["hv_ssh_port"]} {Helper.SCP_OPTS.value} {onapp_bat}' \
+          f' Administrator@{_vm_ip_addr}:C:/onapp.bat 2>/dev/null'
+    [exit_status, output] = ssh_run(cmd)
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f"[install_win_drivers.py | STEP 4]"
+                    f" Something went wrong. Couldn't transfer onapp.bat into VM.\n"
+                    f"\t\tOutput: {output}"
+    ):
+        return False
+
+    # -- STEP 5 --
+    logs.info(f'{_spaces}{_dri_msg}STEP #5 -- OnApp: INSTALL DRIVERS for VM[IP:{_vm_ip_addr}] --', header=True)
     _vm_ssh = SSH(**{'host': _vm_ip_addr, 'username': 'Administrator'})
     if cloud_init_install:
         exit_status, output = _vm_ssh.execute('cd C:; msiexec /i CloudbaseInitSetup_Stable_x64.msi /qn /l*v log.txt')
         if not exit_status_code_handler(
                 exit_code=exit_status,
-                message=f"[install_win_drivers.py | STEP 4] installation failed `CloudbaseInitSetup_Stable_x64`\n"
+                message=f"[install_win_drivers.py | STEP 5] installation failed `CloudbaseInitSetup_Stable_x64`\n"
                         f"Output: {output}"
         ):
             return False

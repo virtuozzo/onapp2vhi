@@ -8,6 +8,7 @@ from inc.logger import logs
 from inc.helper import Helper
 from inc.ssh_connector import ssh_run, SSH
 from inc.utils import exit_status_code_handler
+from inc.windows_network_reconfig import WindowsNetworkReconfig
 from inc.onapp_helpers import (
     get_vm_source_properties,
     get_disk_type,
@@ -44,6 +45,7 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
     logs.info(f'{_spaces}{_dri_msg}STEP #1 -- OnApp: get source VM properties --', header=True)
     _vm_properties = get_vm_source_properties(vm_idn=vm_idn)
     _vm_hv_ip = _vm_properties['hv_ip']
+    _vm_ip_addr = _vm_properties['vm_ip_addr']
 
     # -- STEP 2 --
     logs.info(f"{_spaces}{_dri_msg}STEP #2 -- OnApp: Get VM primary disk info --", header=True)
@@ -142,11 +144,29 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
         return False
 
     # -- STEP 7 --
-    logs.info(f"{_spaces}{_dri_msg}STEP #7 -- OnApp: Run unmount and del partition devmappings --", header=True)
+    logs.info(f'{_spaces}{_dri_msg}STEP #7 -- OnApp: Creating File to Rebuild'
+              f' Windows Networks for VM[IP:{_vm_ip_addr}|ID: {vm_idn}] --', header=True)
+    windows_reconfig = WindowsNetworkReconfig(vm_identifier=vm_idn)
+    result = windows_reconfig.create_file()
+    if not result:
+        return False
+
+    cmd = f"scp -r {windows_reconfig.file} root@{_vm_hv_ip}:/mnt/{vm_idn}/vhi_rebuild_network.bat"
+    [exit_status, output] = ssh_run(cmd)
+    if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f"[install_win_drivers.py | STEP 7] Something went wrong."
+                    f" Couldn't transfer {windows_reconfig.file} into VM\n"
+                    f"\t\tOutput: {output}"
+    ):
+        return False
+
+    # -- STEP 8 --
+    logs.info(f"{_spaces}{_dri_msg}STEP #8 -- OnApp: Run unmount and del partition devmappings --", header=True)
     exit_status, output = _hv_ssh.execute(f"umount {onappvm_disk_partition}")
     if not exit_status_code_handler(
             exit_code=exit_status,
-            message=f"[install_win_drivers_offline.py | STEP 7]"
+            message=f"[install_win_drivers_offline.py | STEP 8]"
                     f" umount {onappvm_disk_partition} failed. Output\n\t{output}"
     ):
         return False

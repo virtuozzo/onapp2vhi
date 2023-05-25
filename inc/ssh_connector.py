@@ -81,6 +81,37 @@ class SSH:
             sleep(10)
         return connection
 
+    def _key_algorithms_handler(self):
+        """
+        Linux Based VM's
+        Example of handler command:
+        ssh root@10.119.0.14 -A -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' -t
+        "echo -e \"HostKeyAlgorithms +ssh-rsa\nPubkeyAcceptedKeyTypes +ssh-rsa\" >> /etc/ssh/sshd_config;
+            sudo systemctl restart ssh"
+        :return:
+        """
+        from inc.helper import Helper
+        logs.warn(msg='Trying to setup `PubkeyAcceptedAlgorithms` in the VM sshd_config. . .', )
+        _cmd = (f"ssh root@{self.host} {Helper.SSH_OPTS.value} -t \"echo -e '\n#added by OnApp \nHostKeyAlgorithms"
+                f" +ssh-rsa\\nPubkeyAcceptedKeyTypes +ssh-rsa\n' >> /etc/ssh/sshd_config; sudo systemctl restart ssh\"")
+        [exit_status, output] = ssh_run(command=_cmd)
+        logs.debug(msg='Waiting 5 seconds to restart sshd service. . .', separator=True)
+        sleep(5)
+        if not exit_status:
+            try:
+                self.client.connect(hostname=self.host,
+                                    username=self.username,
+                                    port=self.port,
+                                    pkey=self.pkey,
+                                    timeout=self.connect_timeout)
+                return True
+
+            except paramiko.AuthenticationException as AE:
+                logs.error(f"{AE} - `PubkeyAcceptedAlgorithms Handler failed`, please take a look manually.")
+                return False
+
+        return False
+
     def _connect(self):
         paramiko.util.log_to_file("ssh_connection.log")
         if self._port_is_open():
@@ -98,8 +129,15 @@ class SSH:
                     - password is required;
                     - your public key is absent on the server;
                     - host is empty;
+                    - PubkeyAcceptedAlgorithms or PubkeyAcceptedKeyTypes are different on
+                     remote server(try `sudo vi /etc/ssh/sshd_config` [HostKeyAlgorithms +ssh-rsa,
+                      PubkeyAcceptedKeyTypes +ssh-rsa] and `sudo systemctl restart ssh`)
                     - your ssh-agent may missing your public key""")
+                # Try to add HostKeyAlgorithms
+                # if self._key_algorithms_handler():
+                #     return True
                 return False
+
         return False
 
     def _receive_data(self, real_data=False):

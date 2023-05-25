@@ -331,7 +331,7 @@ def get_all_virtual_machines(user_id: int = None):
         vm = _vm['virtual_machine']
         _ip_addr = _get_primary_vm_ip(vm)
 
-        if vm['hostname'].lower() in existing_vms:
+        if f"{vm['hostname']}.{vm['domain']}".lower() in existing_vms:
             msg = (f'Virtual Machine already exists on VHI side in `{VHI_CREDS["vinfra_domain"]}` domain\n\n\t\t'
                    f'VM Info [{vm["identifier"]} | {_ip_addr} | {vm["hostname"]} | {vm["label"]}]\n')
             logs.warn(msg=msg)
@@ -342,6 +342,7 @@ def get_all_virtual_machines(user_id: int = None):
                                         'ip_addr': _ip_addr,
                                         'operating_system': vm['operating_system'],
                                         'hostname': vm['hostname'],
+                                        'domain': vm['domain'],
                                         'built_from_iso': vm['built_from_iso'],
                                         'built_from_ova': vm['built_from_ova'],
                                         'label': vm['label']})
@@ -359,6 +360,7 @@ def get_vm_source_properties(vm_idn: str) -> Dict:
     _vm_os = vm_properties['operating_system']
     _hot_migrate = vm_properties['allowed_hot_migrate']
     _vm_hostname = vm_properties['hostname']
+    _vm_domain = vm_properties['domain']
     _hv_props = onapp_requests.get(f'settings/hypervisors/{_vm_hv_id}')
     _vm_hv_ip = _hv_props['hypervisor']['ip_address']
     _vm_nics = onapp_requests.get(f'virtual_machines/{vm_idn}/ip_addresses')
@@ -366,7 +368,7 @@ def get_vm_source_properties(vm_idn: str) -> Dict:
                    if nic['ip_address_join']['ip_address']][0]
     logs.info(f"-- Hypervisor ID: {_vm_hv_id} | Hypervisor IP ADDRESS: {_vm_hv_ip} | VM IP ADDRESS {_vm_ip_addr}")
     return {'hv_ip': _vm_hv_ip, 'vm_os': _vm_os, 'vm_ip_addr': _vm_ip_addr,
-            'hot_migrate': _hot_migrate, 'hostname': _vm_hostname}
+            'hot_migrate': _hot_migrate, 'hostname': _vm_hostname, 'domain': _vm_domain}
 
 
 def get_bucket_limits(bucket_id: str) -> dict:
@@ -854,7 +856,8 @@ def create_new_vhi_vm(vhi_ssh: SSH,
                       onapp_disks: list,
                       flavour: str,
                       onapp_nics: list,
-                      hostname: str):
+                      hostname: str,
+                      domain: str):
     """
     Create new VM on VHI side with the same properties as at OnApp
     Disks and Networks
@@ -867,13 +870,14 @@ def create_new_vhi_vm(vhi_ssh: SSH,
     :param flavour: str "flavor_1_128"
     :param onapp_nics: list [{"ips": ["0.0.0.0", "1.1.1.1"], "mac": "MAC-Addr"}, {. . .}]
     :param hostname: "virtual_server"
+    :param domain: "domain"
     :return: str VHI VM ID: "3647dfe-ewr34v3rg4b-34tgfbvdzfjh"
     """
     _vhi_vm_id = ''
-    host_name = hostname.lower()
+    hostname_domain = f'{hostname}.{domain}'.lower()
     onappvm_pri_ips = onapp_nics[0]['ips']
-    create_cmd = (f"{vinfra_access} service compute server create {host_name}"
-                  f" --description '{host_name}_{vm_idn}' {network} --volume source=image,id={vhi_image},"
+    create_cmd = (f"{vinfra_access} service compute server create '{hostname_domain}'"
+                  f" --description '{hostname_domain}_{vm_idn}' {network} --volume source=image,id={vhi_image},"
                   f"size={onapp_disks[0]['size']} --flavor {flavour} -f json | jq -r \".id\"")
     exit_status, output = vhi_ssh.execute(command=create_cmd)
     if 'INTERNAL SERVER ERROR' in output:

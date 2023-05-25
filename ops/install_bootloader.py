@@ -64,6 +64,8 @@ def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install: bo
     if vz_guest_tools:
         logs.info(f'{_spaces}{_boot_msg}STEP #4 -- OnApp: Install `vz-guest-tools` inside VM [{VM_IDn}] --',
                   header=True)
+        _vm_ssh.connect_timeout = 10
+        _vm_ssh.channel_timeout = 10
         exit_status, output = _vm_ssh.execute("nohup bash /usr/bin/vz-guest-tools 1>/opt/vz-guest-tools.log 2>&1")
         
         # NOTE: here we removed validation for `vz-guest-tools` failure

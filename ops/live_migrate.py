@@ -149,7 +149,8 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
                                        onapp_disks=_onapp_disks,
                                        flavour=_flavour,
                                        onapp_nics=_onapp_nics,
-                                       hostname=_vm_properties['hostname'])
+                                       hostname=_vm_properties['hostname'],
+                                       domain=_vm_properties['domain'])
         if not _vhi_vm_id:
             return False
 
