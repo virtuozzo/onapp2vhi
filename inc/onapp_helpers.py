@@ -296,9 +296,8 @@ def get_user_data(url: str, get_type, value_to_search=None, all_users=False):
 def _get_primary_vm_ip(vm: dict):
     for ip_address in vm['ip_addresses']:
         ip = ip_address['ip_address']
-        # TODO The IP address should be used from primary interface
-        # if not ip['primary']:
-        # continue
+        if not ip['primary']:
+            continue
         return ip['address']
 
 
