@@ -130,3 +130,7 @@ dmypy.json
 
 scripts-tmp
 *.DS_Store
+
+scripts/windows_network_*
+scripts/*.tar
+scripts/*.msi

@@ -48,12 +48,19 @@ _preferred_pubkeys = ("ssh-ed25519",
                       "rsa-sha2-256",
                       "ssh-rsa",
                       "ssh-dss")
+_preferred_pubkeys_old = ("ssh-ed25519",
+                          "ecdsa-sha2-nistp256",
+                          "ecdsa-sha2-nistp384",
+                          "ecdsa-sha2-nistp521",
+                          "ssh-rsa",
+                          "rsa-sha2-512",
+                          "rsa-sha2-256",
+                          "ssh-dss")
 
 
 class SSH:
 
     def __init__(self, **kwargs):
-        paramiko.transport.Transport._preferred_pubkeys = _preferred_pubkeys
         self.client = paramiko.SSHClient()
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.host = kwargs.get("host")
@@ -113,6 +120,7 @@ class SSH:
         return False
 
     def _connect(self):
+        paramiko.transport.Transport._preferred_pubkeys = _preferred_pubkeys
         paramiko.util.log_to_file("ssh_connection.log")
         if self._port_is_open():
             # Try to connect
@@ -133,10 +141,17 @@ class SSH:
                      remote server(try `sudo vi /etc/ssh/sshd_config` [HostKeyAlgorithms +ssh-rsa,
                       PubkeyAcceptedKeyTypes +ssh-rsa] and `sudo systemctl restart ssh`)
                     - your ssh-agent may missing your public key""")
-                # Try to add HostKeyAlgorithms
-                # if self._key_algorithms_handler():
-                #     return True
-                return False
+                paramiko.transport.Transport._preferred_pubkeys = _preferred_pubkeys_old
+                try:
+                    logs.warn(msg='Trying OLD algorithm for SSH keys. . .')
+                    self.client.connect(hostname=self.host,
+                                        username=self.username,
+                                        port=self.port,
+                                        pkey=self.pkey,
+                                        timeout=self.connect_timeout)
+                    return True
+                except paramiko.AuthenticationException:
+                    return False
 
         return False
 

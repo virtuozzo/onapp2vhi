@@ -112,6 +112,8 @@ def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install: b
     # -- STEP 5 --
     logs.info(f'{_spaces}{_dri_msg}STEP #5 -- OnApp: INSTALL DRIVERS for VM[IP:{_vm_ip_addr}] --', header=True)
     _vm_ssh = SSH(**{'host': _vm_ip_addr, 'username': 'Administrator'})
+    _vm_ssh.connect_timeout = 20
+    _vm_ssh.channel_timeout = 20
     if cloud_init_install:
         exit_status, output = _vm_ssh.execute('cd C:; msiexec /i CloudbaseInitSetup_Stable_x64.msi /qn /l*v log.txt')
         if not exit_status_code_handler(
