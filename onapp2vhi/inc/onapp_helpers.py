@@ -305,9 +305,8 @@ def get_user_data(cfg: OnApp2VHIConfig, url: str, get_type, value_to_search=None
 def _get_primary_vm_ip(vm: dict):
     for ip_address in vm['ip_addresses']:
         ip = ip_address['ip_address']
-        # TODO The IP address should be used from primary interface
-        # if not ip['primary']:
-        # continue
+        if not ip['primary']:
+            continue
         return ip['address']
 
 
@@ -337,15 +336,11 @@ def get_all_virtual_machines(cfg: OnApp2VHIConfig, user_id: int = None):
     existing_vms = _vhi_virtual_machine_list(cfg)
     from collections import defaultdict
     vms_dict = defaultdict(list)
-    logs.info(msg=f'VHI existing VM with hostnames:\n{existing_vms}')
     for _vm in response:
         vm = _vm['virtual_machine']
-        if vm["vip"]:
-            continue
-
         _ip_addr = _get_primary_vm_ip(vm)
 
-        if vm['hostname'].lower() in existing_vms:
+        if f"{vm['hostname']}.{vm['domain']}".lower() in existing_vms:
             msg = (f'Virtual Machine already exists on VHI side in `{cfg.vhi_conf["vinfra_domain"]}` domain\n\n\t\t'
                    f'VM Info [{vm["identifier"]} | {_ip_addr} | {vm["hostname"]} | {vm["label"]}]\n')
             logs.warn(msg=msg)
@@ -356,6 +351,7 @@ def get_all_virtual_machines(cfg: OnApp2VHIConfig, user_id: int = None):
                                         'ip_addr': _ip_addr,
                                         'operating_system': vm['operating_system'],
                                         'hostname': vm['hostname'],
+                                        'domain': vm['domain'],
                                         'built_from_iso': vm['built_from_iso'],
                                         'built_from_ova': vm['built_from_ova'],
                                         'label': vm['label']})
@@ -374,6 +370,7 @@ def get_vm_source_properties(cfg: OnApp2VHIConfig, vm_idn: str) -> Dict:
     _vm_os = vm_properties['operating_system']
     _hot_migrate = vm_properties['allowed_hot_migrate']
     _vm_hostname = vm_properties['hostname']
+    _vm_domain = vm_properties['domain']
     _hv_props = onapp_requests.get(f'settings/hypervisors/{_vm_hv_id}')
     _vm_hv_ip = _hv_props['hypervisor']['ip_address']
     _vm_nics = onapp_requests.get(f'virtual_machines/{vm_idn}/ip_addresses')
@@ -381,7 +378,7 @@ def get_vm_source_properties(cfg: OnApp2VHIConfig, vm_idn: str) -> Dict:
                    if nic['ip_address_join']['ip_address']][0]
     logs.info(f"-- Hypervisor ID: {_vm_hv_id} | Hypervisor IP ADDRESS: {_vm_hv_ip} | VM IP ADDRESS {_vm_ip_addr}")
     return {'hv_ip': _vm_hv_ip, 'vm_os': _vm_os, 'vm_ip_addr': _vm_ip_addr,
-            'hot_migrate': _hot_migrate, 'hostname': _vm_hostname}
+            'hot_migrate': _hot_migrate, 'hostname': _vm_hostname, 'domain': _vm_domain}
 
 
 def get_bucket_limits(cfg: OnApp2VHIConfig, bucket_id: str) -> dict:
@@ -585,11 +582,19 @@ def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
             data["protocol"] = rule.protocol
             data["remote-ip"] = rule.address
             if rule.port:  # some protocols do not need to specify ports
-                data["port-range-max"] = rule.port
-                data["port-range-min"] = rule.port
-            # create the rule
-            _, output = sgr.create(sg_name=sg_name, **data)
-            output = json.loads(output)
+                if len(rule.port.split(',')) > 1:  # some rules contain multiple ports
+                    for port in list(set(rule.port.split(','))):  # iterate by unique ports only.
+                        data["port-range-min"] = port
+                        data["port-range-max"] = port
+
+                        _, output = sgr.create(sg_name=sg_name, **data)
+                        output = json.loads(output)
+                else:
+                    data["port-range-min"] = rule.port
+                    data["port-range-max"] = rule.port
+                    # create the rule
+                    _, output = sgr.create(sg_name=sg_name, **data)
+                    output = json.loads(output)
             if not output:
                 logs.warn(msg=f"Firewall rule: {rule} was not transferred correctly")
 
@@ -667,7 +672,7 @@ class VmHandler:
         from onapp2vhi.ops.install_win_drivers_offline import vm_install_win_drivers_offline
         from onapp2vhi.inc.helper import Helper
         if self._booted:
-            _cmd = (f'timeout 15s ssh {Helper.SSH_OPTS.value} -p 22'
+            _cmd = (f'timeout 150s ssh {Helper.SSH_OPTS.value} -p 22'
                     f' {self._user}@{self._ip_addr} -t "hostname; exit;"')
             (rc, ou) = ssh_run(command=_cmd)
             if not rc:
@@ -800,7 +805,7 @@ def activate_disk(cfg: OnApp2VHIConfig, vm_idn: str, vm_ohv_ip: str, multiply_di
         ds_type = ovm_dsk['datastore_type']
     if ds_type == 'is':
         # Here We are working on Hypervisor side Port is 22 and HV IP
-        logs.debug('-- OnApp HV: get frontend UUID')
+        logs.debug(f'{_spaces}-- OnApp HV: get frontend UUID')
         exit_status, output = hv_ssh.execute(command='onappstore getid')
         try:
             frontend_uuid = re.findall('\d+', re.findall('uuid=\d+', output)[0])[0]
@@ -809,17 +814,18 @@ def activate_disk(cfg: OnApp2VHIConfig, vm_idn: str, vm_ohv_ip: str, multiply_di
             return False
 
         # Get Disk Info
-        logs.debug('-- OnApp HV: Get Disk Info')
+        logs.debug(f'{_spaces}-- OnApp HV: Get Disk Info')
         exit_status, output = hv_ssh.execute(command=f'onappstore diskinfo uuid={disk_idn}')
         try:
-            disk_status = re.findall('\d+', re.findall('status=\d+', output)[0])[0]
+            disk_status = re.search(r"\bstatus=(\d+)", output)
+            status = int(disk_status.group(1))
         except IndexError:
             logs.error(f"The status was not found. Output:\n\t{output}")
             return False
 
         # If disk is offline, activate it
-        logs.debug(msg=f'Disk Status: {disk_status}', separator=True)
-        if not int(disk_status):
+        logs.debug(msg=f'Disk Status: {status}', separator=True)
+        if not status:
             hv_ssh.execute(command=f'onappstore online uuid={disk_idn} frontend_uuid={frontend_uuid}')
         return True
 
@@ -876,7 +882,8 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
                       onapp_disks: list,
                       flavour: str,
                       onapp_nics: list,
-                      hostname: str):
+                      hostname: str,
+                      domain: str):
     """
     Create new VM on VHI side with the same properties as at OnApp
     Disks and Networks
@@ -889,13 +896,14 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
     :param flavour: str "flavor_1_128"
     :param onapp_nics: list [{"ips": ["0.0.0.0", "1.1.1.1"], "mac": "MAC-Addr"}, {. . .}]
     :param hostname: "virtual_server"
+    :param domain: "domain"
     :return: str VHI VM ID: "3647dfe-ewr34v3rg4b-34tgfbvdzfjh"
     """
     _vhi_vm_id = ''
-    host_name = hostname.lower()
+    hostname_domain = f'{hostname}.{domain}'.lower()
     onappvm_pri_ips = onapp_nics[0]['ips']
-    create_cmd = (f"{vinfra_access} service compute server create {host_name}"
-                  f" --description '{host_name}_{vm_idn}' {network} --volume source=image,id={vhi_image},"
+    create_cmd = (f"{vinfra_access} service compute server create '{hostname_domain}'"
+                  f" --description '{hostname_domain}_{vm_idn}' {network} --volume source=image,id={vhi_image},"
                   f"size={onapp_disks[0]['size']} --flavor {flavour} -f json | jq -r \".id\"")
     exit_status, output = vhi_ssh.execute(command=create_cmd)
     if 'INTERNAL SERVER ERROR' in output:
@@ -912,7 +920,7 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
         exit_status, output = vhi_ssh.execute(
             f"for ((i=1;i<=100;i++)); do {vinfra_access} service compute server stop {_vhi_vm_id} --hard --wait"
             f" --timeout 15 -f json | jq -r -c [.name,.id,.vm_state,.power_state,.status] ;  "
-            f"pwstate=\"`vinfra service compute server show {_vhi_vm_id} -f json | jq -r .power_state `\" ; "
+            f"pwstate=\"`{vinfra_access} service compute server show {_vhi_vm_id} -f json | jq -r .power_state `\" ; "
             f"echo \"$pwstate\" ; if [[ \"$pwstate\" == \"SHUTDOWN\" ]];"
             f" then break; fi ; sleep 1; done 2>/dev/null",
             real_data=True
@@ -939,7 +947,7 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
                     return False
 
     if len(onappvm_pri_ips) > 1:
-        logs.info("-- VHI: allocate and assign extra VHI VM's IP addresses to primary NIC--")
+        logs.info(f"{_spaces}-- VHI: allocate and assign extra VHI VM's IP addresses to primary NIC--")
         _ips_params = ''
         for ip in onappvm_pri_ips:
             _ips_params += f"--fixed-ip ip-address={ip} "

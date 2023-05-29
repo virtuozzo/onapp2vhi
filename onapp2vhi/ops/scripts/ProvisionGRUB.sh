@@ -26,6 +26,11 @@ if [ "$GRUB_VERSION" -lt 1 ];then
         grub-install --recheck $ROOT_DEV
         if  command -v update-grub &>/dev/null; then
                 rm -f /boot/grub/menu.lst
+		cp /usr/sbin/update-grub /usr/sbin/update-grub.orig
+		#Ubuntu16
+		sed -i 's/kopt="$default_kopt"/kopt="$default_kopt net.ifnames=0 biosdevname=0"/g' /usr/sbin/update-grub
+                #Debian10
+		sed -i 's/kopt="root=$linux_root_device ro"/kopt="root=$linux_root_device net.ifnames=0 biosdevname=0 ro"/g' /usr/sbin/update-grub
                 update-grub -y
         fi
 else
