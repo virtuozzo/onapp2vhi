@@ -25,6 +25,7 @@ class WindowsNetworkReconfig:
         self.add = 'add'
         self.set = 'set'
         self.file = PATH.format(vm_identifier=self.vm_identifier)
+        self.primary_ip_address = ''
 
     @property
     def _head_of_config_file(self):
@@ -52,11 +53,14 @@ IF /I "%BOARD%"=="Virtuozzo     " (goto V) ELSE (goto END)
         Static end of bash script
         :return: str
         """
-        return '''
+        return f'''
 :END
 
-REM del c:\\rebuild_network.bat
-        
+ping -n 1 {self.primary_ip_address} | find /I "TTL=" >nul
+if ERRORLEVEL 0 (DEL /q /f c:\\onapp.bat)
+
+:END
+
         '''
 
     def convert_netmask(self, netmask_prefix: int) -> str:
@@ -202,6 +206,8 @@ FOR /F "usebackq tokens=1-13,* delims=.-: " %%a IN (`"route print | C:\Windows\S
                         return []
 
                     elif _ip_addr['primary'] and _ip_addr['ipv4']:
+                        # Set Primary IP Address for class
+                        self.primary_ip_address = ip_addr[0]['address']
                         _network['dns_ipv4'] = get_network_nameserver(network_id=network_id,
                                                                       ipv4=_network['ip_addr_info'][num]['ipv4'])
 

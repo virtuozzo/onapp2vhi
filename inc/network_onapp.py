@@ -221,3 +221,14 @@ def get_network_id_by_identifier(identifier: str) -> str:
         ),
         '',
     )
+
+
+def get_vm_network_info(vm_identifier: str = '') -> dict:
+    nics = get_virtual_server_interfaces(virtual_server_id=vm_identifier)
+    network_info = {}
+    for nic in nics:
+        _nic_id = nic["network_interface"]["id"]
+        _ip_addrs = get_virtual_server_ip_addresses(virtual_server_id=vm_identifier,
+                                                    network_interface_id=_nic_id)
+        network_info[_nic_id] = [addr['address'] for addr in _ip_addrs]
+    return network_info

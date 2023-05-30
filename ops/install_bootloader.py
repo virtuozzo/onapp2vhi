@@ -7,7 +7,7 @@ from inc.onapp_helpers import get_vm_source_properties
 from inc.utils import exit_status_code_handler
 
 
-def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install: bool):
+def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install, vm_properties: dict):
     VM_IDn = idn
     if not idn:
         logs.error('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
@@ -20,9 +20,22 @@ def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install: bo
 
     # -- STEP 1 --
     logs.info(f'{_spaces}{_boot_msg}STEP #1 -- OnApp: get source VM properties --', header=True)
-    _vm_properties = get_vm_source_properties(vm_idn=VM_IDn)
+    _vm_properties = vm_properties
     _vm_hv_ip = _vm_properties['hv_ip']
     _vm_ip_addr = _vm_properties['vm_ip_addr']
+    _nics = _vm_properties['network_info']
+    _user_choice = cloud_init_install['user']
+    _cloud_init = True
+    if _user_choice and cloud_init_install['install']:
+        _cloud_init = True
+    elif _user_choice and not cloud_init_install['install']:
+        _cloud_init = False
+    else:
+        for _nic_id, _nic_addrs in _nics.items():
+            if len(_nic_addrs) > 1 and not _user_choice:
+                _cloud_init = False
+                logs.warn(msg='The `cloud-init` will not be installed. You will need to install it manually.')
+                break
 
     # -- STEP 2 --
     _vm_ssh = SSH(**{'host': _vm_ip_addr, 'connect_timeout': 10, 'channel_timeout': 10})
@@ -43,7 +56,7 @@ def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install: bo
     if not vz_guest_tools:
         del scripts_info['scripts/vz-guest-tools-lin.tar']
         del scripts_info['scripts/vz-guest-tools']
-    if not cloud_init_install:
+    if not _cloud_init:
         del scripts_info['scripts/cloud-install']
         del scripts_info['scripts/cron-cloud-install']
 
@@ -93,9 +106,12 @@ def cli():
 @click.command()
 @click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
 @click.option('--vz_guest_tools', default=True, help="Boolean flag, set `false` to NOT install vz_guest_tools")
-@click.option('--cloud_init_install', default=True, help="Boolean flag, set `false` to NOT install cloud_init_install")
-def installbootloader(idn='', vz_guest_tools=True, cloud_init_install=True):
-    vm_install_bootloader(idn=idn, vz_guest_tools=vz_guest_tools, cloud_init_install=cloud_init_install)
+@click.option('--cloud_init_install', help="Option whether to install cloud-init or not")
+def installbootloader(idn='', vz_guest_tools=True, cloud_init_install='', vm_properties='vm_properties'):
+    vm_install_bootloader(idn=idn,
+                          vz_guest_tools=vz_guest_tools,
+                          cloud_init_install=cloud_init_install,
+                          vm_properties=vm_properties)
 
 
 cli.add_command(installbootloader)

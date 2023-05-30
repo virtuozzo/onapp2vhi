@@ -21,7 +21,7 @@ from inc.helper import Helper
 from cfg.config_parser import ONAPP_CREDS, VHI_CREDS, VINFRA_AUTH, ADMIN_AUTH, DOMAIN_AUTH
 
 
-def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, placement=''):
+def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vm_properties: dict, vhi_obj, placement=''):
     if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -37,7 +37,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
 
     # -- STEP 1 --
     logs.info(f"{_spaces}{live_migration}STEP #1 -- OnApp: Get source VM properties --", header=True)
-    _vm_properties = get_vm_source_properties(vm_idn=vm_idn)
+    _vm_properties = vm_properties
     _vm_hv_ip = _vm_properties['hv_ip']
     _vm_ip_addr = _vm_properties['vm_ip_addr']
     _hot_migrate = _vm_properties['hot_migrate']
@@ -332,11 +332,12 @@ def cli():
 @click.option('--vproj', '--vhi-project', default='', help="VHI Project.")
 @click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
 @click.option('--network', default='', help="Set network id")
-def livemigrate(vdom='', vproj='', idn='', network='', vhi_obj='', placement=''):
+def livemigrate(vdom='', vproj='', idn='', network='', vm_properties='', vhi_obj='', placement=''):
     vm_live_migrate(vdom=vdom,
                     vproj=vproj,
                     idn=idn,
                     network=network,
+                    vm_properties=vm_properties,
                     vhi_obj=vhi_obj,
                     placement=placement)
 

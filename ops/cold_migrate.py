@@ -6,7 +6,7 @@ from inc.network_hanlder import get_network_configuration
 from cfg.config_parser import ADMIN_AUTH, DOMAIN_AUTH
 
 
-def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, placement=''):
+def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vm_properties: dict, vhi_obj, placement=''):
     # ToDo
     #  verify IP address before running script
     if not idn:
@@ -24,7 +24,7 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vhi_obj, plac
 
     # -- STEP 1 --
     logs.info(f"{_spaces}{_cm_msg}STEP #1 -- OnApp: Get source VM properties --", header=True)
-    _vm_properties = get_vm_source_properties(vm_idn=VM_IDn)
+    _vm_properties = vm_properties
     _vm_hv_ip = _vm_properties['hv_ip']
     vhi = vhi_obj
     _on_app_flavor = get_onapp_vm_flavor(vm_idn=VM_IDn)
@@ -222,11 +222,12 @@ def cli():
 @click.option('--vproj', '--vhi-project', default='', help="VHI Project.")
 @click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
 @click.option('--network', default='', help="Set network id")
-def coldmigrate(vdom='', vproj='', idn='', network='', vhi_obj='', placement=''):
+def coldmigrate(vdom='', vproj='', idn='', network='', vm_properties='', vhi_obj='', placement=''):
     vm_cold_migrate(vdom=vdom,
                     vproj=vproj,
                     idn=idn,
                     network=network,
+                    vm_properties=vm_properties,
                     vhi_obj=vhi_obj,
                     placement=placement)
 

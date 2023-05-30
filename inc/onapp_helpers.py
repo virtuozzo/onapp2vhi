@@ -5,6 +5,7 @@ import xml.etree.ElementTree as KVMxml
 
 from inc.rest_client import OnAppRequests
 from inc.helper import Helper
+from inc.network_onapp import get_vm_network_info
 from cfg.config_parser import VHI_CREDS, DOMAIN_AUTH
 from inc.ssh_connector import ssh_run, SSH
 from inc.logger import logs
@@ -355,6 +356,7 @@ def get_vm_source_properties(vm_idn: str) -> Dict:
     :return:
     """
     vm_properties = onapp_requests.get(f'virtual_machines/{vm_idn}')['virtual_machine']
+    network_info = get_vm_network_info(vm_identifier=vm_idn)
     _vm_hv_id = vm_properties['hypervisor_id']
     _vm_os = vm_properties['operating_system']
     _hot_migrate = vm_properties['allowed_hot_migrate']
@@ -366,7 +368,7 @@ def get_vm_source_properties(vm_idn: str) -> Dict:
     _vm_ip_addr = [nic['ip_address_join']['ip_address']['address'] for nic in _vm_nics
                    if nic['ip_address_join']['ip_address']][0]
     logs.info(f"-- Hypervisor ID: {_vm_hv_id} | Hypervisor IP ADDRESS: {_vm_hv_ip} | VM IP ADDRESS {_vm_ip_addr}")
-    return {'hv_ip': _vm_hv_ip, 'vm_os': _vm_os, 'vm_ip_addr': _vm_ip_addr,
+    return {'hv_ip': _vm_hv_ip, 'vm_os': _vm_os, 'vm_ip_addr': _vm_ip_addr, 'network_info': network_info,
             'hot_migrate': _hot_migrate, 'hostname': _vm_hostname, 'domain': _vm_domain}
 
 
