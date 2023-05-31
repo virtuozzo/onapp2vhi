@@ -4,6 +4,7 @@ import re
 import xml.etree.ElementTree as KVMxml
 
 from inc.rest_client import OnAppRequests
+from inc.network_onapp import get_virtual_server_interfaces, get_virtual_server_ip_addresses
 from inc.helper import Helper
 from inc.network_onapp import get_vm_network_info
 from cfg.config_parser import VHI_CREDS, DOMAIN_AUTH
@@ -295,11 +296,21 @@ def get_user_data(url: str, get_type, value_to_search=None, all_users=False):
 
 
 def _get_primary_vm_ip(vm: dict):
-    for ip_address in vm['ip_addresses']:
-        ip = ip_address['ip_address']
-        if not ip['primary']:
-            continue
-        return ip['address']
+    _version = onapp_version()
+    vm_idn = vm['identifier']
+    if _version <= 6.0:
+        virtual_server_nic = get_virtual_server_interfaces(virtual_server_id=vm_idn)
+        primary_nic_id = [nic["network_interface"]["id"] for nic in virtual_server_nic
+                          if nic['network_interface']['primary']][0]
+        vs_ip_addresses = get_virtual_server_ip_addresses(virtual_server_id=vm_idn,
+                                                          network_interface_id=primary_nic_id)
+        return vs_ip_addresses[0]['address']
+    else:
+        for ip_address in vm['ip_addresses']:
+            ip = ip_address['ip_address']
+            if not ip['primary']:
+                continue
+            return ip['address']
 
 
 def _vhi_virtual_machine_list():
@@ -449,18 +460,23 @@ def get_vm_firewall_rules(vm_idn: str) -> List[FirewallRules]:
     """
     logs.info(f'{_spaces}-- OnApp: Get OnApp VM Firewall Rules  --')
     response = onapp_requests.get(f'virtual_machines/{vm_idn}/firewall_rules')
-    firewall_rules = [FirewallRules(id=fr['firewall_rule']['id'],
-                                    position=fr['firewall_rule']['position'],
-                                    address=fr['firewall_rule']['address'],
-                                    command=fr['firewall_rule']['command'],
-                                    port=fr['firewall_rule']['port'],
-                                    protocol=fr['firewall_rule']['protocol'],
-                                    nic_id=fr['firewall_rule']['network_interface_id'],
-                                    comment=fr['firewall_rule']['comment'],
-                                    source_port=fr['firewall_rule']['source_port'],
-                                    destination_ip=fr['firewall_rule']['destination_ip'],
-                                    protocol_type=fr['firewall_rule']['protocol_type'])
-                      for fr in response]
+    version = onapp_version()
+    firewall_rules = []
+    for fr in response:
+        comment = ''
+        if version > 6.0:
+            comment = fr['firewall_rule']['comment']
+        firewall_rules.append(FirewallRules(id=fr['firewall_rule']['id'],
+                                            position=fr['firewall_rule']['position'],
+                                            address=fr['firewall_rule']['address'],
+                                            command=fr['firewall_rule']['command'],
+                                            port=fr['firewall_rule']['port'],
+                                            protocol=fr['firewall_rule']['protocol'],
+                                            nic_id=fr['firewall_rule']['network_interface_id'],
+                                            comment=comment,
+                                            source_port=fr['firewall_rule']['source_port'],
+                                            destination_ip=fr['firewall_rule']['destination_ip'],
+                                            protocol_type=fr['firewall_rule']['protocol_type']))
     return [] if not firewall_rules else firewall_rules
 
 

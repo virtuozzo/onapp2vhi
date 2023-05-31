@@ -54,7 +54,6 @@ IF /I "%BOARD%"=="Virtuozzo     " (goto V) ELSE (goto END)
         :return: str
         """
         return f'''
-:END
 
 ping -n 1 {self.primary_ip_address} | find /I "TTL=" >nul
 if ERRORLEVEL 0 (DEL /q /f c:\\onapp.bat)
