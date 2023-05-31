@@ -119,7 +119,7 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool,
 
     # -- STEP 5 --
     logs.info(f'{_spaces}{_dri_msg}STEP #5 -- OnApp: INSTALL DRIVERS for VM[IP:{_vm_ip_addr}] --', header=True)
-    _vm_ssh = SSH(**{'host': _vm_ip_addr, 'username': 'Administrator'})
+    _vm_ssh = SSH(**{'host': _vm_ip_addr, 'username': 'Administrator', 'ssh_key': cfg.ssh_key})
     _vm_ssh.connect_timeout = 20
     _vm_ssh.channel_timeout = 20
     if cloud_init_install:

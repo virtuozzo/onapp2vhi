@@ -13,7 +13,7 @@ from onapp2vhi.inc.network_onapp import (
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 
-FILE_NAME = 'scripts/windows_network_{vm_identifier}.bat'
+FILE_NAME = 'ops/scripts/windows_network_{vm_identifier}.bat'
 PATH = join(dirname(dirname(abspath(__file__))), FILE_NAME)
 
 
