@@ -4,10 +4,10 @@ Feature: VM creation in Onapp cloud
 # to ensure the vm is deleted before we create a new one
 Scenario: Delete the VMs
   Given I am a cloud user (uda)
-  When I delete the virtual machine (windows-vm)
+  When I delete the virtual machine (windows-vm) in Onapp cloud
   Then CP API (delete) should return status code 204
 
-  When I delete the virtual machine (linux-vm)
+  When I delete the virtual machine (linux-vm) in Onapp cloud
   Then I wait for 1 minute
   And CP API (delete) should return status code 204
 
@@ -23,4 +23,4 @@ Scenario: Create a Windows VM
   When I create a virtual machine (windows-vm)
   Then CP API (create) should return status code 201
   And I wait for 10 minutes
-  Then the virtual machine (window-vm) is built successfully
+  Then the virtual machine (windows-vm) is built successfully
