@@ -1,3 +1,6 @@
+import os
+from os.path import exists
+
 import requests_mock
 from unittest import TestCase
 from requests.exceptions import HTTPError
@@ -6,6 +9,10 @@ from onapp2vhi.utilities.web import download_file
 
 
 class DownloadFileTestCase(TestCase):
+
+    def tearDown(self):
+        if exists('/tmp/sample.txt'):
+            os.unlink('/tmp/sample.txt')
 
     @requests_mock.Mocker()
     def test_download_file_ok(self, mock_requests):
