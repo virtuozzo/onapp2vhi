@@ -83,6 +83,7 @@ class OnAppVhiCP:
              'hv_ssh_port': self._config.get(self.VHI, "vhi_ssh_port_hv", raw=True),
              'linux_image': self._config.get(self.VHI, "vhi_linux_image", raw=True),
              'windows_image': self._config.get(self.VHI, "vhi_windows_image", raw=True),
+             'migration_network_id': self._config.get(self.VHI, "migration_network_id", raw=True),
              'domain_id': self._config.get(self.VHI, "vhi_domain_id", raw=True),
              'vinfra_domain': self._config.get(self.VHI, "vinfra_domain", raw=True),
              'vinfra_project': self._config.get(self.VHI, "vinfra_project", raw=True),

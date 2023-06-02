@@ -17,6 +17,7 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vm_properties
     _network = network if network else VHI_CREDS['network']
     _vhidom = vdom if vdom else VHI_CREDS['vinfra_domain']
     _vhiproj = vproj if vproj else VHI_CREDS['vinfra_project']
+    _migration_network_id = VHI_CREDS['migration_network_id']
 
     _spaces = Helper.SPACES.value
     _cm_msg = 'COLD MIGRATION -- '
@@ -123,14 +124,20 @@ def vm_cold_migrate(vdom: str, vproj: str, idn: str, network: str, vm_properties
 
     # -- STEP 6 --
     logs.info(f"{_spaces}{_cm_msg}STEP #6 -- VHI: define VHI VM's hypervisor and disks --", header=True)
-    exit_status, output = _vhi_ssh.execute(f"host `{ADMIN_AUTH} service compute server show {_vhi_vm_id} -f json"
-                                           f" | jq -r .host` 2>/dev/null | awk '/ has address /{{print $NF}}'")
-    if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', output):
-        _vhi_hv_ip = output.strip("\n")
-        logs.info(f"VMs HV IP: {_vhi_hv_ip}")
+    _vhi_hv_ip = ""
+    if not _migration_network_id:
+        logs.warn(msg='Migration Network ID [migration_network_id] is NOT set in config properties `cfg/config.cfg`.'
+                      ' Using default VHI management IP')
+        exit_status, output = _vhi_ssh.execute(f"host `{ADMIN_AUTH} service compute server show {_vhi_vm_id} -f json"
+                                               f" | jq -r .host` 2>/dev/null | awk '/ has address /{{print $NF}}'")
+        if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', output):
+            _vhi_hv_ip = output.strip("\n")
+            logs.info(f"VMs HV IP: {_vhi_hv_ip}")
     else:
-        logs.error("Error: Destination Appliance network is not configured properly:")
-        return False
+        from inc.vhi_helpers import get_vhi_hv_ip
+        _vhi_hv_ip = get_vhi_hv_ip(vhi_vm_id=_vhi_vm_id, vhi_ssh=_vhi_ssh)
+        if not _vhi_hv_ip:
+            return False
 
     _vhi_hv_ssh = SSH(**{'host': _vhi_hv_ip})
     exit_status, output = _vhi_hv_ssh.execute(f"{vinfra_access} service compute server volume list"

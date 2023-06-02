@@ -10,7 +10,6 @@ from inc.onapp_helpers import (
     get_onapp_vm_disks,
     get_onapp_vm_nics,
     create_new_vhi_vm,
-    get_vm_source_properties,
     transfer_firewall_rules_to_sg, get_iface_from_specific_vs, attach_security_group_to_nic_and_enable_spoofing,
     deactivate_disk
 )
@@ -18,7 +17,7 @@ from inc.utils import exit_status_code_handler
 from inc.network_hanlder import get_network_configuration
 from inc.logger import logs
 from inc.helper import Helper
-from cfg.config_parser import ONAPP_CREDS, VHI_CREDS, VINFRA_AUTH, ADMIN_AUTH, DOMAIN_AUTH
+from cfg.config_parser import ONAPP_CREDS, VHI_CREDS, ADMIN_AUTH, DOMAIN_AUTH
 
 
 def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vm_properties: dict, vhi_obj, placement=''):
@@ -30,6 +29,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vm_properties
     _network = network if network else VHI_CREDS['network']
     _vhidom = vdom if vdom else VHI_CREDS['vinfra_domain']
     _vhiproj = vproj if vproj else VHI_CREDS['vinfra_project']
+    _migration_network_id = VHI_CREDS['migration_network_id']
 
     _spaces = Helper.SPACES.value
     live_migration = 'LIVE MIGRATION -- '
@@ -167,15 +167,20 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vm_properties
 
     # -- STEP 7 --
     logs.info(f"{_spaces}{live_migration}STEP #7 -- VHI: define VM's hypervisor and disks --", header=True)
-    exit_status, output = _vhi_ssh.execute(f"host `{ADMIN_AUTH} service compute server show {_vhi_vm_id} -f json"
-                                           f" | jq -r .host` 2>/dev/null | awk '/ has address /{{print $NF}}'")
-    if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', output):
-        _vhi_hv_ip = output.strip("\n")
-        logs.info(f"VMs HV IP: {_vhi_hv_ip}")
+    _vhi_hv_ip = ""
+    if not _migration_network_id:
+        logs.warn(msg='Migration Network ID [migration_network_id] is NOT set in config properties `cfg/config.cfg`.'
+                      ' Using default VHI management IP')
+        exit_status, output = _vhi_ssh.execute(f"host `{ADMIN_AUTH} service compute server show {_vhi_vm_id} -f json"
+                                               f" | jq -r .host` 2>/dev/null | awk '/ has address /{{print $NF}}'")
+        if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', output):
+            _vhi_hv_ip = output.strip("\n")
+            logs.info(f"VMs HV IP: {_vhi_hv_ip}")
     else:
-        logs.error(f"Destination Appliance network is not configured properly:\nOnApp VM IP [{_vm_ip_addr}]"
-                   f" | Output: [{output}]")
-        return False
+        from inc.vhi_helpers import get_vhi_hv_ip
+        _vhi_hv_ip = get_vhi_hv_ip(vhi_vm_id=_vhi_vm_id, vhi_ssh=_vhi_ssh)
+        if not _vhi_hv_ip:
+            return False
 
     _vhi_hv_ssh = SSH(**{'host': _vhi_hv_ip})
     exit_status, output = _vhi_hv_ssh.execute(f"{vinfra_access} service compute server volume list"
