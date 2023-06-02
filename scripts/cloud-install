@@ -33,7 +33,8 @@ function installCloudinit() {
                 rm -rf /etc/cloud/cloud.cfg.d/subiquity-disable-cloudinit-networking.cfg
                 rm -rf /etc/cloud/cloud.cfg.d/99-installer.cfg
                 rm -rf /etc/netplan/00-installer-config.yaml
-		echo "ssh_deletekeys: false" > /etc/cloud/cloud.cfg.d/nodeletekeys.cfg
+		echo "ssh_deletekeys: false" > /etc/cloud/cloud.cfg.d/onapp.cfg
+                echo "preserve_hostname: true"  >> /etc/cloud/cloud.cfg.d/onapp.cfg
                 mv /etc/network/interfaces /etc/network/onapp2vhi.interfaces
                 cat << EOF > /etc/network/interfaces
 source /etc/network/interfaces.d/*
@@ -71,7 +72,8 @@ EOF
         elif [[ ${OS} == 'debian' ]]; then
                 apt update
                 apt-get install -y cloud-init cloud-guest-utils net-tools
-		echo "ssh_deletekeys: false" > /etc/cloud/cloud.cfg.d/nodeletekeys.cfg
+                echo "ssh_deletekeys: false" > /etc/cloud/cloud.cfg.d/onapp.cfg
+                echo "preserve_hostname: true"  >> /etc/cloud/cloud.cfg.d/onapp.cfg
                 mv /etc/network/interfaces /etc/network/onapp2vhi.interfaces
                 cat << EOF > /etc/network/interfaces
 source /etc/network/interfaces.d/*
@@ -89,7 +91,8 @@ EOF
         elif [[ ${OS} == 'centos' ]]; then
 		mv /etc/sysconfig/network-scripts/ifcfg-eth0 /etc/sysconfig/network-scripts/onapp2vhi.ifcfg-eth0
                 yum -y install cloud-init cloud-utils-growpart
-		echo "ssh_deletekeys: false" > /etc/cloud/cloud.cfg.d/nodeletekeys.cfg
+                echo "ssh_deletekeys: false" > /etc/cloud/cloud.cfg.d/onapp.cfg
+                echo "preserve_hostname: true"  >> /etc/cloud/cloud.cfg.d/onapp.cfg
                 if rpm -q $pkg
                 then
                         echo "$pkg installed"
@@ -102,6 +105,8 @@ EOF
                 fi
 
         fi
+
+cloud-init -d single -n mounts
 }
 
 if [[ ! "$(dmidecode -s system-manufacturer)" == "Virtuozzo" ]]; then
