@@ -59,7 +59,7 @@ def step_impl(context, entity, name):
             data["virtual_machine"]["template_id"] = context.cp.search_with_search_filter("templates", search_query)[0]["image_template"]["id"]
 
         if data["virtual_machine"].get("hypervisor_id"):
-            # there is no search function for a particulaar hypervisor
+            # there is no search function for a particular hypervisor
             hv_list = context.cp.get_all("hypervisors")
             match = False
 
@@ -345,7 +345,7 @@ use_step_matcher('parse')
 def step_impl(context, name):
 
     fixture = helper.get_fixture("virtual_machine")
-    vm_name = fixture[name]["virtual_machine"]["hostname"]
+    hostname = fixture[name]["virtual_machine"]["hostname"]
     
     config = helper.get_config()
     output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server list -f json")
@@ -354,10 +354,10 @@ def step_impl(context, name):
     match = False
     for vm in vm_list:
 
-        if vm_name == vm["name"]:
+        if hostname in vm["name"]:
             match = True
 
-            _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute server delete {vm_name}".format(vm_name=vm_name))
+            _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute server delete {vm_name}".format(vm_name=vm["name"]))
             break
     
     # we proceed with the rest of the steps even if the vm is not found

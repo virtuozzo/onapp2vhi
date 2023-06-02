@@ -68,6 +68,10 @@ def open_onapp_ssh_connection(config, command):
 def open_vhi_ssh_connection(config, command):
 
     conn = Connection(host=config["host"], user=config["user"], forward_agent=True)
-    output = conn.run("vinfra " + command)
+    vinfra_credential = " --vinfra-portal {vinfra_portal} \
+        --vinfra-username {vinfra_username} \
+        --vinfra-password {vinfra_password}" \
+            .format(vinfra_portal=config["vinfra_portal"], vinfra_username=config["vinfra_username"], vinfra_password=config["vinfra_password"])
+    output = conn.run("vinfra " + command + vinfra_credential)
 
     return output

@@ -11,3 +11,6 @@
 # vhi:
 #    host: onapp2vhicp.onappdev.com
 #    user: root
+#    vinfra_portal: https://backend-api.svc.vstoragedomain:8888
+#    vinfra_username: admin
+#    vinfra_password: 4OnApp13777

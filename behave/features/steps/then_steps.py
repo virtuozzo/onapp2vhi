@@ -33,10 +33,10 @@ def step_impl(context, name):
     if not data:
         assert CHECK_FAILED, "error: virtual machine is not found"
 
-    if data[0]["virtual_machine"]["built"]:
+    if data[0]["virtual_machine"]["built"] and data[0]["virtual_machine"]["state"] != "failed" and not data[0]["virtual_machine"]["locked"]:
         pass
     else:
-        assert CHECK_FAILED, "error: virtual machine is not built"
+        assert CHECK_FAILED, "error: virtual machine is not built successfully"
     
     # used for other verification
     context.result = data
@@ -67,8 +67,8 @@ def step_impl(context):
         assert CHECK_FAILED, "error: missing header(s)"
 
 use_step_matcher('parse')
-@then('I should see the virtual machine is {state} in VHI portal')
-def step_impl(context, state):
+@then('I should see the virtual machine ({name}) is {state} in VHI portal')
+def step_impl(context, name, state):
 
     hostname = context.result[0]["virtual_machine"]["hostname"]
     ips = []
@@ -83,7 +83,7 @@ def step_impl(context, state):
     match = False
     for vm in vm_list:
 
-        if hostname == vm["name"] and state == vm["status"]:
+        if hostname in vm["name"] and state == vm["status"]:
 
             for network in vm["networks"]:
                 for ip in ips:
@@ -94,7 +94,7 @@ def step_impl(context, state):
     if not match:
         assert CHECK_FAILED, "error: the virtual machine is not found in VHI portal"
 
-use_step_matcher('parse')    
+use_step_matcher('parse')
 @then('the virtual machine ({name}) is deleted successfully')
 def step_impl(context, name):
 
@@ -108,7 +108,7 @@ def step_impl(context, name):
     match = False
     for vm in vm_list:
 
-        if hostname == vm["name"]:
+        if hostname in vm["name"]:
             match = True
             break
 
