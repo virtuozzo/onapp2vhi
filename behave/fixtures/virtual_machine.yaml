@@ -1,14 +1,3 @@
-linux-vm:
-  virtual_machine:
-    label: linux vm
-    memory: 2048
-    cpus: 1
-    cpu_shares: 1
-    hostname: linuxvm
-    primary_disk_size: 5
-    required_virtual_machine_build: 1
-    template_id: Debian 10 x64
-
 linux-vm-without-startup:
   virtual_machine:
     label: linux vm off
@@ -20,6 +9,7 @@ linux-vm-without-startup:
     required_virtual_machine_build: 1
     template_id: Debian 10 x64
     required_virtual_machine_startup: 0
+    hypervisor_id: CloudBootHV2
 
 linux-vm-with-startup:
   virtual_machine:
@@ -32,19 +22,7 @@ linux-vm-with-startup:
     required_virtual_machine_build: 1
     template_id: Debian 10 x64
     required_virtual_machine_startup: 1
-
-windows-vm:
-  virtual_machine:
-    label: windows vm
-    memory: 8192
-    cpus: 1
-    cpu_shares: 1
-    hostname: windowsvm
-    primary_disk_size: 30
-    required_virtual_machine_build: 1
-    template_id: Windows Server 2016 x64 STD
-    licensing_type: own
-    licensing_key: N3TYV-2997C-CJF6W-CQ3HR-84464
+    hypervisor_id: CloudBootHV2
 
 windows-vm-without-startup:
   virtual_machine:
@@ -59,6 +37,7 @@ windows-vm-without-startup:
     licensing_type: own
     licensing_key: N3TYV-2997C-CJF6W-CQ3HR-84464
     required_virtual_machine_startup: 0
+    hypervisor_id: HV1onapp2vhi
 
 windows-vm-with-startup:
   virtual_machine:
@@ -73,3 +52,4 @@ windows-vm-with-startup:
     licensing_type: own
     licensing_key: N3TYV-2997C-CJF6W-CQ3HR-84464
     required_virtual_machine_startup: 1
+    hypervisor_id: HV1onapp2vhi

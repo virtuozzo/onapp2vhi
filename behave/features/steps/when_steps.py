@@ -58,6 +58,20 @@ def step_impl(context, entity, name):
             search_query = "search_filter[query]=" + data["virtual_machine"]["template_id"].replace(" ", "+")
             data["virtual_machine"]["template_id"] = context.cp.search_with_search_filter("templates", search_query)[0]["image_template"]["id"]
 
+        if data["virtual_machine"].get("hypervisor_id"):
+            # there is no search function for a particulaar hypervisor
+            hv_list = context.cp.get_all("hypervisors")
+            match = False
+
+            for hv in hv_list:
+                if hv["hypervisor"]["label"].strip() == data["virtual_machine"].get("hypervisor_id"):
+                    data["virtual_machine"]["hypervisor_id"] = hv["hypervisor"]["id"]
+                    match = True
+                    break
+
+            if not match:
+                assert CHECK_FAILED, "error: HV is not found"
+
     print(data)
 
     context.response = context.cp.create(entity=helper.convert_to_plural(entity), data=data)

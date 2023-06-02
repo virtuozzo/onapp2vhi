@@ -1,4 +1,5 @@
 # please use symlink for your own settings
+# rename this file to config.yaml
 # command: ln -s <this config.yaml path> <your config path>
 # onapp:
 #   host: onapp2vhi.onappdev.com
