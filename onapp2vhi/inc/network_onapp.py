@@ -166,7 +166,7 @@ def get_network_nameserver(cfg: OnApp2VHIConfig, network_id: str, ipv4=True) -> 
             return address
 
         elif not ipv4 and ':' in address:
-            logs.info(msg=f'Found resolver IPv6 [{address}]')
+            logs.info(msg=f'Found resolver for IPv6 [{address}]')
             return address
 
     logs.warn(msg=f'Resolver not found for Network ID [{network_id}] IPv4: {ipv4}')
