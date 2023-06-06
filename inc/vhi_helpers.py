@@ -470,7 +470,7 @@ def get_vhi_hv_ip(vhi_vm_id: str, vhi_ssh):
     _host = json.loads(server_output)['host']
     exit_status, node_output = vhi_ssh.execute(f"{ADMIN_AUTH} node list -f json")
     node_id = [node['id'] for node in json.loads(node_output) if node['host'] == _host][0]
-    #
+    # Get ifaces at VHI side
     exit_status, iface_output = vhi_ssh.execute(f"{ADMIN_AUTH} node iface list --node {node_id} -f json")
     for iface in json.loads(iface_output):
         if iface['network'] == _migration_network_id:

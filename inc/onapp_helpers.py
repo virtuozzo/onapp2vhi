@@ -3,7 +3,7 @@ import json
 import re
 import xml.etree.ElementTree as KVMxml
 
-from inc.rest_client import OnAppRequests
+from inc.rest_client import onapp_requests
 from inc.network_onapp import get_virtual_server_interfaces, get_virtual_server_ip_addresses
 from inc.helper import Helper
 from inc.network_onapp import get_vm_network_info
@@ -24,7 +24,6 @@ from inc.vinfra_wrapper import (
 
 vhi_domain = VHI_CREDS['vinfra_domain']
 _spaces = Helper.SPACES.value
-onapp_requests = OnAppRequests()
 
 
 class Bcolors:
@@ -45,6 +44,29 @@ NIC = namedtuple('NIC', 'id vm_id label nic_idn is_primary mac network_join '
                         'default_firewall_rule is_connected ip_addr')
 ComputeZone = namedtuple('ComputeZone', 'name cpu ram')
 DataStoreZone = namedtuple('DataStoreZone', 'name storage_policy')
+
+
+def onapp_version(full=None):
+    """
+    Get OnApp version
+    {
+        "version": "6.7.0-19"
+    }
+    :param full: set to True to get "6.7.0-19" minor version
+    :return:
+    """
+    onap_version_resp = onapp_requests.get("version")
+    version = float(onap_version_resp['version'][:3])
+    logs.info(msg=f"{_spaces} -- OnApp Version [{onap_version_resp['version']}] --", header=True)
+    if full:
+        version = onap_version_resp['version']
+    return version
+
+
+ONAPP_VERSION = onapp_version()
+
+
+##############################################
 
 
 def _find_by(find: str, obj: dict):
@@ -296,9 +318,8 @@ def get_user_data(url: str, get_type, value_to_search=None, all_users=False):
 
 
 def _get_primary_vm_ip(vm: dict):
-    _version = onapp_version()
     vm_idn = vm['identifier']
-    if _version <= 6.0:
+    if ONAPP_VERSION <= 6.0:
         virtual_server_nic = get_virtual_server_interfaces(virtual_server_id=vm_idn)
         primary_nic_id = [nic["network_interface"]["id"] for nic in virtual_server_nic
                           if nic['network_interface']['primary']][0]
@@ -460,11 +481,10 @@ def get_vm_firewall_rules(vm_idn: str) -> List[FirewallRules]:
     """
     logs.info(f'{_spaces}-- OnApp: Get OnApp VM Firewall Rules  --')
     response = onapp_requests.get(f'virtual_machines/{vm_idn}/firewall_rules')
-    version = onapp_version()
     firewall_rules = []
     for fr in response:
         comment = ''
-        if version > 6.0:
+        if ONAPP_VERSION > 6.0:
             comment = fr['firewall_rule']['comment']
         firewall_rules.append(FirewallRules(id=fr['firewall_rule']['id'],
                                             position=fr['firewall_rule']['position'],
@@ -1022,18 +1042,12 @@ def prepare_vhi_migration_data(user_idn=None):
     return vhi_users_data
 
 
-def onapp_version(full=None):
+def suspend_vm(vm_id: str):
     """
-    Get OnApp version
-    {
-        "version": "6.7.0-19"
-    }
-    :param full: set to True to get "6.7.0-19" minor version
+    Suspend VM
+    :param vm_id: "jcubtlkttnknax"
     :return:
     """
-    onap_version_resp = onapp_requests.get("version")
-    version = float(onap_version_resp['version'][:3])
-    logs.info(msg=f"{_spaces} -- OnApp Version [{onap_version_resp['version']}] --", header=True)
-    if full:
-        version = onap_version_resp['version']
-    return version
+    logs.debug(msg=f'{_spaces}-- Suspending VM [{vm_id}] --')
+    response = onapp_requests.post(route=f'virtual_machines/{vm_id}/suspend', data={})
+    return response

@@ -1,5 +1,5 @@
 from inc.network_vhi import Network
-from inc.onapp_helpers import onapp_version
+from inc.onapp_helpers import ONAPP_VERSION
 from inc.network_onapp import *
 from inc.logger import logs
 
@@ -7,7 +7,6 @@ from inc.logger import logs
 def get_network_configuration(virtual_server_identifier: str, vinfra_project: str):
     data = {}
     networks_cmd = []
-    version = onapp_version()
     vs_network_interfaces = NetworkInterfaces()
     virtual_server_hypervisor_id = get_virtual_server_hypervisor(virtual_server_identifier)
     hv_group_id = get_hypervisor_group_id(virtual_server_hypervisor_id)
@@ -32,9 +31,9 @@ def get_network_configuration(virtual_server_identifier: str, vinfra_project: st
 
         data['network_identifier'] = network_identifier
         data["ipv4"] = next((ip_address['ipv4'] for ip_address in vs_ip_addresses), False)
-        if version <= 6.0 and nic['network_interface']['primary'] is True:
+        if ONAPP_VERSION <= 6.0 and nic['network_interface']['primary'] is True:
             data["primary_ip"] = [vs_ip_addresses[0]['address']]
-        elif version > 6.0:
+        elif ONAPP_VERSION > 6.0:
             data["primary_ip"] = [
                 ip_address['address'] for ip_address in vs_ip_addresses
                 if ip_address["primary"]

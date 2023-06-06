@@ -134,3 +134,6 @@ class OnAppRequests:
         response = requests.delete(url, json=data, auth=self.authorization, _headers=_headers)
         self.log.debug(f"DELETE - {url} | data - {data}")
         return _response_handler(response)
+
+
+onapp_requests = OnAppRequests()

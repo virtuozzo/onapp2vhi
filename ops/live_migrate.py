@@ -10,8 +10,11 @@ from inc.onapp_helpers import (
     get_onapp_vm_disks,
     get_onapp_vm_nics,
     create_new_vhi_vm,
-    transfer_firewall_rules_to_sg, get_iface_from_specific_vs, attach_security_group_to_nic_and_enable_spoofing,
-    deactivate_disk
+    transfer_firewall_rules_to_sg,
+    get_iface_from_specific_vs,
+    attach_security_group_to_nic_and_enable_spoofing,
+    deactivate_disk,
+    suspend_vm,
 )
 from inc.utils import exit_status_code_handler
 from inc.network_hanlder import get_network_configuration
@@ -322,6 +325,11 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, network: str, vm_properties
                                             f' service compute server start {_vhi_vm_id} on VHI node failed.'):
         return False
 
+    # -- STEP 15 --
+    logs.info(f"{_spaces}{live_migration}STEP #15 -- OnApp: Suspend VM [{vm_idn} | {_vm_ip_addr}] --", header=True)
+    result = suspend_vm(vm_id=vm_idn)
+    if not result:
+        logs.warn(msg=f'{_spaces} -- VM [{vm_idn} | {_vm_ip_addr}] has NOT been suspended.')
     logs.info(f"The virtual server ``LIVE MIGRATION`` has completed successfully:"
               f" {VHI_CREDS.url}/compute/servers/instances/{_vhi_vm_id}")
     return True
