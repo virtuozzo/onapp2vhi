@@ -79,7 +79,7 @@ def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install, vm
                   header=True)
         _vm_ssh.connect_timeout = 10
         _vm_ssh.channel_timeout = 10
-        exit_status, output = _vm_ssh.execute("nohup bash /usr/bin/vz-guest-tools 1>/opt/vz-guest-tools.log 2>&1")
+        exit_status, output = _vm_ssh.execute("nohup bash /usr/bin/vz-guest-tools 1>/var/log/vz-guest-tools.log 2>&1")
         
         # NOTE: here we removed validation for `vz-guest-tools` failure
         exit_status_code_handler(
@@ -89,7 +89,7 @@ def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install, vm
 
     # -- STEP 5 --
     logs.info(f'{_spaces}{_boot_msg}STEP #5 -- OnApp: Install `PrepareVM.sh` inside VM [{VM_IDn}] --', header=True)
-    exit_status, output = _vm_ssh.execute("bash /opt/PrepareVM.sh 1>/opt/PrepareVM.log 2>&1")
+    exit_status, output = _vm_ssh.execute("bash /opt/PrepareVM.sh 1>/var/log/PrepareVM.log 2>&1")
     exit_status_code_handler(
             exit_code=exit_status,
             message=f'[install_bootloader.py | STEP 5] Install `PrepareVM.sh` inside VM failed. Output:\n\t{output}'

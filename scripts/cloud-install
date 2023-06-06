@@ -106,7 +106,6 @@ EOF
 
         fi
 
-cloud-init -d single -n mounts
 }
 
 if [[ ! "$(dmidecode -s system-manufacturer)" == "Virtuozzo" ]]; then

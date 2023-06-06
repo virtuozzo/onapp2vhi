@@ -1,4 +1,6 @@
 #!/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
 
 if [ ! -f /opt/vz-guest-tools-lin.tar ]; then
     echo "File vz-guest-tools-lin.tar does not exist."
