@@ -16,7 +16,7 @@ class VinfraBase:
                  cp_ip: bool = False):
         self.cp_ip = cp_ip
         _host = cfg.vhi_conf['hv_ip']
-        if self.cp_ip:
+        if not self.cp_ip:
             _host = cfg.vhi_conf['cp_ip']
         self.ssh = SSH(**{"host": _host,
                           "connect_timeout": connect_timeout,
