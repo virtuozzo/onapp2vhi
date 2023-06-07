@@ -4,6 +4,19 @@ from onapp2vhi.inc.ssh_connector import SSH, CONNECT_TIMEOUT, CHANNEL_TIMEOUT
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 
+class VinfraError(Exception):
+
+    def __init__(self, command, exit_code, output):
+        super().__init__()
+        self.exit_code = command
+        self.command = exit_code
+        self.output = output
+
+    def __str__(self):
+        return f'VinfraError: command = {self.command}, exit_code = {self.exit_code}, '\
+               f'output = {self.output}'
+
+
 class VinfraBase:
 
     def __init__(self,
@@ -18,7 +31,9 @@ class VinfraBase:
         _host = cfg.vhi_conf['hv_ip']
         if self.cp_ip:
             _host = cfg.vhi_conf['cp_ip']
+        #_port = cfg.vhi_conf["cloud_ssh_port"]
         self.ssh = SSH(**{"host": _host,
+                          #"port": _port,
                           "connect_timeout": connect_timeout,
                           "channel_timeout": channel_timeout,
                           "ssh_key": cfg.ssh_key})
@@ -36,6 +51,40 @@ class VinfraBase:
         if json:
             cmd += ' -f json'
         return self.ssh.execute(cmd)
+
+
+class VinfraCommand:
+
+    def __init__(self,
+                 cfg: OnApp2VHIConfig,
+                 vinfra_access: str,
+                 host: str = '',
+                 port: int = 22,
+                 connect_timeout: int = CONNECT_TIMEOUT,
+                 channel_timeout: int = CHANNEL_TIMEOUT,
+                 cp_ip: bool = False):
+        self.cp_ip = cp_ip
+        if host:
+            _host = host
+        else:
+            _host = cfg.vhi_conf['hv_ip']
+            if self.cp_ip:
+                _host = cfg.vhi_conf['cp_ip']
+
+        self.ssh = SSH(**{"host": _host,
+                          "port": port,
+                          "connect_timeout": connect_timeout,
+                          "channel_timeout": channel_timeout,
+                          "ssh_key": cfg.ssh_key})
+        self.vinfra_access = vinfra_access
+
+    def execute(self, cmd: str) -> Tuple[int, str]:
+        cmd = f'{self.vinfra_access} {cmd}'
+
+        exit_code, output = self.ssh.execute(cmd)
+        if exit_code != 0:
+            raise VinfraError(cmd, exit_code, output)
+        return output
 
 
 class VinfraServiceCompute(VinfraBase):
