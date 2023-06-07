@@ -30,7 +30,7 @@ class VinfraBaseTestCase(TestCase):
         base = VinfraBase(self.mock_config)
 
         mock_ssh_ctor.assert_called_with(
-            host='unittest.onapp2vhi.test',
+            host='unittestcp.onapp2vhi.test',
             connect_timeout=300,
             channel_timeout=3600,
             ssh_key=self.mock_config.ssh_key)
@@ -49,7 +49,7 @@ class VinfraBaseTestCase(TestCase):
         base = VinfraBase(self.mock_config, access_domain=True)
 
         mock_ssh_ctor.assert_called_with(
-            host='unittest.onapp2vhi.test',
+            host='unittestcp.onapp2vhi.test',
             connect_timeout=300,
             channel_timeout=3600,
             ssh_key=self.mock_config.ssh_key)
@@ -69,7 +69,7 @@ class VinfraBaseTestCase(TestCase):
         base = VinfraBase(self.mock_config, service_user=True)
 
         mock_ssh_ctor.assert_called_with(
-            host='unittest.onapp2vhi.test',
+            host='unittestcp.onapp2vhi.test',
             connect_timeout=300,
             channel_timeout=3600,
             ssh_key=self.mock_config.ssh_key)
@@ -88,7 +88,7 @@ class VinfraBaseTestCase(TestCase):
         base = VinfraBase(self.mock_config, domain_service_user=True)
 
         mock_ssh_ctor.assert_called_with(
-            host='unittest.onapp2vhi.test',
+            host='unittestcp.onapp2vhi.test',
             connect_timeout=300,
             channel_timeout=3600,
             ssh_key=self.mock_config.ssh_key)
@@ -107,7 +107,7 @@ class VinfraBaseTestCase(TestCase):
         base = VinfraBase(self.mock_config, connect_timeout=100)
 
         mock_ssh_ctor.assert_called_with(
-            host='unittest.onapp2vhi.test',
+            host='unittestcp.onapp2vhi.test',
             connect_timeout=100,
             channel_timeout=3600,
             ssh_key=self.mock_config.ssh_key)
@@ -126,7 +126,7 @@ class VinfraBaseTestCase(TestCase):
         base = VinfraBase(self.mock_config, channel_timeout=100)
 
         mock_ssh_ctor.assert_called_with(
-            host='unittest.onapp2vhi.test',
+            host='unittestcp.onapp2vhi.test',
             connect_timeout=300,
             channel_timeout=100,
             ssh_key=self.mock_config.ssh_key)
@@ -145,7 +145,7 @@ class VinfraBaseTestCase(TestCase):
         base = VinfraBase(self.mock_config, cp_ip=True)
 
         mock_ssh_ctor.assert_called_with(
-            host='unittestcp.onapp2vhi.test',
+            host='unittest.onapp2vhi.test',
             connect_timeout=300,
             channel_timeout=3600,
             ssh_key=self.mock_config.ssh_key)

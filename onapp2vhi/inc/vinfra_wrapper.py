@@ -31,9 +31,7 @@ class VinfraBase:
         _host = cfg.vhi_conf['hv_ip']
         if not self.cp_ip:
             _host = cfg.vhi_conf['cp_ip']
-        #_port = cfg.vhi_conf["cloud_ssh_port"]
         self.ssh = SSH(**{"host": _host,
-                          #"port": _port,
                           "connect_timeout": connect_timeout,
                           "channel_timeout": channel_timeout,
                           "ssh_key": cfg.ssh_key})
