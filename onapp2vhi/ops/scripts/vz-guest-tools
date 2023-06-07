@@ -5,9 +5,20 @@ if [ ! -f /opt/vz-guest-tools-lin.tar ]; then
     exit 1
 fi
 
+if ! command -v tar &>/dev/null; then
+	if command -v apt-get >/dev/null; then
+                apt-get update
+                apt-get install -y tar
+	elif command -v yum >/dev/null; then
+		yum -y install tar
+	fi
+fi
+
+
 
 mkdir -p /opt/vz-guest-tools-lin
 tar  -xvf /opt/vz-guest-tools-lin.tar -C /opt/vz-guest-tools-lin
 bash /opt/vz-guest-tools-lin/install
 
+rm -rf /opt/vz-guest-tools-lin
 rm -f /etc/cron.d/cron-vz-guest-tools-install
