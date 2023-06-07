@@ -6,3 +6,4 @@ cd /d C:\
 msiexec /i CloudbaseInitSetup_Stable_x64.msi /qn /l*v log.txt
 c:\cygwin\bin\rm -rf c:/vz-guest-tools-win
 c:\cygwin\bin\rm -rf c:/onapp.bat
+c:\vhi_rebuild_network.bat

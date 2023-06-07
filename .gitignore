@@ -136,3 +136,8 @@ scripts-tmp
 
 # VSCode
 .vscode/
+
+# Tool downloaded files
+scripts/windows_network_*
+scripts/*.tar
+scripts/*.msi
