@@ -67,8 +67,8 @@ def step_impl(context):
         assert CHECK_FAILED, "error: missing header(s)"
 
 use_step_matcher('parse')
-@then('I should see the virtual machine ({name}) is {state} in VHI portal')
-def step_impl(context, name, state):
+@then('I should see the virtual machine is {state} in VHI portal')
+def step_impl(context, state):
 
     hostname = context.result[0]["virtual_machine"]["hostname"]
     ips = []
@@ -83,7 +83,7 @@ def step_impl(context, name, state):
     match = False
     for vm in vm_list:
 
-        if hostname in vm["name"] and state == vm["status"]:
+        if hostname in vm["name"] and state.lower() == vm["status"].lower():
 
             for network in vm["networks"]:
                 for ip in ips:

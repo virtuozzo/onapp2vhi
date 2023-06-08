@@ -11,6 +11,7 @@ Scenario: Delete the VMs
   Then I wait for 1 minute
   And CP API (delete) should return status code 204
 
+@linux
 Scenario: Create a Linux VM
   Given I am a cloud user (uda)
   When I create a virtual machine (linux-vm-with-startup)
@@ -18,6 +19,7 @@ Scenario: Create a Linux VM
   And I wait for 2 minutes
   Then the virtual machine (linux-vm-with-startup) is built successfully
 
+@windows
 Scenario: Create a Windows VM
   Given I am a cloud user (uda)
   When I create a virtual machine (windows-vm-with-startup)
