@@ -50,7 +50,6 @@ def cli():
 
 @click.command()
 @click.option('--user', default='', help="OnApp User, VM identifier.")
-@click.option('--network', default='', help="Network to be used")
 @click.option('--vm', default='', help="Comma separated virtual machines 'oih783gcvy,982h3buisb,893hviun'")
 @click.option('--project', default='', help="Project where all objects will be migrated")
 @click.option('--cloud_init_install', default=SENTINEL,
@@ -59,7 +58,6 @@ def cli():
 @click.option('--vz_guest_tools_install', default='',
               help="Boolean flag, set `false` to NOT install vz_guest_tools_install")
 def migrate(user='',
-            network='',
             vm='',
             project='',
             vz_guest_tools_install='true',
@@ -89,7 +87,6 @@ def migrate(user='',
         Step 5:
             Finishing script and write down logs into files
     :param user: 4
-    :param network: public2
     :param vm: virtual machine identifier
     :param project: project
     :param vz_guest_tools_install: project
@@ -102,10 +99,6 @@ def migrate(user='',
     _path = os.getcwd()
     _file_name = os.path.join(_path, 'migration_logs/{user}/migrated')
     user_idn = ''
-    if not network:
-        _network = VHI_CREDS['network']
-    else:
-        _network = network
     if user:
         if not user.isdigit():
             logs.error("Please specify User ID as integer: --user=7")
@@ -247,7 +240,6 @@ def migrate(user='',
             result_vm = vm_migrate(idn=_idn,
                                    vproj=vhi.project_name,
                                    vdom=VHI_CREDS['vinfra_domain'],
-                                   network=network,
                                    vm_properties=_vm_properties,
                                    vhi_obj=vhi,
                                    placement=placement)
