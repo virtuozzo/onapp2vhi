@@ -1,14 +1,14 @@
 import subprocess
 import socket
 import paramiko
+
+from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from time import sleep
-
-from onapp2vhi.inc.logger import logs
-
 
 NBYTES = 1024
 CHANNEL_TIMEOUT = 3600  # How long we keep the channel opened
 CONNECT_TIMEOUT = 300
+logs = OnAppVHILogger()
 
 
 def ssh_run(command: str, interactive=True, comment='', log_off=False, output=True):

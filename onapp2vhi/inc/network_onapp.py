@@ -1,10 +1,11 @@
 from typing import Dict, List
 
 from onapp2vhi.inc.rest_client import OnAppRequests
-from onapp2vhi.inc.logger import logs
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 
 TIMEOUT = 20
+logs = OnAppVHILogger()
 
 
 class NetworkInterface:

@@ -1,5 +1,5 @@
 import os
-from onapp2vhi.inc.logger import logs
+from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.windows_network_reconfig import WindowsNetworkReconfig
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.ssh_connector import ssh_run, SSH
@@ -7,6 +7,8 @@ from onapp2vhi.inc.onapp_helpers import get_vm_source_properties
 from onapp2vhi.inc.utils import exit_status_code_handler
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.utilities.web import download_file
+
+logs = OnAppVHILogger()
 
 
 def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool, cloud_init_install: bool):

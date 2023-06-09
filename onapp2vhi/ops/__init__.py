@@ -1,3 +1,3 @@
-from onapp2vhi.inc.logger import logs
+from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 
-logs = logs
+logs = OnAppVHILogger()

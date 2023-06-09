@@ -1,10 +1,12 @@
 from pathlib import Path
 
 import click
-
 import onapp2vhi
+import os
+
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.utilities.template import CONFIG_TEMPLATE
+from onapp2vhi.utilities.logs.logger import setup_logger
 
 
 cfg = None
@@ -44,6 +46,14 @@ def generate_example_config(ctx, param, value):
 
 @click.group()
 @click.option(
+    "--log-output-path",
+    default=os.getcwd,
+    type=click.Path(),
+    help="Save migration full log in specified folder",
+    show_default="migration_logs/",
+)
+@click.version_option(onapp2vhi.__version__)
+@click.option(
     "--config",
     default=search_config,
     type=click.Path(exists=True),
@@ -59,8 +69,9 @@ def generate_example_config(ctx, param, value):
     help="Generate example config.ini file.",
 )
 @click.version_option(onapp2vhi.__version__)
-def run(config):
+def run(config, log_output_path):
     global cfg
+    setup_logger(log_output_path)
     cfg = OnApp2VHIConfig.load_config(config)
 
 

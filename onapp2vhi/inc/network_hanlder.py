@@ -1,5 +1,6 @@
 from onapp2vhi.inc.network_vhi import Network
 from onapp2vhi.inc.onapp_helpers import onapp_version
+from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.network_onapp import (
     NetworkInterface,
     NetworkInterfaces,
@@ -14,8 +15,9 @@ from onapp2vhi.inc.network_onapp import (
     get_hypervisor_group_id,
     get_hypervisor_network_join,
 )
-from onapp2vhi.inc.logger import logs
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+
+logs = OnAppVHILogger()
 
 
 def get_network_configuration(cfg: OnApp2VHIConfig, virtual_server_identifier: str, vinfra_project: str):
