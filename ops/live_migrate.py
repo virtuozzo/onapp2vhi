@@ -236,6 +236,7 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, vm_properties: dict, vhi_ob
                     driver.attrib['type'] = 'qcow2'
                     driver.attrib['io'] = 'native'
                     driver.attrib['discard'] = 'unmap'
+                    driver.attrib['detect_zeroes'] = 'unmap'
                 for source in disk.findall('source'):
                     # We faced with an issue with different disks
                     # vda, vdb == sda, sdb

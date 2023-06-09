@@ -36,15 +36,15 @@ function installCloudinit() {
 		echo "ssh_deletekeys: false" > /etc/cloud/cloud.cfg.d/onapp.cfg
                 echo "preserve_hostname: true"  >> /etc/cloud/cloud.cfg.d/onapp.cfg
                 mv /etc/network/interfaces /etc/network/onapp2vhi.interfaces
-                cat << EOF > /etc/network/interfaces
-source /etc/network/interfaces.d/*
-EOF
 		version=$(echo ${VERSION_ID} | cut -d. -f1)
 		if [ $version -ge 20 ];
 		then
 			if dpkg -l $pkg
 			then
 				echo "$pkg installed"
+		                cat << EOF > /etc/network/interfaces
+source /etc/network/interfaces.d/*
+EOF
 				echo 'datasource_list: [ ConfigDrive, OpenStack, None ]' | sudo -s tee /etc/cloud/cloud.cfg.d/90_dpkg.cfg
 				dpkg-reconfigure -f noninteractive cloud-init
 				sed -i "s/'netplan', 'eni'/'eni'/g" /etc/cloud/cloud.cfg
@@ -59,6 +59,9 @@ EOF
                         if dpkg -l $pkg
                         then
                                 echo "$pkg installed"
+                                cat << EOF > /etc/network/interfaces
+source /etc/network/interfaces.d/*
+EOF
                                 echo 'datasource_list: [ ConfigDrive, OpenStack, None ]' | sudo -s tee /etc/cloud/cloud.cfg.d/90_dpkg.cfg
                                 dpkg-reconfigure -f noninteractive cloud-init
                                 cloud-init clean --seed --logs
@@ -75,12 +78,12 @@ EOF
                 echo "ssh_deletekeys: false" > /etc/cloud/cloud.cfg.d/onapp.cfg
                 echo "preserve_hostname: true"  >> /etc/cloud/cloud.cfg.d/onapp.cfg
                 mv /etc/network/interfaces /etc/network/onapp2vhi.interfaces
-                cat << EOF > /etc/network/interfaces
-source /etc/network/interfaces.d/*
-EOF
                 if dpkg -l $pkg
                 then
                         echo "$pkg installed"
+                                cat << EOF > /etc/network/interfaces
+source /etc/network/interfaces.d/*
+EOF
                         cloud-init clean --seed --logs
                         cloud-init init --local
                         rm -rf /etc/cron.d/cron-cloud-install
@@ -96,6 +99,7 @@ EOF
                 if rpm -q $pkg
                 then
                         echo "$pkg installed"
+			 mv /etc/sysconfig/network-scripts/ifcfg-eth0 /etc/sysconfig/network-scripts/onapp2vhi.ifcfg-eth
                         cloud-init clean --seed --logs
                         cloud-init init --local
                         rm -rf /etc/cron.d/cron-cloud-install
