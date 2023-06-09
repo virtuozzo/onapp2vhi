@@ -1,6 +1,8 @@
 import string
 import random
-from onapp2vhi.inc.logger import logs
+from onapp2vhi.utilities.logs.logger import OnAppVHILogger
+
+logs = OnAppVHILogger()
 
 
 def _find_largest_element(some_list):

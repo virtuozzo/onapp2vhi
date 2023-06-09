@@ -1,8 +1,10 @@
 import requests
 import time
 
-from onapp2vhi.inc.logger import logs
+from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+
+logs = OnAppVHILogger()
 
 
 class OnAppRequestsException(Exception):
