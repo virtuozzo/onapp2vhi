@@ -27,6 +27,9 @@ CONFIG_TEMPLATE = """#[onapp]
 #vinfra_domain_user = ''
 #vinfra_domain_pass = ''
 #
+# Network ID for migration VM's, you can get it on VHI cloud
+#migration_network_id = 5afcb27b-1c92-4561-a81c-fcf4f89bd543
+#
 #[key]
 #ssh_key = path/to/your/ssh_key/id_rsa
 """
