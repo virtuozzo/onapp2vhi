@@ -88,6 +88,7 @@ def vm_install_bootloader(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool, 
     if vz_guest_tools:
         logs.info(f'{_spaces}{_boot_msg}STEP #4 -- OnApp: Install `vz-guest-tools` inside VM [{VM_IDn}] --',
                   header=True)
+        _vm_ssh.connect_timeout = 10
         _vm_ssh.channel_timeout = 10
         exit_status, output = _vm_ssh.execute("nohup bash /usr/bin/vz-guest-tools 1>/var/log/vz-guest-tools.log 2>&1")
 
