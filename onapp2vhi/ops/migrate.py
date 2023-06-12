@@ -8,6 +8,7 @@ from onapp2vhi.inc.onapp_helpers import (
     prepare_vhi_migration_data,
     get_user_ssh_keys,
     check_user_role,
+    get_vm_source_properties,
     VmHandler
 )
 from onapp2vhi.utilities.config import OnApp2VHIConfig
@@ -15,13 +16,38 @@ from onapp2vhi.utilities.config import OnApp2VHIConfig
 logs = OnAppVHILogger()
 
 
+SENTINEL = object()
+
+
+def _prepare_cloud_init_msg(cloud_init_install: dict, vm_properties: dict):
+    """
+    Prepare appropriate message for logging whether cloud init installed or not
+    :param cloud_init_install: {}
+    :param vm_properties: {}
+    :return:
+    """
+    _installed = 'Cloud Init Installed'
+    _not_installed = 'Cloud Init NOT Installed'
+    _user_choice = cloud_init_install['user']
+    _nics = vm_properties['network_info']
+    if _user_choice and cloud_init_install['install']:
+        return _installed
+    elif _user_choice and not cloud_init_install['install']:
+        return _not_installed
+    else:
+        for _nic_id, _nic_addrs in _nics.items():
+            if len(_nic_addrs) > 1 and not _user_choice:
+                return _not_installed
+
+        return _installed
+
+
 def migrate_impl(cfg: OnApp2VHIConfig,
                  user='',
-                 network='',
                  vm='',
                  project='',
                  vz_guest_tools_install='true',
-                 cloud_init_install='true',
+                 cloud_init_install='',
                  placement='',
                  ):
     """
@@ -47,7 +73,6 @@ def migrate_impl(cfg: OnApp2VHIConfig,
         Step 5:
             Finishing script and write down logs into files
     :param user: 4
-    :param network: public2
     :param vm: virtual machine identifier
     :param project: project
     :param vz_guest_tools_install: project
@@ -60,19 +85,23 @@ def migrate_impl(cfg: OnApp2VHIConfig,
     _pid = os.getpid()
     _file_name = ('migration_logs/{user}/migrated')
     user_idn = ''
-
     if user:
         if not user.isdigit():
             logs.error("Please specify User ID as integer: --user=7")
             exit(1)
         user_idn = int(user)
     vz_guest_tools = False if vz_guest_tools_install == 'false' else True
-    cloud_init = False if cloud_init_install == 'false' else True
-    warn_msg = ("There are no packages on this virtual machine: vz-guest-tools or/and cloud-init"
-                "In the future, we cannot guarantee the correct operation of the Virtual Machines."
-                "Install these packages manually:\n"
-                "https://virtuozzo.atlassian.net/wiki/spaces/PROD/pages/2524741641/OnApp+-+VHI+Migration+space")
-    if not vz_guest_tools or not cloud_init:
+    if cloud_init_install is SENTINEL:
+        cloud_init = {'user': False, 'install': True}
+    elif cloud_init_install == 'false':
+        cloud_init = {'user': True, 'install': False}
+    else:
+        cloud_init = {'user': True, 'install': True}
+    warn_msg = ("There are no packages on this virtual machine: vz-guest-tools or/and cloud-init.\n\t"
+                "In the future, we cannot guarantee the correct operation of the Virtual Machines.\n\t"
+                "\tInstall these packages manually:\n"
+                "\t\thttps://virtuozzo.atlassian.net/wiki/spaces/PROD/pages/2524741641/OnApp+-+VHI+Migration+space")
+    if not vz_guest_tools or not cloud_init['install']:
         logs.warn(msg=warn_msg)
     _custom_project = project
     # --Step 1--#
@@ -165,11 +194,14 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                                msg=msg_failed)
                 continue
 
+            _vm_properties = get_vm_source_properties(cfg, vm_idn=_idn)
+            _cloud_init_log = _prepare_cloud_init_msg(cloud_init_install=cloud_init, vm_properties=_vm_properties)
             if not _vm['built_from_iso'] and not _vm['built_from_ova']:
                 result = bootloader_drivers(cfg,
                                             idn=_idn,
                                             vz_guest_tools=vz_guest_tools,
-                                            cloud_init_install=cloud_init)
+                                            cloud_init_install=cloud_init,
+                                            vm_properties=_vm_properties)
             else:
                 result = True
                 logs.warn(msg=f'VM [{_vm_info}] built from ISO or OVA, installation GRUB,'
@@ -181,7 +213,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                            f'\t\t- Hostname: "{_vm["hostname"]}"\n'
                            f'\t\t- Label: "{_vm["label"]}"\n'
                            f'\t\t- Identifier: "{_idn}"\n'
-                           f'\t\t- Installation Cloud-init: {cloud_init}\n'
+                           f'\t\t- Installation Cloud-init: {_cloud_init_log}\n'
                            f'\t\t- Installation bootloader: {result}\n'
                            f'\t\t- Installation vz-guest-tools : {vz_guest_tools}\n'
                            f'\t- - - - - - - - - - - - - - - - -\n')
@@ -196,7 +228,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                                    idn=_idn,
                                    vproj=vhi.project_name,
                                    vdom=cfg.vhi_conf['vinfra_domain'],
-                                   network=network,
+                                   vm_properties=_vm_properties,
                                    vhi_obj=vhi,
                                    placement=placement)
 
@@ -205,7 +237,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                        f'\t\t- Hostname: "{_vm["hostname"]}"\n'
                        f'\t\t- Label: "{_vm["label"]}"\n'
                        f'\t\t- Identifier: "{_idn}"\n'
-                       f'\t\t- Installation Cloud-init: {cloud_init}\n'
+                       f'\t\t- Installation Cloud-init: {_cloud_init_log}\n'
                        f'\t\t- Installation bootloader: {result}\n'
                        f'\t\t- Installation vz-guest-tools : {vz_guest_tools}\n'
                        f'\t- - - - - - - - - - - - - - - - -\n')

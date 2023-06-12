@@ -33,17 +33,18 @@ function installCloudinit() {
                 rm -rf /etc/cloud/cloud.cfg.d/subiquity-disable-cloudinit-networking.cfg
                 rm -rf /etc/cloud/cloud.cfg.d/99-installer.cfg
                 rm -rf /etc/netplan/00-installer-config.yaml
-		echo "ssh_deletekeys: false" > /etc/cloud/cloud.cfg.d/nodeletekeys.cfg
+		echo "ssh_deletekeys: false" > /etc/cloud/cloud.cfg.d/onapp.cfg
+                echo "preserve_hostname: true"  >> /etc/cloud/cloud.cfg.d/onapp.cfg
                 mv /etc/network/interfaces /etc/network/onapp2vhi.interfaces
-                cat << EOF > /etc/network/interfaces
-source /etc/network/interfaces.d/*
-EOF
 		version=$(echo ${VERSION_ID} | cut -d. -f1)
 		if [ $version -ge 20 ];
 		then
 			if dpkg -l $pkg
 			then
 				echo "$pkg installed"
+		                cat << EOF > /etc/network/interfaces
+source /etc/network/interfaces.d/*
+EOF
 				echo 'datasource_list: [ ConfigDrive, OpenStack, None ]' | sudo -s tee /etc/cloud/cloud.cfg.d/90_dpkg.cfg
 				dpkg-reconfigure -f noninteractive cloud-init
 				sed -i "s/'netplan', 'eni'/'eni'/g" /etc/cloud/cloud.cfg
@@ -58,6 +59,9 @@ EOF
                         if dpkg -l $pkg
                         then
                                 echo "$pkg installed"
+                                cat << EOF > /etc/network/interfaces
+source /etc/network/interfaces.d/*
+EOF
                                 echo 'datasource_list: [ ConfigDrive, OpenStack, None ]' | sudo -s tee /etc/cloud/cloud.cfg.d/90_dpkg.cfg
                                 dpkg-reconfigure -f noninteractive cloud-init
                                 cloud-init clean --seed --logs
@@ -71,14 +75,15 @@ EOF
         elif [[ ${OS} == 'debian' ]]; then
                 apt update
                 apt-get install -y cloud-init cloud-guest-utils net-tools
-		echo "ssh_deletekeys: false" > /etc/cloud/cloud.cfg.d/nodeletekeys.cfg
+                echo "ssh_deletekeys: false" > /etc/cloud/cloud.cfg.d/onapp.cfg
+                echo "preserve_hostname: true"  >> /etc/cloud/cloud.cfg.d/onapp.cfg
                 mv /etc/network/interfaces /etc/network/onapp2vhi.interfaces
-                cat << EOF > /etc/network/interfaces
-source /etc/network/interfaces.d/*
-EOF
                 if dpkg -l $pkg
                 then
                         echo "$pkg installed"
+                                cat << EOF > /etc/network/interfaces
+source /etc/network/interfaces.d/*
+EOF
                         cloud-init clean --seed --logs
                         cloud-init init --local
                         rm -rf /etc/cron.d/cron-cloud-install
@@ -89,10 +94,12 @@ EOF
         elif [[ ${OS} == 'centos' ]]; then
 		mv /etc/sysconfig/network-scripts/ifcfg-eth0 /etc/sysconfig/network-scripts/onapp2vhi.ifcfg-eth0
                 yum -y install cloud-init cloud-utils-growpart
-		echo "ssh_deletekeys: false" > /etc/cloud/cloud.cfg.d/nodeletekeys.cfg
+                echo "ssh_deletekeys: false" > /etc/cloud/cloud.cfg.d/onapp.cfg
+                echo "preserve_hostname: true"  >> /etc/cloud/cloud.cfg.d/onapp.cfg
                 if rpm -q $pkg
                 then
                         echo "$pkg installed"
+			 mv /etc/sysconfig/network-scripts/ifcfg-eth0 /etc/sysconfig/network-scripts/onapp2vhi.ifcfg-eth
                         cloud-init clean --seed --logs
                         cloud-init init --local
                         rm -rf /etc/cron.d/cron-cloud-install
@@ -102,6 +109,7 @@ EOF
                 fi
 
         fi
+
 }
 
 if [[ ! "$(dmidecode -s system-manufacturer)" == "Virtuozzo" ]]; then

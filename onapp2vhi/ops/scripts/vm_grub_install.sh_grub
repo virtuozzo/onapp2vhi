@@ -28,10 +28,6 @@ send -- "mount /dev/cdrom /mnt"
 send -- "\r"
 expect -exact "\r
 \[root@recovery ~\]# "
-send -- "/bin/cp -rf /mnt/cloud-install /sysroot/usr/bin/cloud-install\r"
-send -- "\r"
-expect -exact "\r
-\[root@recovery ~\]# "
 send -- "/bin/cp -rf /mnt/provisiongrub.sh /sysroot/root/ProvisionGRUB.sh\r"
 send -- "\r"
 expect -exact "\r
@@ -58,6 +54,10 @@ expect -exact "\r
 send -- "chroot /sysroot /bin/bash  /root/RegenerateUUID.sh\r"
 expect "#"
 send -- "chroot /sysroot /bin/bash  /root/ProvisionGRUB.sh\r"
+expect "#"
+send -- "/bin/rm -rf /sysroot/root/RegenerateUUID.sh\r"
+expect "#"
+send -- "/bin/rm -rf /sysroot/root/ProvisionGRUB.sh\r"
 expect "#"
 send -- "umount -R /sysroot"
 expect -exact "umount -R /sysroot"

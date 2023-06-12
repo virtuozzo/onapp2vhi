@@ -3,15 +3,15 @@ from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.windows_network_reconfig import WindowsNetworkReconfig
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.ssh_connector import ssh_run, SSH
-from onapp2vhi.inc.onapp_helpers import get_vm_source_properties
 from onapp2vhi.inc.utils import exit_status_code_handler
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.utilities.web import download_file
 
+
 logs = OnAppVHILogger()
 
 
-def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool, cloud_init_install: bool):
+def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool, cloud_init_install, vm_properties: dict):
     if not idn:
         logs.error('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -21,15 +21,28 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool,
     _dri_msg = 'WIN DRIVERS ONLINE -- '
     logs.info(f'{_spaces}-- INSTALLING {_dri_msg}', header=True)
 
-    if not cloud_init_install and not vz_guest_tools:
-        logs.info(msg='Chosen nothing to install.', separator=True)
-        return True
-
     # -- STEP 1 --
     logs.info(f'{_spaces}{_dri_msg}STEP #1 -- OnApp: get source VM properties --', header=True)
-    _vm_properties = get_vm_source_properties(cfg, vm_idn=vm_idn)
+    _vm_properties = vm_properties
     _vm_hv_ip = _vm_properties['hv_ip']
     _vm_ip_addr = _vm_properties['vm_ip_addr']
+    _nics = _vm_properties['network_info']
+    _user_choice = cloud_init_install['user']
+    _cloud_init = True
+    if _user_choice and cloud_init_install['install']:
+        _cloud_init = True
+    elif _user_choice and not cloud_init_install['install']:
+        _cloud_init = False
+    else:
+        for _nic_id, _nic_addrs in _nics.items():
+            if len(_nic_addrs) > 1 and not _user_choice:
+                _cloud_init = False
+                logs.warn(msg='The `cloud-init` will not be installed. You will need to install it manually.')
+                break
+
+    if not _cloud_init and not vz_guest_tools:
+        logs.info(msg='Chosen nothing to install.', separator=True)
+        return True
 
     # -- STEP 2 --
     logs.info(f'{_spaces}{_dri_msg}STEP #2 -- OnApp: Check if VM is running on HYPERVISOR --', header=True)
@@ -57,7 +70,7 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool,
         download_file("https://cloudbase.it/downloads/CloudbaseInitSetup_Stable_x64.msi",
                       os.path.join(package_path, "scripts"))
 
-    if cloud_init_install:
+    if _cloud_init:
         cmd = f'scp -P{cfg.onapp_conf["hv_ssh_port"]} {Helper.SCP_OPTS.value} {cloudbase_init_path}' \
               f' Administrator@{_vm_ip_addr}:C:/ 2>/dev/null'
         [exit_status, output] = ssh_run(cmd)
@@ -124,7 +137,7 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool,
     _vm_ssh = SSH(**{'host': _vm_ip_addr, 'username': 'Administrator', 'ssh_key': cfg.ssh_key})
     _vm_ssh.connect_timeout = 20
     _vm_ssh.channel_timeout = 20
-    if cloud_init_install:
+    if _cloud_init:
         exit_status, output = _vm_ssh.execute('cd C:; msiexec /i CloudbaseInitSetup_Stable_x64.msi /qn /l*v log.txt')
         if not exit_status_code_handler(
                 exit_code=exit_status,

@@ -11,14 +11,13 @@ from onapp2vhi.inc.onapp_helpers import (
     GenerateXmlConfig,
     activate_disk,
     deactivate_disk,
-    get_vm_source_properties
 )
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 logs = OnAppVHILogger()
 
 
-def vm_install_bootloader_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool, cloud_init_install: bool):
+def vm_install_bootloader_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool, cloud_init_install, vm_properties: dict):
     if not idn:
         logs.error('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -32,8 +31,21 @@ def vm_install_bootloader_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools
 
     # -- STEP 1 --
     logs.info(f'{_spaces}{_boot_msg}STEP #1 --OnApp: get source VM properties--', header=True)
-    _vm_properties = get_vm_source_properties(cfg, vm_idn=vm_idn)
+    _vm_properties = vm_properties
     _vm_hv_ip = _vm_properties['hv_ip']
+    _nics = _vm_properties['network_info']
+    _user_choice = cloud_init_install['user']
+    _cloud_init = True
+    if _user_choice and cloud_init_install['install']:
+        _cloud_init = True
+    elif _user_choice and not cloud_init_install['install']:
+        _cloud_init = False
+    else:
+        for _nic_id, _nic_addrs in _nics.items():
+            if len(_nic_addrs) > 1 and not _user_choice:
+                _cloud_init = False
+                logs.warn(msg='The `cloud-init` will not be installed. You will need to install it manually.')
+                break
 
     # -- STEP 2 --
     logs.info(f'{_spaces}{_boot_msg}STEP #2 -- OnApp: GET OnApp VM disk info --', header=True)
@@ -67,13 +79,13 @@ def vm_install_bootloader_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools
     # -- STEP 5 --
     logs.info(f'{_spaces}{_boot_msg}STEP #5 -- Correct grub config --', header=True)
     install_script = "/onapp/tools/scripts/vm_grub_install.sh_grub_ci_vz"
-    if not vz_guest_tools and cloud_init_install:
+    if not vz_guest_tools and _cloud_init:
         logs.info(msg='Installing only `CLOUD INIT`', separator=True)
         install_script = "/onapp/tools/scripts/vm_grub_install.sh_grub_ci"
-    elif not cloud_init_install and vz_guest_tools:
+    elif not _cloud_init and vz_guest_tools:
         logs.info(msg='Installing only `VZ GUEST TOOLS`', separator=True)
         install_script = "/onapp/tools/scripts/vm_grub_install.sh_grub_vz"
-    elif not cloud_init_install and not vz_guest_tools:
+    elif not _cloud_init and not vz_guest_tools:
         logs.info(msg='Installing only `GRUB`', separator=True)
         install_script = "/onapp/tools/scripts/vm_grub_install.sh_grub"
 

@@ -132,7 +132,6 @@ def create_service_user():
 
 @run.command()
 @click.option("--user", default="", help="OnApp User, VM identifier.")
-@click.option("--network", default="", help="Network to be used")
 @click.option(
     "--vm",
     default="",
@@ -158,7 +157,6 @@ def create_service_user():
 )
 def migrate(
     user="",
-    network="",
     vm="",
     project="",
     vz_guest_tools_install="true",
@@ -170,7 +168,6 @@ def migrate(
     migrate_impl(
         cfg,
         user=user,
-        network=network,
         vm=vm,
         project=project,
         vz_guest_tools_install=vz_guest_tools_install,

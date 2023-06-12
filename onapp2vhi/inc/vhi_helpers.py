@@ -435,3 +435,34 @@ class Vhi:
         new_user = json.loads(output)
         self.user_id = new_user['id']
         return True, _pwd
+
+
+def get_vhi_hv_ip(cfg: OnApp2VHIConfig, vhi_vm_id: str, vhi_ssh):
+    """
+    Find HyperVisor IP address based on VM id
+    :param vhi_vm_id: "59bbabef-b576-4339-b148-4adb6fcd4192"
+    :param vhi_ssh: object with ssh access to VHI
+    :return:
+    """
+    _migration_network_id = cfg.vhi_conf['migration_network_id']
+    # Get Host Node hostname
+    exit_status, server_output = vhi_ssh.execute(f"{cfg.ADMIN_AUTH} service compute server show {vhi_vm_id} -f json")
+    _host = json.loads(server_output)['host']
+    exit_status, node_output = vhi_ssh.execute(f"{cfg.ADMIN_AUTH} node list -f json")
+    node_id = [node['id'] for node in json.loads(node_output) if node['host'] == _host][0]
+    # Get ifaces at VHI side
+    exit_status, iface_output = vhi_ssh.execute(f"{cfg.ADMIN_AUTH} node iface list --node {node_id} -f json")
+    for iface in json.loads(iface_output):
+        if iface['network'] == _migration_network_id:
+            # When there is no IP address for HV returns False
+            if not iface['ipv4']:
+                msg = (f'There is no IP address for HV in this network: ["{_migration_network_id}"]'
+                       f'\n\tvinfra node iface list --node {node_id}')
+                logs.error(msg=msg)
+                return False
+
+            # Get HV IP address and return it
+            ip_mask = iface['ipv4'][0]
+            hv_ip = ip_mask.split('/')[0]
+            logs.info(msg=f'*** Found VHI IP address [{hv_ip}] ***')
+            return hv_ip

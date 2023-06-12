@@ -8,6 +8,8 @@ from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.ssh_connector import ssh_run, SSH
 from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.utils import parse_matrix, exit_status_code_handler, generate_random_password
+from onapp2vhi.inc.network_onapp import get_virtual_server_interfaces, get_virtual_server_ip_addresses
+from onapp2vhi.inc.network_onapp import get_vm_network_info
 from os.path import join
 
 from collections import namedtuple
@@ -44,6 +46,8 @@ NIC = namedtuple('NIC', 'id vm_id label nic_idn is_primary mac network_join '
                         'default_firewall_rule is_connected ip_addr')
 ComputeZone = namedtuple('ComputeZone', 'name cpu ram')
 DataStoreZone = namedtuple('DataStoreZone', 'name storage_policy')
+
+##############################################
 
 
 def _find_by(find: str, obj: dict):
@@ -303,12 +307,23 @@ def get_user_data(cfg: OnApp2VHIConfig, url: str, get_type, value_to_search=None
             return _user['user']
 
 
-def _get_primary_vm_ip(vm: dict):
-    for ip_address in vm['ip_addresses']:
-        ip = ip_address['ip_address']
-        if not ip['primary']:
-            continue
-        return ip['address']
+def _get_primary_vm_ip(cfg: OnApp2VHIConfig, vm: dict):
+    vm_idn = vm['identifier']
+    version = onapp_version(cfg)
+    if version <= 6.0:
+        virtual_server_nic = get_virtual_server_interfaces(cfg, virtual_server_id=vm_idn)
+        primary_nic_id = [nic["network_interface"]["id"] for nic in virtual_server_nic
+                          if nic['network_interface']['primary']][0]
+        vs_ip_addresses = get_virtual_server_ip_addresses(cfg,
+                                                          virtual_server_id=vm_idn,
+                                                          network_interface_id=primary_nic_id)
+        return vs_ip_addresses[0]['address']
+    else:
+        for ip_address in vm['ip_addresses']:
+            ip = ip_address['ip_address']
+            if not ip['primary']:
+                continue
+            return ip['address']
 
 
 def _vhi_virtual_machine_list(cfg: OnApp2VHIConfig):
@@ -339,7 +354,7 @@ def get_all_virtual_machines(cfg: OnApp2VHIConfig, user_id: int = None):
     vms_dict = defaultdict(list)
     for _vm in response:
         vm = _vm['virtual_machine']
-        _ip_addr = _get_primary_vm_ip(vm)
+        _ip_addr = _get_primary_vm_ip(cfg, vm)
 
         if f"{vm['hostname']}.{vm['domain']}".lower() in existing_vms:
             msg = (f'Virtual Machine already exists on VHI side in `{cfg.vhi_conf["vinfra_domain"]}` domain\n\n\t\t'
@@ -367,6 +382,7 @@ def get_vm_source_properties(cfg: OnApp2VHIConfig, vm_idn: str) -> Dict:
     """
     onapp_requests = OnAppRequests(cfg)
     vm_properties = onapp_requests.get(f'virtual_machines/{vm_idn}')['virtual_machine']
+    network_info = get_vm_network_info(cfg, vm_identifier=vm_idn)
     _vm_hv_id = vm_properties['hypervisor_id']
     _vm_os = vm_properties['operating_system']
     _hot_migrate = vm_properties['allowed_hot_migrate']
@@ -378,7 +394,7 @@ def get_vm_source_properties(cfg: OnApp2VHIConfig, vm_idn: str) -> Dict:
     _vm_ip_addr = [nic['ip_address_join']['ip_address']['address'] for nic in _vm_nics
                    if nic['ip_address_join']['ip_address']][0]
     logs.info(f"-- Hypervisor ID: {_vm_hv_id} | Hypervisor IP ADDRESS: {_vm_hv_ip} | VM IP ADDRESS {_vm_ip_addr}")
-    return {'hv_ip': _vm_hv_ip, 'vm_os': _vm_os, 'vm_ip_addr': _vm_ip_addr,
+    return {'hv_ip': _vm_hv_ip, 'vm_os': _vm_os, 'vm_ip_addr': _vm_ip_addr, 'network_info': network_info,
             'hot_migrate': _hot_migrate, 'hostname': _vm_hostname, 'domain': _vm_domain}
 
 
@@ -461,19 +477,24 @@ def get_vm_firewall_rules(cfg: OnApp2VHIConfig, vm_idn: str) -> List[FirewallRul
     """
     logs.info(f'{_spaces}-- OnApp: Get OnApp VM Firewall Rules  --')
     onapp_requests = OnAppRequests(cfg)
+    version = onapp_version(cfg)
     response = onapp_requests.get(f'virtual_machines/{vm_idn}/firewall_rules')
-    firewall_rules = [FirewallRules(id=fr['firewall_rule']['id'],
-                                    position=fr['firewall_rule']['position'],
-                                    address=fr['firewall_rule']['address'],
-                                    command=fr['firewall_rule']['command'],
-                                    port=fr['firewall_rule']['port'],
-                                    protocol=fr['firewall_rule']['protocol'],
-                                    nic_id=fr['firewall_rule']['network_interface_id'],
-                                    comment=fr['firewall_rule']['comment'],
-                                    source_port=fr['firewall_rule']['source_port'],
-                                    destination_ip=fr['firewall_rule']['destination_ip'],
-                                    protocol_type=fr['firewall_rule']['protocol_type'])
-                      for fr in response]
+    firewall_rules = []
+    for fr in response:
+        comment = ''
+        if version > 6.0:
+            comment = fr['firewall_rule']['comment']
+        firewall_rules.append(FirewallRules(id=fr['firewall_rule']['id'],
+                                            position=fr['firewall_rule']['position'],
+                                            address=fr['firewall_rule']['address'],
+                                            command=fr['firewall_rule']['command'],
+                                            port=fr['firewall_rule']['port'],
+                                            protocol=fr['firewall_rule']['protocol'],
+                                            nic_id=fr['firewall_rule']['network_interface_id'],
+                                            comment=comment,
+                                            source_port=fr['firewall_rule']['source_port'],
+                                            destination_ip=fr['firewall_rule']['destination_ip'],
+                                            protocol_type=fr['firewall_rule']['protocol_type']))
     return [] if not firewall_rules else firewall_rules
 
 
@@ -1050,3 +1071,15 @@ def onapp_version(cfg: OnApp2VHIConfig, full=None):
     if full:
         version = onap_version_resp['version']
     return version
+
+
+def suspend_vm(cfg: OnApp2VHIConfig, vm_id: str):
+    """
+    Suspend VM
+    :param vm_id: "jcubtlkttnknax"
+    :return:
+    """
+    logs.debug(msg=f'{_spaces}-- Suspending VM [{vm_id}] --')
+    onapp_requests = OnAppRequests(cfg)
+    response = onapp_requests.post(route=f'virtual_machines/{vm_id}/suspend', data={})
+    return response

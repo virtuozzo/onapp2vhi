@@ -16,8 +16,8 @@ else
         ROOT_DEV=/dev/vda
 fi
 
-sed -i 's/^GRUB_DISABLE_LINUX_UUID=true/#GRUB_DISABLE_LINUX_UUID=true/' /etc/default/grub
-sed -i 's/^GRUB_DISABLE_UUID=true/#GRUB_DISABLE_UUID=true/' /etc/default/grub
+sed -i 's/^GRUB_DISABLE_LINUX_UUID/#GRUB_DISABLE_LINUX_UUID/' /etc/default/grub
+sed -i 's/^GRUB_DISABLE_UUID/#GRUB_DISABLE_UUID/' /etc/default/grub
 
 if [ "$GRUB_VERSION" -lt 1 ];then
 #Run grub install
@@ -30,6 +30,8 @@ if [ "$GRUB_VERSION" -lt 1 ];then
                 #Debian10
                 sed -i 's/kopt="root=$linux_root_device ro"/kopt="root=$linux_root_device net.ifnames=0 biosdevname=0 ro"/g' /usr/sbin/update-grub
                 update-grub -y
+        else
+	        sed -i "s|/dev/vd|/dev/sd|" /boot/grub/grub.conf
         fi
 else
         if [ -f /boot/grub/grub.cfg ]; then
