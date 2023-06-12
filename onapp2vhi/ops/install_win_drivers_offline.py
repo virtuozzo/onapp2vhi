@@ -47,13 +47,14 @@ def vm_install_win_drivers_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tool
                 logs.warn(msg='The `cloud-init` will not be installed. You will need to install it manually.')
                 break
 
-    install_script = "scripts/onapp.bat_ci_vz"
+    package_path = os.path.dirname(__file__)
+    install_script = os.path.join(package_path, "scripts/onapp.bat_ci_vz")
     if not vz_guest_tools and _cloud_init:
         logs.info(msg='Installing only `CLOUD INIT`', separator=True)
-        install_script = "scripts/onapp.bat_ci"
+        install_script = os.path.join(package_path, "scripts/onapp.bat_ci")
     elif not _cloud_init and vz_guest_tools:
         logs.info(msg='Installing only `VZ GUEST TOOLS`', separator=True)
-        install_script = "scripts/onapp.bat_vz"
+        install_script = os.path.join(package_path, "scripts/onapp.bat_vz")
     elif not _cloud_init and not vz_guest_tools:
         logs.info(msg='Chosen nothing to install.', separator=True)
         return True
@@ -114,7 +115,6 @@ def vm_install_win_drivers_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tool
     logs.info(f"{_spaces}{_dri_msg}STEP #6 -- OnApp: Copy drivers and scripts --", header=True)
 
     # FILES TO COPY SHOULD BE LOCATED IN PROJECT FOLDER /scripts
-    package_path = os.path.dirname(__file__)
     cloudbase_init_path = os.path.join(package_path, "scripts/CloudbaseInitSetup_Stable_x64.msi")
     vz_guest_tool_path = os.path.join(package_path, "scripts/vz-guest-tools-win.tar")
     logs.info(f'File path: {cloudbase_init_path}')
