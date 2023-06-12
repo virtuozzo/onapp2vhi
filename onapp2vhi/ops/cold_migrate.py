@@ -16,10 +16,12 @@ from onapp2vhi.inc.onapp_helpers import (
 )
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.network_hanlder import get_network_configuration
-from onapp2vhi.inc.logger import logs
+from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.utils import exit_status_code_handler
 from onapp2vhi.inc.ssh_connector import SSH
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+
+logs = OnAppVHILogger()
 
 
 def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, network: str, vhi_obj, placement=''):

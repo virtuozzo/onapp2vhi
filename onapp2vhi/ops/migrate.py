@@ -3,7 +3,7 @@ import os
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.vhi_ssh_keys import VhiSshKeys
 from onapp2vhi.inc.vhi_helpers import Vhi
-from onapp2vhi.inc.logger import logs
+from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.onapp_helpers import (
     prepare_vhi_migration_data,
     get_user_ssh_keys,
@@ -11,6 +11,8 @@ from onapp2vhi.inc.onapp_helpers import (
     VmHandler
 )
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+
+logs = OnAppVHILogger()
 
 
 def migrate_impl(cfg: OnApp2VHIConfig,
@@ -55,8 +57,8 @@ def migrate_impl(cfg: OnApp2VHIConfig,
     """
     # Arrange
     logs.info(f"{Helper.EQUAL.value} VHI: Starting Migration Session {Helper.EQUAL.value}", header=True)
-    _path = os.getcwd()
-    _file_name = os.path.join(_path, 'migration_logs/{user}/migrated')
+    _pid = os.getpid()
+    _file_name = ('migration_logs/{user}/migrated')
     user_idn = ''
 
     if user:
@@ -159,7 +161,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                               f'Please install GRUB/WIN_DRIVERS via these options:'
                               f' "install_bootloader_offline --vm=\'identifier\'" |'
                               f' "install_win_drivers_offline --vm=\'identifier\'"')
-                logs.write_log(file_path=f"{_file_name.format(user=user['id'])}_user_{user['id']}_manual_migrate_vm",
+                logs.write_log(file_path=f"{_file_name.format(user=user['id'])}_{_pid}_user_{user['id']}_manual_migrate_vm",
                                msg=msg_failed)
                 continue
 
@@ -183,7 +185,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                            f'\t\t- Installation bootloader: {result}\n'
                            f'\t\t- Installation vz-guest-tools : {vz_guest_tools}\n'
                            f'\t- - - - - - - - - - - - - - - - -\n')
-                logs.write_log(file_path=f"{_file_name.format(user=user['user_login'])}_user_{user['id']}",
+                logs.write_log(file_path=f"{_file_name.format(user=user['user_login'])}_{_pid}_user_{user['id']}",
                                msg=msg.format(user['user_login'],
                                               user['password'],
                                               _ssh_result,
@@ -209,7 +211,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                        f'\t- - - - - - - - - - - - - - - - -\n')
         # --Step 5 -- #
         # -- Finish Migration Session and put down logs  -- #
-        logs.write_log(file_path=f"{_file_name.format(user=user['user_login'])}_user_{user['id']}",
+        logs.write_log(file_path=f"{_file_name.format(user=user['user_login'])}_{_pid}_user_{user['id']}",
                        msg=msg.format(user['user_login'],
                                       user['password'],
                                       _ssh_result,

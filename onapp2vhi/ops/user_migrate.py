@@ -1,7 +1,7 @@
 from onapp2vhi.inc.vhi_ssh_keys import VhiSshKeys
 from onapp2vhi.inc.vhi_helpers import Vhi
 from onapp2vhi.inc.utils import generate_random_password
-from onapp2vhi.inc.logger import logs
+from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.onapp_helpers import (
     get_user_ssh_keys,
@@ -13,6 +13,7 @@ from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 
 USER_PASSWORD = generate_random_password()
+logs = OnAppVHILogger()
 
 
 def user_migrate_impl(cfg: OnApp2VHIConfig, idn=''):

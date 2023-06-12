@@ -9,7 +9,7 @@ from onapp2vhi.utilities.config import OnApp2VHIConfig
 # TODO! remove global inc.logger.logs references
 class OnAppRequestTest(TestCase):
 
-    @patch("onapp2vhi.inc.logger.logs")
+    @patch("onapp2vhi.utilities.logs.logger.OnAppVHILogger")
     def setUp(self, mock_logs):
         mock_config = Mock(spec=OnApp2VHIConfig)
         mock_config._config = Mock()

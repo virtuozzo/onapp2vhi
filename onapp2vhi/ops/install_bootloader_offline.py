@@ -5,7 +5,7 @@ from os.path import dirname, join
 from onapp2vhi.inc.utils import exit_status_code_handler
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.ssh_connector import ssh_run, SSH
-from onapp2vhi.inc.logger import logs
+from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.onapp_helpers import (
     get_onapp_vm_disks,
     GenerateXmlConfig,
@@ -14,6 +14,8 @@ from onapp2vhi.inc.onapp_helpers import (
     get_vm_source_properties
 )
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+
+logs = OnAppVHILogger()
 
 
 def vm_install_bootloader_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool, cloud_init_install: bool):

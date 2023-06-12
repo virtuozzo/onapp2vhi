@@ -4,9 +4,11 @@ import xml.etree.ElementTree as KVMxml
 from os.path import dirname, join
 
 from onapp2vhi.inc.ssh_connector import ssh_run
-from onapp2vhi.inc.logger import logs
+from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+
+logs = OnAppVHILogger()
 
 
 def vm_template_migrate(cfg: OnApp2VHIConfig, idn='', vhip=''):
