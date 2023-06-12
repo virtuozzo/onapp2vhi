@@ -1,0 +1,26 @@
+@migrate_vm
+@hot_migration
+@windows
+Feature: Hot migration for Windows VM
+
+Scenario: Hot migration without user's SSH key
+  Given I am a cloud user (ultron)
+  When I create a virtual machine (windows-vm-with-startup)
+  Then CP API (create) should return status code 201
+  And I wait for 10 minutes
+  And the virtual machine (windows-vm-with-startup) is built successfully
+
+  When I migrate the virtual machine (windows-vm-with-startup)
+  Then I wait for 10 seconds
+  And I should see the virtual machine is ACTIVE in VHI portal
+
+Scenario: Hot migration with user's SSH key
+  Given I am a cloud user (uda)
+  When I create a virtual machine (windows-vm-with-startup)
+  Then CP API (create) should return status code 201
+  And I wait for 10 minutes
+  And the virtual machine (windows-vm-with-startup) is built successfully
+
+  When I migrate the virtual machine (windows-vm-with-startup)
+  Then I wait for 10 seconds
+  And I should see the virtual machine is ACTIVE in VHI portal
