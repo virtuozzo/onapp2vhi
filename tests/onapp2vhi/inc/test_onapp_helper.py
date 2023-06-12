@@ -23,14 +23,15 @@ class TestListOnApp(unittest.TestCase):
 
         mock_response = [
             {
-              'user': {
-                'first_name': 'foo',
-                'last_name': 'bar',
-                'email': 'test@test.com',
-                'roles': [{'role': {'label': 'test'}}],
-                'login': 'admin',
-                'id': '1',
-            }}
+                'user': {
+                    'first_name': 'foo',
+                    'last_name': 'bar',
+                    'email': 'test@test.com',
+                    'roles': [{'role': {'label': 'test'}}],
+                    'login': 'admin',
+                    'id': '1',
+                }
+            }
         ]
 
         mock_props = ['first_name', 'last_name', 'login', 'email', 'roles', 'id']
@@ -40,7 +41,6 @@ class TestListOnApp(unittest.TestCase):
         mock_onapp_request.return_value = self.mock_onapprequests
         self.list_user(self.mock_config)
         mock_parse_matrix.assert_called_with(mock_props, expected_call)
-
 
     @patch("onapp2vhi.inc.onapp_helpers.parse_matrix")
     @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
@@ -54,7 +54,6 @@ class TestListOnApp(unittest.TestCase):
         self.list_user(self.mock_config)
         mock_parse_matrix.assert_not_called()
 
-
     @patch("onapp2vhi.inc.onapp_helpers.parse_matrix")
     @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
     @patch("onapp2vhi.inc.onapp_helpers.logs")
@@ -62,15 +61,16 @@ class TestListOnApp(unittest.TestCase):
 
         mock_response = [
             {
-              'virtual_machine': {
-                'label': 'ubuntu22',
-                'ip_addresses': [{'ip_address': {'address': '1.2.3.4'}}],
-                'identifier': 'test123',
-                'template_label': 'Ubuntu 22.04',
-                'booted': 'false',
-                'user_id': '10',
-                'id': '1',
-            }}
+                'virtual_machine': {
+                    'label': 'ubuntu22',
+                    'ip_addresses': [{'ip_address': {'address': '1.2.3.4'}}],
+                    'identifier': 'test123',
+                    'template_label': 'Ubuntu 22.04',
+                    'booted': 'false',
+                    'user_id': '10',
+                    'id': '1',
+                }
+            }
         ]
 
         mock_props = ['id', 'label', 'ip_address', 'identifier', 'template_label', 'booted', 'user_id']
@@ -80,7 +80,6 @@ class TestListOnApp(unittest.TestCase):
         mock_onapp_request.return_value = self.mock_onapprequests
         self.list_vms(self.mock_config)
         mock_parse_matrix.assert_called_with(mock_props, expected_call)
-
 
     @patch("onapp2vhi.inc.onapp_helpers.parse_matrix")
     @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
