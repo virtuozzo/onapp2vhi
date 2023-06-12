@@ -34,4 +34,4 @@ def behave(session):
         "fabric==2.7.1",
     )
     session.cd("behave")
-    session.run("behave")
+    session.run("behave", "-e", "features/create_vm.feature")

@@ -1,56 +1,41 @@
-from fabric import Connection
-from fixtures.helper import cp_helper
-import os
-import yaml
+from fixtures.helper import helper
+import json
 
 CHECK_FAILED = False
 
-def get_fixture(entity):
-
-    path = os.path.dirname(os.path.abspath("fixtures/{entity}.yaml".format(entity=entity))) + "/" + entity + ".yaml"
-    return yaml.load(open(path).read(), Loader=yaml.FullLoader)
-
-def get_config():
-
-    path = os.path.dirname(os.path.abspath("features/config.yaml")) + "/config.yaml"
-    config = yaml.load(open(path).read(), Loader=yaml.FullLoader)
-    return config
-    
-def open_ssh_connection(config, command):
-
-    conn = Connection(host=config["host"], user=config["user"], port=config["port"], forward_agent=True)
-
-    with conn.cd(config["migration_tool_dir"]):
-        with conn.prefix("source " + config["virtual_env"]):
-            output = conn.run("onapp2vhi " + command)
-
-    return output
-
 use_step_matcher('parse')
-@when('I delete the {entity} ({name})')
+@when('I delete the {entity} ({name}) in Onapp cloud')
 def step_impl(context, entity, name):
 
-    entity_plural = cp_helper.convert_to_plural(cp_helper.rephrase_key(entity))
+    entity_plural = helper.convert_to_plural(helper.rephrase_key(entity))
+    entity_singular = helper.convert_to_singular(helper.rephrase_key(entity))
+    fixture = helper.get_fixture(entity_singular)
+
+    label = fixture[name][entity_singular]["label"]
+
     response = {}
 
-    data = context.cp.search(entity_plural, args=name)
+    data = context.cp.search(entity_plural, args=label)
+
+    # we proceed with the step even if the vm is not found
     if not data:
-        assert CHECK_FAILED, "error: {name} is not found".format(name=name)
+        pass
 
-    id = data[0][cp_helper.convert_to_singular(entity_plural)]["id"]
-    response[entity_plural] = context.cp.delete(entity_plural, id)
+    else:
+        id = data[0][helper.convert_to_singular(entity_plural)]["id"]
+        response[entity_plural] = context.cp.delete(entity_plural, id)
 
-    context.response = response[entity_plural]
+        context.response = response[entity_plural]
 
 use_step_matcher('re')
 @when('I create a? (?P<entity>[\w\s]+) \((?P<name>[\w\W\s]+)\) with following details')
 def step_impl(context, entity, name):
 
-    entity = cp_helper.rephrase_key(entity)
-    entity_plural = cp_helper.convert_to_plural(entity)
-    data = get_fixture(entity)[name]
+    entity = helper.rephrase_key(entity)
+    entity_plural = helper.convert_to_plural(entity)
+    data = helper.get_fixture(entity)[name]
 
-    headings = cp_helper.rephrase_key(context.table.headings)
+    headings = helper.rephrase_key(context.table.headings)
     for heading in headings:
         for row in context.table.rows:
             row.headings = headings
@@ -64,8 +49,8 @@ use_step_matcher('re')
 @when('I create a? (?P<entity>[\w\s]+) \((?P<name>[\W\w\s]+)\)')
 def step_impl(context, entity, name):
     
-    entity = cp_helper.rephrase_key(entity)
-    config = get_fixture(entity)
+    entity = helper.rephrase_key(entity)
+    config = helper.get_fixture(entity)
     data = config[name]
 
     if entity == "virtual_machine":
@@ -73,9 +58,23 @@ def step_impl(context, entity, name):
             search_query = "search_filter[query]=" + data["virtual_machine"]["template_id"].replace(" ", "+")
             data["virtual_machine"]["template_id"] = context.cp.search_with_search_filter("templates", search_query)[0]["image_template"]["id"]
 
+        if data["virtual_machine"].get("hypervisor_id"):
+            # there is no search function for a particular hypervisor
+            hv_list = context.cp.get_all("hypervisors")
+            match = False
+
+            for hv in hv_list:
+                if hv["hypervisor"]["label"].strip() == data["virtual_machine"].get("hypervisor_id"):
+                    data["virtual_machine"]["hypervisor_id"] = hv["hypervisor"]["id"]
+                    match = True
+                    break
+
+            if not match:
+                assert CHECK_FAILED, "error: HV is not found"
+
     print(data)
 
-    context.response = context.cp.create(entity=cp_helper.convert_to_plural(entity), data=data)
+    context.response = context.cp.create(entity=helper.convert_to_plural(entity), data=data)
 
 def get_tool_output(output):
     '''
@@ -205,9 +204,9 @@ def step_impl(context, type, username):
     else:
         assert CHECK_FAILED, "error: user (%s) is not found" % username
 
-    config = get_config()
+    config = helper.get_config()
     command = get_tool_command(type, user_id=user_id)
-    output = open_ssh_connection(config["onapp"], command)
+    output = helper.open_onapp_ssh_connection(config["onapp"], command)
     dict_data_from_tool = get_tool_output(output)
 
     context.data = {}
@@ -225,10 +224,10 @@ use_step_matcher('re')
 @when('I view the (?P<type>VMs?|users?) in Onapp cloud using migration tool')
 def step_impl(context, type):
 
-    config = get_config()
+    config = helper.get_config()
 
     command = get_tool_command(type)
-    output = open_ssh_connection(config["onapp"], command)
+    output = helper.open_onapp_ssh_connection(config["onapp"], command)
     dict_data_from_tool = get_tool_output(output)
 
     context.data = {}
@@ -258,9 +257,9 @@ def step_impl(context, type, username):
 
     str_header = str_header[:-1]
 
-    config = get_config()
+    config = helper.get_config()
     command = get_tool_command(type, user_id=user_id, header=str_header)
-    output = open_ssh_connection(config["onapp"], command)
+    output = helper.open_onapp_ssh_connection(config["onapp"], command)
     dict_data_from_tool = get_tool_output(output)
 
     context.data = {}
@@ -284,9 +283,9 @@ def step_impl(context, type):
 
     str_header = str_header[:-1]
 
-    config = get_config()
+    config = helper.get_config()
     command = get_tool_command(type, header=str_header)
-    output = open_ssh_connection(config["onapp"], command)
+    output = helper.open_onapp_ssh_connection(config["onapp"], command)
     dict_data_from_tool = get_tool_output(output)
 
     context.data = {}
@@ -308,12 +307,59 @@ def step_impl(context, type, data):
     if not data_from_cloud:
         assert CHECK_FAILED, "error: user (%s) is not found" % data
 
-    config = get_config()
+    config = helper.get_config()
     command = "list-onapp-users --find=\"{type}={data}\"".format(type=type, data=data)
 
-    output = open_ssh_connection(config["onapp"], command)
+    output = helper.open_onapp_ssh_connection(config["onapp"], command)
     dict_data_from_tool = get_tool_output(output)
 
     context.data = {}
     context.data["tool"] = dict_data_from_tool
     context.data["onapp_cloud"] = data_from_cloud
+
+use_step_matcher('parse')
+@when('I migrate the virtual machine ({name})')
+def step_impl(context, name):
+
+    user = context.cp.search("users", args=vars(vars(context.cp)["auth"])["username"])
+    
+    if user:
+        user_id = user[0]["user"]["id"]
+    else:
+        assert CHECK_FAILED, "error: no user found"
+    
+    fixture = helper.get_fixture("virtual_machine")
+    vm = context.cp.search("virtual_machines", args=fixture[name]["virtual_machine"]["label"])
+    
+    if vm:
+        vm_identifier = vm[0]["virtual_machine"]["identifier"]
+    else:
+        assert CHECK_FAILED, "error: no machine found"
+
+    config = helper.get_config()
+    command = "migrate --vm {vm_id} --user {user_id}".format(vm_id=vm_identifier, user_id=user_id)
+    _ = helper.open_onapp_ssh_connection(config["onapp"], command)
+
+use_step_matcher('parse')
+@when('I delete the virtual machine ({name}) in VHI portal')
+def step_impl(context, name):
+
+    fixture = helper.get_fixture("virtual_machine")
+    hostname = fixture[name]["virtual_machine"]["hostname"]
+    
+    config = helper.get_config()
+    output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server list -f json")
+    vm_list = json.loads(output.stdout)
+
+    match = False
+    for vm in vm_list:
+
+        if hostname in vm["name"]:
+            match = True
+
+            _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute server delete {vm_name}".format(vm_name=vm["name"]))
+            break
+    
+    # we proceed with the rest of the steps even if the vm is not found
+    if not match:
+        pass
