@@ -363,3 +363,48 @@ def step_impl(context, name):
     # we proceed with the rest of the steps even if the vm is not found
     if not match:
         pass
+
+use_step_matcher('parse')
+@when('I delete the existing user account ({name}) from the VHI portal')
+def step_impl(context, name):
+
+    # read config.ini (O2V-51) in onapp CP server to extract the vinfra_domain
+    from fabric import Connection
+    config = helper.get_config()
+    vinfra_domain = ""
+
+    conn = Connection(host=config["onapp"]["host"], user=config["onapp"]["user"], port=config["onapp"]["port"], forward_agent=True)
+    
+    with conn.cd(config["onapp"]["migration_tool_dir"]):
+            
+        try:
+            if "exists" in vars(conn.run("test -f config.ini && echo config.ini exists"))["stdout"]:
+                user_config = "config.ini"
+
+        except:
+            user = vars(conn.run("whoami", hide=True))["stdout"].replace("\n","")
+            user_config = "/home/{user}/.config/onapp2vhi/config.ini".format(user=user)
+
+            if "exists" in vars(conn.run("test -f " + user_config + " && echo '{user_config} exists'".format(user_config=user_config)))["stdout"]:
+                user_config = user_config
+
+        vinfra_domain = vars(conn.run("echo $(awk -F \"=\" '/vinfra_domain / {{print $2}}' {user_config})"
+                                        .format(user_config=user_config), hide=True))["stdout"].replace("\n", "")
+    
+    # delete the user in VHI portal
+    email = helper.get_fixture("user")[name]["email"]
+    users = helper.open_vhi_ssh_connection(config["vhi"], "domain user list --domain {vinfra_domain} -f json".format(vinfra_domain=vinfra_domain))
+    arr_user = json.loads(users.stdout)
+
+    username = ""
+    for user in arr_user:
+        if user["email"] == email:
+            username = user["name"]
+            break
+    
+    if username:
+        _ = helper.open_vhi_ssh_connection(config["vhi"], "domain user delete --domain {vinfra_domain} {username}"
+                                            .format(vinfra_domain=vinfra_domain, username=username))
+    else:
+        print("user is not found in VHI portal, proceeding with the test...")
+    
