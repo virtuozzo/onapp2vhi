@@ -1,24 +1,69 @@
 from unittest import TestCase
-from mock import patch, Mock
+from mock import patch, Mock, mock_open
 
 from onapp2vhi.inc.ssh_connector import SSH
-from onapp2vhi.inc.vinfra_wrapper import VinfraBase, VinfraError, VinfraCommand
+from onapp2vhi.inc.vinfra_wrapper import (
+    VinfraBase,
+    VinfraError,
+    VinfraCommand,
+    VinfraServiceCompute,
+    VinfraNode,
+    VinfraImage,
+    VinfraDomain,
+    VinfraServer,
+    VinfraServerInterface,
+    VinfraSecurityGroups,
+    VinfraSGRules,
+    VinfraProject,
+    VinfraFlavor,
+    VinfraUser,
+    VinfraQuotas,
+    VinfraStoragePolicies,
+    VinfraPlacement,
+)
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 
-class VinfraBaseTestCase(TestCase):
+TEST_CFG = """
+[onapp]
+host = 69.168.239.170
+url = http://onapp
+api_key = here_is_yours_admin_api_key
+email = onapp@gmail.com
+cp_ssh_port = 2222
+hv_ssh_port = 22
 
+[vhi]
+url = https://vhi
+panel_url = https://cvhi.onappdev.com:8800
+api_path = /api/v2
+login = admin
+admin_ui_pwd = ui_admin_password
+hv_ip = unittest.onapp2vhi.test
+cp_ip = unittestcp.onapp2vhi.test
+network = public2
+cloud_ssh_port = 2222
+hv_ssh_port = 22
+linux_image = debian-10-openstack-amd64.qcow2
+windows_image = windows2012
+domain_id = 58fa18b2cefc4bad8a52f11008dfbf72
+vinfra_domain = Migration
+vinfra_project = migproj
+vinfra_user = user_login
+vinfra_pass = user_pwd
+vinfra_domain_user = domain_user
+vinfra_domain_pass = domain_pass
+
+[key]
+ssh_key = /path/to/your/ssh_key/id_rsa
+"""
+
+
+class VinfraBaseConstructorTestCase(TestCase):
+
+    @patch("builtins.open", mock_open(read_data=TEST_CFG))
     def setUp(self):
-        self.mock_config = Mock(spec=OnApp2VHIConfig)
-        self.mock_config.ADMIN_AUTH = 'dummy_admin_auth'
-        self.mock_config.VINFRA_AUTH = 'dummy_vinfra_auth'
-        self.mock_config.DOMAIN_AUTH = 'dummy_domain_auth'
-        self.mock_config.vhi_conf = {
-            'hv_ip': 'unittest.onapp2vhi.test',
-            'cloud_ssh_port': 22,
-            'vinfra_domain': 'unittest-vinfra.onapp2vhi.test',
-            'cp_ip': 'unittestcp.onapp2vhi.test',
-        }
+        self.mock_config = OnApp2VHIConfig.load_config('test.ini')
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
     def test_no_constructor_params(self, mock_ssh_ctor):
@@ -37,7 +82,8 @@ class VinfraBaseTestCase(TestCase):
 
         base.execute('test command')
         mock_ssh.execute.assert_called_with('test command -f json')
-        self.assertEqual(base.vinfra_root, 'dummy_admin_auth')
+        self.assertEqual(base.vinfra_root, "vinfra --vinfra-username='admin' "
+                                           "--vinfra-password='ui_admin_password'")
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
     def test_constructor_with_access_domain(self, mock_ssh_ctor):
@@ -57,7 +103,8 @@ class VinfraBaseTestCase(TestCase):
         base.execute('test command')
         mock_ssh.execute.assert_called_with('test command -f json')
         self.assertEqual(base.vinfra_root,
-                         'dummy_admin_auth --vinfra-domain=unittest-vinfra.onapp2vhi.test')
+                         "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+                         "--vinfra-domain=Migration")
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
     def test_constructor_with_service_user(self, mock_ssh_ctor):
@@ -76,7 +123,8 @@ class VinfraBaseTestCase(TestCase):
 
         base.execute('test command')
         mock_ssh.execute.assert_called_with('test command -f json')
-        self.assertEqual(base.vinfra_root, 'dummy_vinfra_auth')
+        self.assertEqual(base.vinfra_root, "vinfra --vinfra-username='user_login' "
+                                           "--vinfra-password='user_pwd'")
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
     def test_constructor_with_domain_service_user(self, mock_ssh_ctor):
@@ -95,7 +143,8 @@ class VinfraBaseTestCase(TestCase):
 
         base.execute('test command')
         mock_ssh.execute.assert_called_with('test command -f json')
-        self.assertEqual(base.vinfra_root, 'dummy_domain_auth')
+        self.assertEqual(base.vinfra_root, "vinfra --vinfra-username='domain_user' "
+                                           "--vinfra-password='domain_pass'")
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
     def test_constructor_with_domain_diff_connection_timeout(self, mock_ssh_ctor):
@@ -114,7 +163,8 @@ class VinfraBaseTestCase(TestCase):
 
         base.execute('test command')
         mock_ssh.execute.assert_called_with('test command -f json')
-        self.assertEqual(base.vinfra_root, 'dummy_admin_auth')
+        self.assertEqual(base.vinfra_root, "vinfra --vinfra-username='admin' "
+                                           "--vinfra-password='ui_admin_password'")
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
     def test_constructor_with_domain_diff_channel_timeout(self, mock_ssh_ctor):
@@ -133,7 +183,8 @@ class VinfraBaseTestCase(TestCase):
 
         base.execute('test command')
         mock_ssh.execute.assert_called_with('test command -f json')
-        self.assertEqual(base.vinfra_root, 'dummy_admin_auth')
+        self.assertEqual(base.vinfra_root, "vinfra --vinfra-username='admin' "
+                                           "--vinfra-password='ui_admin_password'")
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
     def test_constructor_with_cp_ip(self, mock_ssh_ctor):
@@ -152,7 +203,8 @@ class VinfraBaseTestCase(TestCase):
 
         base.execute('test command')
         mock_ssh.execute.assert_called_with('test command -f json')
-        self.assertEqual(base.vinfra_root, 'dummy_admin_auth')
+        self.assertEqual(base.vinfra_root, "vinfra --vinfra-username='admin' "
+                                           "--vinfra-password='ui_admin_password'")
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
     def test_execute_with_long(self, mock_ssh_ctor):
@@ -165,7 +217,8 @@ class VinfraBaseTestCase(TestCase):
 
         base.execute('test command', long=True)
         mock_ssh.execute.assert_called_with('test command --long -f json')
-        self.assertEqual(base.vinfra_root, 'dummy_admin_auth')
+        self.assertEqual(base.vinfra_root, "vinfra --vinfra-username='admin' "
+                                           "--vinfra-password='ui_admin_password'")
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
     def test_execute_with_no_json(self, mock_ssh_ctor):
@@ -178,20 +231,16 @@ class VinfraBaseTestCase(TestCase):
 
         base.execute('test command', json=False)
         mock_ssh.execute.assert_called_with('test command')
-        self.assertEqual(base.vinfra_root, 'dummy_admin_auth')
+        self.assertEqual(base.vinfra_root, "vinfra --vinfra-username='admin' "
+                                           "--vinfra-password='ui_admin_password'")
 
 
 class VinfraCommandTestCase(TestCase):
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    @patch("builtins.open", mock_open(read_data=TEST_CFG))
     def setUp(self, mock_ssh_ctor):
-        self.mock_config = Mock(spec=OnApp2VHIConfig)
-        self.mock_config.ADMIN_AUTH = 'vinfra --credentials=dummy_credentials'
-        self.mock_config.vhi_conf = {
-            'hv_ip': 'unittest.onapp2vhi.test',
-            'cloud_ssh_port': 22,
-            'vinfra_domain': 'unittest-vinfra.onapp2vhi.test',
-        }
+        self.mock_config = OnApp2VHIConfig.load_config('test.ini')
 
         self.mock_ssh = Mock(spec=SSH)
         mock_ssh_ctor.return_value = self.mock_ssh
@@ -204,7 +253,8 @@ class VinfraCommandTestCase(TestCase):
 
         self.command.execute('test command')
 
-        self.mock_ssh.execute.assert_called_with('vinfra --credentials=dummy_credentials test command')
+        self.mock_ssh.execute.assert_called_with("vinfra --vinfra-username='admin' "
+                                                 "--vinfra-password='ui_admin_password' test command")
 
     def test_execute_with_error(self):
         mock_output = (1, 'not ok')
@@ -215,8 +265,8 @@ class VinfraCommandTestCase(TestCase):
 
             self.mock_ssh.execute.assert_called_with(
                 'vinfra special_param test command -f json')
-            self.assertEqual(repr(e), 'VinfraError: command = vinfra special_param test -f json, '
-                                      'exit_code = 1, output = not ok')
+            self.assertEqual(str(e), 'VinfraError: command = vinfra special_param test -f json, '
+                                     'exit_code = 1, output = not ok')
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
     def test_constructor_with_vinfra_access(self, mock_ssh_ctor):
@@ -228,5 +278,630 @@ class VinfraCommandTestCase(TestCase):
 
         command.execute('test command')
 
+        mock_ssh_ctor.assert_called_with(
+            host='unittest.onapp2vhi.test', port=22, connect_timeout=300, channel_timeout=3600,
+            ssh_key='/path/to/your/ssh_key/id_rsa')
         self.mock_ssh.execute.assert_called_with(
             'vinfra special_param test command')
+
+    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    def test_constructor_with_for_cp(self, mock_ssh_ctor):
+        mock_output = (0, 'ok')
+        self.mock_ssh.execute.return_value = mock_output
+        mock_ssh_ctor.return_value = self.mock_ssh
+
+        command = VinfraCommand(self.mock_config, vinfra_access="vinfra special_param", cp_ip=True)
+
+        command.execute('test command')
+
+        mock_ssh_ctor.assert_called_with(
+            host='unittestcp.onapp2vhi.test', port=22, connect_timeout=300, channel_timeout=3600,
+            ssh_key='/path/to/your/ssh_key/id_rsa')
+        self.mock_ssh.execute.assert_called_with(
+            'vinfra special_param test command')
+
+    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    def test_constructor_with_diff_host(self, mock_ssh_ctor):
+        mock_output = (0, 'ok')
+        self.mock_ssh.execute.return_value = mock_output
+        mock_ssh_ctor.return_value = self.mock_ssh
+
+        command = VinfraCommand(self.mock_config, vinfra_access="vinfra special_param", host='1.2.3.4')
+
+        command.execute('test command')
+
+        mock_ssh_ctor.assert_called_with(
+            host='1.2.3.4', port=22, connect_timeout=300, channel_timeout=3600,
+            ssh_key='/path/to/your/ssh_key/id_rsa')
+        self.mock_ssh.execute.assert_called_with(
+            'vinfra special_param test command')
+
+
+class VinfraBaseTestCase(TestCase):
+
+    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    @patch("builtins.open", mock_open(read_data=TEST_CFG))
+    def setUp(self, mock_ssh_ctor):
+        super().setUp()
+        self.mock_config = OnApp2VHIConfig.load_config('test.ini')
+
+        self.mock_ssh = Mock(spec=SSH)
+        mock_ssh_ctor.return_value = self.mock_ssh
+
+        self._create_command()
+
+    def _create_command(self):
+        self.command = VinfraBase(self.mock_config)
+
+    def test_vinfra_root(self):
+        self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='admin' "
+                                                   "--vinfra-password='ui_admin_password'")
+
+    def test_execute_command(self):
+        mock_output = (0, 'ok')
+        self.mock_ssh.execute.return_value = mock_output
+
+        exit_code, output = self.command.execute('test command')
+
+        self.mock_ssh.execute.assert_called_with("test command -f json")
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(output, 'ok')
+
+
+class VinfraServiceComputeTestCase(VinfraBaseTestCase):
+
+    def _create_command(self):
+        self.command = VinfraServiceCompute(self.mock_config)
+
+    def test_vinfra_root(self):
+        self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='admin' "
+                                                   "--vinfra-password='ui_admin_password' "
+                                                   "service compute")
+
+
+class VinfraNodeTestCase(VinfraServiceComputeTestCase):
+
+    def _create_command(self):
+        self.command = VinfraNode(self.mock_config)
+
+    def test_vinfra_root(self):
+        self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='user_login' "
+                                                   "--vinfra-password='user_pwd' "
+                                                   "service compute node")
+
+    def test_list_node(self):
+        self.command.list_node()
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='user_login' --vinfra-password='user_pwd' "
+            "service compute node list -f json")
+
+
+class VinfraImageTestCase(VinfraServiceComputeTestCase):
+
+    def _create_command(self):
+        self.command = VinfraImage(self.mock_config)
+
+    def test_vinfra_root(self):
+        self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='domain_user' "
+                                                   "--vinfra-password='domain_pass' "
+                                                   "--vinfra-domain=Migration "
+                                                   "service compute image")
+
+    def test_images(self):
+        self.command.images()
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='domain_user' --vinfra-password='domain_pass' "
+            "--vinfra-domain=Migration service compute image list -f json")
+
+
+class VinfraDomainTestCase(VinfraBaseTestCase):
+
+    def _create_command(self):
+        self.command = VinfraDomain(self.mock_config)
+
+    def test_vinfra_root(self):
+        self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='admin' "
+                                                   "--vinfra-password='ui_admin_password' "
+                                                   "domain")
+
+
+class VinfraServerTestCase(VinfraServiceComputeTestCase):
+
+    def _create_command(self):
+        self.command = VinfraServer(self.mock_config)
+
+    def test_vinfra_root(self):
+        self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='admin' "
+                                                   "--vinfra-password='ui_admin_password' "
+                                                   "service compute server")
+
+    def test_create(self):
+        self.command.create("test_server", test_key='test_value')
+
+        # TODO! fix unnecessary whitespace and parameter incorrectly set
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute server create test_server--test_key test_value  -f json")
+
+    def test_list_server(self):
+        self.command.list_server()
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute server list --long -f json")
+
+    def test_show(self):
+        self.command.show('test_server')
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute server show test_server -f json")
+
+
+class VinfraServerInterfaceTestCase(VinfraServerTestCase):
+
+    def _create_command(self):
+        self.command = VinfraServerInterface(self.mock_config)
+
+    def test_vinfra_root(self):
+        self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='admin' "
+                                                   "--vinfra-password='ui_admin_password' "
+                                                   "service compute server iface")
+
+    def test_create(self):
+        self.command.create("test_server", test_key='test_value')
+
+        # TODO! fix unnecessary whitespace and parameter incorrectly set
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute server iface create test_server--test_key test_value  -f json")
+
+    def test_list_server(self):
+        self.command.list_server('test_server')
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute server iface list  --server test_server -f json")
+
+        self.command.list_server('test_server', a_key='a_value')
+
+        # TODO! fix unnecessary whitespace and parameter incorrectly set
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute server iface list  --server test_server--a_key a_value  -f json")
+
+    def test_show(self):
+        self.command.show('test_server')
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute server iface show test_server -f json")
+
+    def test_set(self):
+        self.command.set('eth0', a_key='a_value')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute server iface set eth0  --spoofing-protection-disable --a_key a_value  "
+            "-f json")
+
+        self.command.set('eth0', a_key='a_value', another_key='another_value')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute server iface set eth0  --spoofing-protection-disable --a_key a_value "
+            "--another_key another_value  -f json")
+
+        self.command.set('eth0', vm_name='test_vm', a_key='a_value')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute server iface set eth0  --server test_vm --spoofing-protection-disable "
+            "--a_key a_value  -f json")
+
+        self.command.set('eth0', spoofing=True, a_key='a_value')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute server iface set eth0  --spoofing-protection-enable "
+            "--a_key a_value  -f json")
+
+
+class VinfraSecurityGroupsTestCase(VinfraServiceComputeTestCase):
+
+    def _create_command(self):
+        self.command = VinfraSecurityGroups(self.mock_config)
+
+    def test_vinfra_root(self):
+        self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='admin' "
+                                                   "--vinfra-password='ui_admin_password' "
+                                                   "service compute security-group")
+
+    def test_create(self):
+        self.command.create('test-security-group')
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute security-group create test-security-group -f json")
+
+        self.command.create('test-security-group', 'a group description')
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute security-group create test-security-group "
+            "--description \"a group description\" -f json")
+
+    def test_list_security_group(self):
+        self.command.list_security_group()
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute security-group list  -f json")
+
+        self.command.list_security_group(a_key='a_value')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute security-group list --a_key a_value  -f json")
+
+
+class VinfraSGRulesTestCase(VinfraServiceComputeTestCase):
+
+    def _create_command(self):
+        self.command = VinfraSGRules(self.mock_config)
+
+    def test_vinfra_root(self):
+        # TODO! fix unnecessary whitespace
+        self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='admin' "
+                                                   "--vinfra-password='ui_admin_password' "
+                                                   "service compute security-group rule ")
+
+    def test_create(self):
+        self.command.create('security_group_name')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute security-group rule  create security_group_name  --ingress -f json")
+
+        self.command.create('security_group_name', a_key='a_value')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute security-group rule  create security_group_name --a_key a_value  "
+            "--ingress -f json")
+
+        self.command.create('security_group_name', a_key='a_value', another_key='another_value')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute security-group rule  create security_group_name --a_key a_value "
+            "--another_key another_value  --ingress -f json")
+
+    def test_list_sg_rules(self):
+        self.command.list_sg_rules()
+
+        # TODO! this is a possible bug
+        self.mock_ssh.execute.assert_called_with(" -f json")
+
+        self.command.list_sg_rules(list_all=True)
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute security-group rule  list  -f json")
+
+        self.command.list_sg_rules('test_sg_group')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute security-group rule  list test_sg_group -f json")
+
+        self.command.list_sg_rules(list_all=True, a_key='a_value', another_key='another_value')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute security-group rule  list --a_key a_value --another_key another_value  "
+            "-f json")
+
+
+class VinfraProjectTestCase(VinfraDomainTestCase):
+
+    def _create_command(self):
+        self.command = VinfraProject(self.mock_config)
+
+    def test_vinfra_root(self):
+        self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='admin' "
+                                                   "--vinfra-password='ui_admin_password' "
+                                                   "domain project")
+
+    def test_create(self):
+        self.command.create('test_project', 'test_domain')
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "domain project create test_project --domain test_domain --enable -f json")
+
+        self.command.create('test_project', 'test_domain', description='test_description')
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "domain project create test_project --domain test_domain --description \"test_description\" "
+            "--enable -f json")
+
+        self.command.create('test_project', 'test_domain', enable=False)
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "domain project create test_project --domain test_domain --disable -f json")
+
+    def test_projects(self):
+        self.command.projects()
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "domain project list  -f json")
+
+        self.command.projects(a_key='a_value', another_key='another_value')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "domain project list --a_key a_value --another_key another_value  -f json")
+
+        self.command.projects('test_project_name')
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "domain project list test_project_name -f json")
+
+        self.command.projects('test_project_name', a_key='a_value', another_key='another_value')
+
+        # TODO! fix unnecessary whitespace and incorrect param
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "domain project list test_project_name--a_key a_value --another_key another_value  -f json")
+
+    def test_show(self):
+        self.command.show('test_project_name', 'test_domain')
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "domain project show --domain test_domain test_project_name -f json")
+
+
+class VinfraFlavorTestCase(VinfraServiceComputeTestCase):
+
+    def _create_command(self):
+        self.command = VinfraFlavor(self.mock_config)
+
+    def test_vinfra_root(self):
+        self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='admin' "
+                                                   "--vinfra-password='ui_admin_password' "
+                                                   "service compute flavor")
+
+    def test_create(self):
+        self.command.create('test_flavor_name', 1, 8)
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute flavor create test_flavor_name --vcpus=1 --ram=8 -f json")
+
+    def test_flavor_list(self):
+        self.command.flavor_list()
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute flavor list -f json")
+
+
+class VinfraUserTestCase(VinfraBaseTestCase):
+
+    def _create_command(self):
+        self.command = VinfraUser(self.mock_config)
+
+    def test_vinfra_root(self):
+        self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='admin' "
+                                                   "--vinfra-password='ui_admin_password' "
+                                                   "domain user")
+
+    def test_user_list(self):
+        self.command.user_list('test_domain')
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "domain user list --domain=test_domain -f json")
+
+    def test_create(self):
+        mock_user_data = { 'name': 'mock_user', }
+
+        self.command.create(mock_user_data, 'test_password')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "echo -e \"test_password\" | vinfra --vinfra-username='admin' "
+            "--vinfra-password='ui_admin_password' domain user create mock_user  -f json")
+
+        mock_user_data = { 'dummy': True, 'name': 'mock_user', }
+
+        self.command.create(mock_user_data, 'test_password')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "echo -e \"test_password\" | vinfra --vinfra-username='admin' "
+            "--vinfra-password='ui_admin_password' domain user create mock_user  -f json")
+
+        mock_user_data = { 'name': 'mock_user', 'a_property': 'a_value'}
+
+        self.command.create(mock_user_data, 'test_password')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "echo -e \"test_password\" | vinfra --vinfra-username='admin' "
+            "--vinfra-password='ui_admin_password' domain user create mock_user "
+            "--a_property \"a_value\"  -f json")
+
+        mock_user_data = {
+            'name': 'mock_user',
+            'a_property': 'a_value',
+            'another_property': 'another_value'
+        }
+
+        self.command.create(mock_user_data, 'test_password')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "echo -e \"test_password\" | vinfra --vinfra-username='admin' "
+            "--vinfra-password='ui_admin_password' domain user create mock_user "
+            "--a_property \"a_value\" --another_property \"another_value\"  -f json")
+
+        mock_user_data = { 'name': 'mock_user', 'assign-domain': ['dummy_domain', 'compute']}
+
+        self.command.create(mock_user_data, 'test_password')
+
+        self.mock_ssh.execute.assert_called_with(
+            "echo -e \"test_password\" | vinfra --vinfra-username='admin' "
+            "--vinfra-password='ui_admin_password' domain user create mock_user "
+            "--assign-domain dummy_domain compute -f json")
+
+        mock_user_data = { 'name': 'mock_user', 'assign': ['param1', 'param2']}
+
+        self.command.create(mock_user_data, 'test_password')
+
+        self.mock_ssh.execute.assert_called_with(
+            "echo -e \"test_password\" | vinfra --vinfra-username='admin' "
+            "--vinfra-password='ui_admin_password' domain user create mock_user "
+            "--assign param1 param2 -f json")
+
+        mock_user_data = { 'name': 'mock_user', 'enable': True }
+
+        self.command.create(mock_user_data, 'test_password')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "echo -e \"test_password\" | vinfra --vinfra-username='admin' "
+            "--vinfra-password='ui_admin_password' domain user create mock_user  --enable -f json")
+
+        mock_user_data = { 'name': 'mock_user', 'enable': False }
+
+        self.command.create(mock_user_data, 'test_password')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "echo -e \"test_password\" | vinfra --vinfra-username='admin' "
+            "--vinfra-password='ui_admin_password' domain user create mock_user  -f json")
+
+        mock_user_data = { 'name': 'mock_user', 'disable': True }
+
+        self.command.create(mock_user_data, 'test_password')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "echo -e \"test_password\" | vinfra --vinfra-username='admin' "
+            "--vinfra-password='ui_admin_password' domain user create mock_user  --disable -f json")
+
+        mock_user_data = { 'name': 'mock_user', 'disable': False }
+
+        self.command.create(mock_user_data, 'test_password')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "echo -e \"test_password\" | vinfra --vinfra-username='admin' "
+            "--vinfra-password='ui_admin_password' domain user create mock_user  -f json")
+
+    def test_show(self):
+        self.command.show('test_username', 'test_domain')
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "domain user show --domain=test_domain test_username -f json")
+
+    def test_set(self):
+        self.command.set('mock_user', 'mock_domain', ['domain1', 'default', 'compute'])
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "domain user set mock_user --assign-domain domain1 default --domain mock_domain -f json")
+
+
+class VinfraQuotasTestCase(VinfraServiceComputeTestCase):
+
+    def _create_command(self):
+        self.command = VinfraQuotas(self.mock_config)
+
+    def test_vinfra_root(self):
+        self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='user_login' "
+                                                   "--vinfra-password='user_pwd' "
+                                                   "service compute quotas")
+
+    def test_update_quotas(self):
+        self.command.update_quotas('mock_project_id', param1='value1', param2='value2')
+
+        # TODO! fix unnecessary whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='user_login' --vinfra-password='user_pwd' "
+            "service compute quotas update mock_project_id --param1 \"value1\" --param2 \"value2\" ")
+
+        data = {
+            'param1': 'value1',
+            'param2': 'value2',
+            'storage-policy': {
+                'name': 'dummy_storage_policy',
+                'size': 64,
+            }
+        }
+        self.command.update_quotas('mock_project_id', **data)
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='user_login' --vinfra-password='user_pwd' "
+            "service compute quotas update mock_project_id --param1 \"value1\" --param2 \"value2\" "
+            "--storage-policy dummy_storage_policy:64G")
+
+
+class VinfraStoragePoliciesTestCase(VinfraServiceComputeTestCase):
+
+    def _create_command(self):
+        self.command = VinfraStoragePolicies(self.mock_config)
+
+    def test_vinfra_root(self):
+        self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='user_login' "
+                                                   "--vinfra-password='user_pwd' "
+                                                   "service compute storage-policy")
+
+    def test_storage_policy_list(self):
+        self.command.storage_policy_list()
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='user_login' --vinfra-password='user_pwd' "
+            "service compute storage-policy list -f json")
+
+
+class VinfraPlacementTestCase(VinfraServiceComputeTestCase):
+
+    def _create_command(self):
+        self.command = VinfraPlacement(self.mock_config)
+
+    def test_vinfra_root(self):
+        self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='admin' "
+                                                   "--vinfra-password='ui_admin_password' "
+                                                   "service compute placement assign")
+
+    def test_assign_placement_to_flavor(self):
+        self.command.assign_placement_to_flavor('mock_flavor', 'mock_placement')
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute placement assign --flavors mock_flavor mock_placement")
