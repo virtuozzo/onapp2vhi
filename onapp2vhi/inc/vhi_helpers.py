@@ -3,7 +3,7 @@ import urllib3
 import json
 
 from onapp2vhi.inc.helper import Helper
-from onapp2vhi.inc.logger import logs
+from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.ssh_connector import SSH
 from onapp2vhi.inc.utils import generate_random_password, exit_status_code_handler
 from onapp2vhi.inc.vinfra_wrapper import (
@@ -18,6 +18,7 @@ from onapp2vhi.inc.vinfra_wrapper import (
 )
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 
+logs = OnAppVHILogger()
 
 # Disable SSL verification warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)

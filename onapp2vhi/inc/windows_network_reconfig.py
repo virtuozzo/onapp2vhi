@@ -3,7 +3,7 @@ import os
 from os.path import join, dirname, abspath
 
 from onapp2vhi.inc.onapp_helpers import _spaces
-from onapp2vhi.inc.logger import logs
+from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.network_onapp import (
     get_virtual_server_interfaces,
     get_virtual_server_ip_addresses,
@@ -15,6 +15,8 @@ from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 FILE_NAME = 'ops/scripts/windows_network_{vm_identifier}.bat'
 PATH = join(dirname(dirname(abspath(__file__))), FILE_NAME)
+
+logs = OnAppVHILogger()
 
 
 class WindowsNetworkReconfig:
