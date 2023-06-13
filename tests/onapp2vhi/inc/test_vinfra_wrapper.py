@@ -420,10 +420,9 @@ class VinfraServerTestCase(VinfraServiceComputeTestCase):
     def test_create(self):
         self.command.create("test_server", test_key='test_value')
 
-        # TODO! fix unnecessary whitespace and parameter incorrectly set
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "service compute server create test_server--test_key test_value  -f json")
+            "service compute server create test_server --test_key test_value -f json")
 
     def test_list_server(self):
         self.command.list_server()
@@ -453,24 +452,22 @@ class VinfraServerInterfaceTestCase(VinfraServerTestCase):
     def test_create(self):
         self.command.create("test_server", test_key='test_value')
 
-        # TODO! fix unnecessary whitespace and parameter incorrectly set
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "service compute server iface create test_server--test_key test_value  -f json")
+            "service compute server iface create test_server --test_key test_value -f json")
 
     def test_list_server(self):
         self.command.list_server('test_server')
 
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "service compute server iface list  --server test_server -f json")
+            "service compute server iface list --server test_server -f json")
 
         self.command.list_server('test_server', a_key='a_value')
 
-        # TODO! fix unnecessary whitespace and parameter incorrectly set
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "service compute server iface list  --server test_server--a_key a_value  -f json")
+            "service compute server iface list --server test_server --a_key a_value -f json")
 
     def test_show(self):
         self.command.show('test_server')
@@ -482,35 +479,31 @@ class VinfraServerInterfaceTestCase(VinfraServerTestCase):
     def test_set(self):
         self.command.set('eth0', a_key='a_value')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "service compute server iface set eth0  --spoofing-protection-disable --a_key a_value  "
+            "service compute server iface set eth0 --spoofing-protection-disable --a_key a_value "
             "-f json")
 
         self.command.set('eth0', a_key='a_value', another_key='another_value')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "service compute server iface set eth0  --spoofing-protection-disable --a_key a_value "
-            "--another_key another_value  -f json")
+            "service compute server iface set eth0 --spoofing-protection-disable --a_key a_value "
+            "--another_key another_value -f json")
 
         self.command.set('eth0', vm_name='test_vm', a_key='a_value')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "service compute server iface set eth0  --server test_vm --spoofing-protection-disable "
-            "--a_key a_value  -f json")
+            "service compute server iface set eth0 --server test_vm --spoofing-protection-disable "
+            "--a_key a_value -f json")
 
         self.command.set('eth0', spoofing=True, a_key='a_value')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "service compute server iface set eth0  --spoofing-protection-enable "
-            "--a_key a_value  -f json")
+            "service compute server iface set eth0 --spoofing-protection-enable "
+            "--a_key a_value -f json")
 
 
 class VinfraSecurityGroupsTestCase(VinfraServiceComputeTestCase):
@@ -540,17 +533,15 @@ class VinfraSecurityGroupsTestCase(VinfraServiceComputeTestCase):
     def test_list_security_group(self):
         self.command.list_security_group()
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "service compute security-group list  -f json")
+            "service compute security-group list -f json")
 
         self.command.list_security_group(a_key='a_value')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "service compute security-group list --a_key a_value  -f json")
+            "service compute security-group list --a_key a_value -f json")
 
 
 class VinfraSGRulesTestCase(VinfraServiceComputeTestCase):
@@ -559,34 +550,30 @@ class VinfraSGRulesTestCase(VinfraServiceComputeTestCase):
         self.command = VinfraSGRules(self.mock_config)
 
     def test_vinfra_root(self):
-        # TODO! fix unnecessary whitespace
         self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='admin' "
                                                    "--vinfra-password='ui_admin_password' "
-                                                   "service compute security-group rule ")
+                                                   "service compute security-group rule")
 
     def test_create(self):
         self.command.create('security_group_name')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "service compute security-group rule  create security_group_name  --ingress -f json")
+            "service compute security-group rule create security_group_name --ingress -f json")
 
         self.command.create('security_group_name', a_key='a_value')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "service compute security-group rule  create security_group_name --a_key a_value  "
+            "service compute security-group rule create security_group_name --a_key a_value "
             "--ingress -f json")
 
         self.command.create('security_group_name', a_key='a_value', another_key='another_value')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "service compute security-group rule  create security_group_name --a_key a_value "
-            "--another_key another_value  --ingress -f json")
+            "service compute security-group rule create security_group_name --a_key a_value "
+            "--another_key another_value --ingress -f json")
 
     def test_list_sg_rules(self):
         self.command.list_sg_rules()
@@ -596,24 +583,21 @@ class VinfraSGRulesTestCase(VinfraServiceComputeTestCase):
 
         self.command.list_sg_rules(list_all=True)
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "service compute security-group rule  list  -f json")
+            "service compute security-group rule list -f json")
 
         self.command.list_sg_rules('test_sg_group')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "service compute security-group rule  list test_sg_group -f json")
+            "service compute security-group rule list test_sg_group -f json")
 
         self.command.list_sg_rules(list_all=True, a_key='a_value', another_key='another_value')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "service compute security-group rule  list --a_key a_value --another_key another_value  "
+            "service compute security-group rule list --a_key a_value --another_key another_value "
             "-f json")
 
 
@@ -650,17 +634,15 @@ class VinfraProjectTestCase(VinfraDomainTestCase):
     def test_projects(self):
         self.command.projects()
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "domain project list  -f json")
+            "domain project list -f json")
 
         self.command.projects(a_key='a_value', another_key='another_value')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "domain project list --a_key a_value --another_key another_value  -f json")
+            "domain project list --a_key a_value --another_key another_value -f json")
 
         self.command.projects('test_project_name')
 
@@ -670,10 +652,9 @@ class VinfraProjectTestCase(VinfraDomainTestCase):
 
         self.command.projects('test_project_name', a_key='a_value', another_key='another_value')
 
-        # TODO! fix unnecessary whitespace and incorrect param
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "domain project list test_project_name--a_key a_value --another_key another_value  -f json")
+            "domain project list test_project_name --a_key a_value --another_key another_value -f json")
 
     def test_show(self):
         self.command.show('test_project_name', 'test_domain')
@@ -730,29 +711,26 @@ class VinfraUserTestCase(VinfraBaseTestCase):
 
         self.command.create(mock_user_data, 'test_password')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "echo -e \"test_password\" | vinfra --vinfra-username='admin' "
-            "--vinfra-password='ui_admin_password' domain user create mock_user  -f json")
+            "--vinfra-password='ui_admin_password' domain user create mock_user -f json")
 
         mock_user_data = { 'dummy': True, 'name': 'mock_user', }
 
         self.command.create(mock_user_data, 'test_password')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "echo -e \"test_password\" | vinfra --vinfra-username='admin' "
-            "--vinfra-password='ui_admin_password' domain user create mock_user  -f json")
+            "--vinfra-password='ui_admin_password' domain user create mock_user -f json")
 
         mock_user_data = { 'name': 'mock_user', 'a_property': 'a_value'}
 
         self.command.create(mock_user_data, 'test_password')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "echo -e \"test_password\" | vinfra --vinfra-username='admin' "
             "--vinfra-password='ui_admin_password' domain user create mock_user "
-            "--a_property \"a_value\"  -f json")
+            "--a_property \"a_value\" -f json")
 
         mock_user_data = {
             'name': 'mock_user',
@@ -762,11 +740,10 @@ class VinfraUserTestCase(VinfraBaseTestCase):
 
         self.command.create(mock_user_data, 'test_password')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "echo -e \"test_password\" | vinfra --vinfra-username='admin' "
             "--vinfra-password='ui_admin_password' domain user create mock_user "
-            "--a_property \"a_value\" --another_property \"another_value\"  -f json")
+            "--a_property \"a_value\" --another_property \"another_value\" -f json")
 
         mock_user_data = { 'name': 'mock_user', 'assign-domain': ['dummy_domain', 'compute']}
 
@@ -790,37 +767,33 @@ class VinfraUserTestCase(VinfraBaseTestCase):
 
         self.command.create(mock_user_data, 'test_password')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "echo -e \"test_password\" | vinfra --vinfra-username='admin' "
-            "--vinfra-password='ui_admin_password' domain user create mock_user  --enable -f json")
+            "--vinfra-password='ui_admin_password' domain user create mock_user --enable -f json")
 
         mock_user_data = { 'name': 'mock_user', 'enable': False }
 
         self.command.create(mock_user_data, 'test_password')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "echo -e \"test_password\" | vinfra --vinfra-username='admin' "
-            "--vinfra-password='ui_admin_password' domain user create mock_user  -f json")
+            "--vinfra-password='ui_admin_password' domain user create mock_user -f json")
 
         mock_user_data = { 'name': 'mock_user', 'disable': True }
 
         self.command.create(mock_user_data, 'test_password')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "echo -e \"test_password\" | vinfra --vinfra-username='admin' "
-            "--vinfra-password='ui_admin_password' domain user create mock_user  --disable -f json")
+            "--vinfra-password='ui_admin_password' domain user create mock_user --disable -f json")
 
         mock_user_data = { 'name': 'mock_user', 'disable': False }
 
         self.command.create(mock_user_data, 'test_password')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "echo -e \"test_password\" | vinfra --vinfra-username='admin' "
-            "--vinfra-password='ui_admin_password' domain user create mock_user  -f json")
+            "--vinfra-password='ui_admin_password' domain user create mock_user -f json")
 
     def test_show(self):
         self.command.show('test_username', 'test_domain')
@@ -850,10 +823,9 @@ class VinfraQuotasTestCase(VinfraServiceComputeTestCase):
     def test_update_quotas(self):
         self.command.update_quotas('mock_project_id', param1='value1', param2='value2')
 
-        # TODO! fix unnecessary whitespace
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='user_login' --vinfra-password='user_pwd' "
-            "service compute quotas update mock_project_id --param1 \"value1\" --param2 \"value2\" ")
+            "service compute quotas update mock_project_id --param1 \"value1\" --param2 \"value2\"")
 
         data = {
             'param1': 'value1',
