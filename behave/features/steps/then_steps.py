@@ -33,11 +33,29 @@ def step_impl(context, name):
     if not data:
         assert CHECK_FAILED, "error: virtual machine is not found"
 
-    if data[0]["virtual_machine"]["built"] and data[0]["virtual_machine"]["state"] != "failed" and not data[0]["virtual_machine"]["locked"]:
-        pass
-    else:
+    if not data[0]["virtual_machine"]["built"] or data[0]["virtual_machine"]["state"] == "failed" or data[0]["virtual_machine"]["locked"]:
         assert CHECK_FAILED, "error: virtual machine is not built successfully"
     
+    # to delete the vm in vhi portal with the vm IP found in onapp cloud
+    arr_ip = []
+
+    for ip in data[0]["virtual_machine"]["ip_addresses"]:
+        arr_ip.append(ip["ip_address"]["address"])
+
+    config = helper.get_config()
+    output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server list -f json")
+    vm_list = json.loads(output.stdout)
+
+    # we do nothing if the ip is not in the list
+    # else we delete the vm
+    for vm in vm_list:
+        for network in vm["networks"]:
+            for ip in network["ips"]:
+                
+                if ip in arr_ip:
+                    _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute server delete {vm_name}".format(vm_name=vm["name"]))
+                    break
+
     # used for other verification
     context.result = data
 
