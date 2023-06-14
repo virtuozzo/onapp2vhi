@@ -3,11 +3,10 @@ from inc.logger import logs
 from click_default_group import DefaultGroup
 from inc.helper import Helper
 from inc.ssh_connector import ssh_run, SSH
-from inc.onapp_helpers import get_vm_source_properties
 from inc.utils import exit_status_code_handler
 
 
-def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install, vm_properties: dict):
+def vm_install_bootloader(vm_handler, idn: str,  vm_properties: dict):
     VM_IDn = idn
     if not idn:
         logs.error('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
@@ -24,11 +23,11 @@ def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install, vm
     _vm_hv_ip = _vm_properties['hv_ip']
     _vm_ip_addr = _vm_properties['vm_ip_addr']
     _nics = _vm_properties['network_info']
-    _user_choice = cloud_init_install['user']
+    _user_choice = vm_handler.cloud_init['user']
     _cloud_init = True
-    if _user_choice and cloud_init_install['install']:
+    if _user_choice and vm_handler.cloud_init['install']:
         _cloud_init = True
-    elif _user_choice and not cloud_init_install['install']:
+    elif _user_choice and not vm_handler.cloud_init['install']:
         _cloud_init = False
     else:
         for _nic_id, _nic_addrs in _nics.items():
@@ -53,7 +52,7 @@ def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install, vm
                     'scripts/vz-guest-tools-lin.tar': '/opt/vz-guest-tools-lin.tar ',
                     'scripts/vz-guest-tools': '/usr/bin/vz-guest-tools',
                     'scripts/PrepareVM.sh': '/opt/PrepareVM.sh'}
-    if not vz_guest_tools:
+    if not vm_handler.vz_guest_tools:
         del scripts_info['scripts/vz-guest-tools-lin.tar']
         del scripts_info['scripts/vz-guest-tools']
     if not _cloud_init:
@@ -74,18 +73,23 @@ def vm_install_bootloader(idn: str, vz_guest_tools: bool, cloud_init_install, vm
             return False
 
     # -- STEP 4 --
-    if vz_guest_tools:
+    if vm_handler.vz_guest_tools:
         logs.info(f'{_spaces}{_boot_msg}STEP #4 -- OnApp: Install `vz-guest-tools` inside VM [{VM_IDn}] --',
                   header=True)
         _vm_ssh.connect_timeout = 10
         _vm_ssh.channel_timeout = 10
-        exit_status, output = _vm_ssh.execute("nohup bash /usr/bin/vz-guest-tools 1>/var/log/vz-guest-tools.log 2>&1")
+        _cmd_nohup = "nohup timeout 5m bash /usr/bin/vz-guest-tools 1>/var/log/vz-guest-tools.log 2>&1"
+        exit_status, output = _vm_ssh.execute(_cmd_nohup)
         
         # NOTE: here we removed validation for `vz-guest-tools` failure
-        exit_status_code_handler(
-                exit_code=exit_status,
-                message=f'[install_bootloader.py | STEP 4] Install vz-guest-tools inside VM failed. Output:\n\t{output}'
-        )
+        _msg = f'[install_bootloader.py | STEP 4] Install vz-guest-tools inside VM failed. Output:\n\t{output}'
+        if not exit_status_code_handler(exit_code=exit_status,
+                                        message=_msg):
+
+            vm_handler.guest_tools_result = 'Failed'
+
+        else:
+            vm_handler.guest_tools_result = 'Installed'
 
     # -- STEP 5 --
     logs.info(f'{_spaces}{_boot_msg}STEP #5 -- OnApp: Install `PrepareVM.sh` inside VM [{VM_IDn}] --', header=True)
@@ -105,13 +109,10 @@ def cli():
 
 @click.command()
 @click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-@click.option('--vz_guest_tools', default=True, help="Boolean flag, set `false` to NOT install vz_guest_tools")
-@click.option('--cloud_init_install', help="Option whether to install cloud-init or not")
-def installbootloader(idn='', vz_guest_tools=True, cloud_init_install='', vm_properties='vm_properties'):
+def installbootloader(vm_handler, idn='', vm_properties='vm_properties'):
     vm_install_bootloader(idn=idn,
-                          vz_guest_tools=vz_guest_tools,
-                          cloud_init_install=cloud_init_install,
-                          vm_properties=vm_properties)
+                          vm_properties=vm_properties,
+                          vm_handler=vm_handler)
 
 
 cli.add_command(installbootloader)

@@ -16,7 +16,7 @@ from inc.onapp_helpers import (
 )
 
 
-def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_install, vm_properties: dict):
+def vm_install_win_drivers_offline(vm_handler, idn: str, vm_properties: dict):
     if not idn:
         logs.error('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -32,11 +32,11 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
     _vm_hv_ip = _vm_properties['hv_ip']
     _vm_ip_addr = _vm_properties['vm_ip_addr']
     _nics = _vm_properties['network_info']
-    _user_choice = cloud_init_install['user']
+    _user_choice = vm_handler.cloud_init['user']
     _cloud_init = True
-    if _user_choice and cloud_init_install['install']:
+    if _user_choice and vm_handler.cloud_init['install']:
         _cloud_init = True
-    elif _user_choice and not cloud_init_install['install']:
+    elif _user_choice and not vm_handler.cloud_init['install']:
         _cloud_init = False
     else:
         for _nic_id, _nic_addrs in _nics.items():
@@ -46,13 +46,13 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
                 break
 
     install_script = "scripts/onapp.bat_ci_vz"
-    if not vz_guest_tools and _cloud_init:
+    if not vm_handler.vz_guest_tools and _cloud_init:
         logs.info(msg='Installing only `CLOUD INIT`', separator=True)
         install_script = "scripts/onapp.bat_ci"
-    elif not _cloud_init and vz_guest_tools:
+    elif not _cloud_init and vm_handler.vz_guest_tools:
         logs.info(msg='Installing only `VZ GUEST TOOLS`', separator=True)
         install_script = "scripts/onapp.bat_vz"
-    elif not _cloud_init and not vz_guest_tools:
+    elif not _cloud_init and not vm_handler.vz_guest_tools:
         logs.info(msg='Chosen nothing to install.', separator=True)
         return True
 
@@ -117,7 +117,7 @@ def vm_install_win_drivers_offline(idn: str, vz_guest_tools: bool, cloud_init_in
     logs.info(f'File path: {cloudbase_init_path}')
     logs.info(f'File path: {vz_guest_tool_path}')
 
-    if vz_guest_tools:
+    if vm_handler.vz_guest_tools:
         cmd = f"scp -r {vz_guest_tool_path} root@{_vm_hv_ip}:/mnt/{vm_idn}/vz-guest-tools-win.tar"
         [exit_status, output] = ssh_run(cmd)
         if not exit_status_code_handler(
@@ -209,13 +209,10 @@ def cli():
 
 @click.command()
 @click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-@click.option('--vz_guest_tools', default=True, help="Boolean flag, set `false` to NOT install vz_guest_tools")
-@click.option('--cloud_init_install', help="Option whether to install cloud-init or not")
-def driversoffline(idn='', vz_guest_tools=True, cloud_init_install='', vm_properties=''):
+def driversoffline(vm_handler, idn='', vm_properties=''):
     vm_install_win_drivers_offline(idn=idn,
-                                   vz_guest_tools=vz_guest_tools,
-                                   cloud_init_install=cloud_init_install,
-                                   vm_properties=vm_properties)
+                                   vm_properties=vm_properties,
+                                   vm_handler=vm_handler)
 
 
 cli.add_command(driversoffline)

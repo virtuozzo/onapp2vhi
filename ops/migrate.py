@@ -27,8 +27,8 @@ def _prepare_cloud_init_msg(cloud_init_install: dict, vm_properties: dict):
     :return:
     """
     _cloud_init = True
-    _installed = 'Cloud Init Installed'
-    _not_installed = 'Cloud Init NOT Installed'
+    _installed = 'Installed'
+    _not_installed = 'NOT Installed'
     _user_choice = cloud_init_install['user']
     _nics = vm_properties['network_info']
     if _user_choice and cloud_init_install['install']:
@@ -195,6 +195,8 @@ def migrate(user='',
                 _num += 1
                 _vm_number = _num
             vh = VmHandler(**_vm)
+            vh.vz_guest_tools = vz_guest_tools
+            vh.cloud_init = cloud_init
             _vm_info = f'{_idn}|{_vm["ip_addr"]}|{_vm["label"]}'
             logs.info(f"{Helper.SPACES.value}-- VHI: Migrate VM #{_vm_number} IDENTIFIER [{_vm_info}]--", header=True)
             bootloader_drivers, vm_migrate = vh.vm_handler()
@@ -212,9 +214,8 @@ def migrate(user='',
             _cloud_init_log = _prepare_cloud_init_msg(cloud_init_install=cloud_init, vm_properties=_vm_properties)
             if not _vm['built_from_iso'] and not _vm['built_from_ova']:
                 result = bootloader_drivers(idn=_idn,
-                                            vz_guest_tools=vz_guest_tools,
-                                            cloud_init_install=cloud_init,
-                                            vm_properties=_vm_properties)
+                                            vm_properties=_vm_properties,
+                                            vm_handler=vh)
             else:
                 result = True
                 logs.warn(msg=f'VM [{_vm_info}] built from ISO or OVA, installation GRUB,'
@@ -228,7 +229,7 @@ def migrate(user='',
                            f'\t\t- Identifier: "{_idn}"\n'
                            f'\t\t- Installation Cloud-init: {_cloud_init_log}\n'
                            f'\t\t- Installation bootloader: {result}\n'
-                           f'\t\t- Installation vz-guest-tools : {vz_guest_tools}\n'
+                           f'\t\t- Installation vz-guest-tools : {vh.guest_tools_result}\n'
                            f'\t- - - - - - - - - - - - - - - - -\n')
                 logs.write_log(file_path=f"{_file_name.format(user=user['user_login'])}_user_{user['id']}",
                                msg=msg.format(user['user_login'],
@@ -251,7 +252,7 @@ def migrate(user='',
                        f'\t\t- Identifier: "{_idn}"\n'
                        f'\t\t- Installation Cloud-init: {_cloud_init_log}\n'
                        f'\t\t- Installation bootloader: {result}\n'
-                       f'\t\t- Installation vz-guest-tools : {vz_guest_tools}\n'
+                       f'\t\t- Installation vz-guest-tools : {vh.guest_tools_result}\n'
                        f'\t- - - - - - - - - - - - - - - - -\n')
         # --Step 5 -- #
         # -- Finish Migration Session and put down logs  -- #

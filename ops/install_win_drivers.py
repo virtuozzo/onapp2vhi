@@ -9,7 +9,7 @@ from inc.ssh_connector import ssh_run, SSH
 from inc.utils import exit_status_code_handler
 
 
-def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install, vm_properties: dict):
+def vm_install_win_drivers(vm_handler, idn: str, vm_properties: dict):
     if not idn:
         logs.error('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -25,11 +25,11 @@ def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install, v
     _vm_hv_ip = _vm_properties['hv_ip']
     _vm_ip_addr = _vm_properties['vm_ip_addr']
     _nics = _vm_properties['network_info']
-    _user_choice = cloud_init_install['user']
+    _user_choice = vm_handler.cloud_init['user']
     _cloud_init = True
-    if _user_choice and cloud_init_install['install']:
+    if _user_choice and vm_handler.cloud_init['install']:
         _cloud_init = True
-    elif _user_choice and not cloud_init_install['install']:
+    elif _user_choice and not vm_handler.cloud_init['install']:
         _cloud_init = False
     else:
         for _nic_id, _nic_addrs in _nics.items():
@@ -38,7 +38,7 @@ def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install, v
                 logs.warn(msg='The `cloud-init` will not be installed. You will need to install it manually.')
                 break
 
-    if not _cloud_init and not vz_guest_tools:
+    if not _cloud_init and not vm_handler.vz_guest_tools:
         logs.info(msg='Chosen nothing to install.', separator=True)
         return True
 
@@ -77,7 +77,7 @@ def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install, v
         ):
             return False
 
-    if vz_guest_tools:
+    if vm_handler.vz_guest_tools:
         cmd = f'scp -P{ONAPP_CREDS["hv_ssh_port"]} {Helper.SCP_OPTS.value}' \
               f' {vz_guest_tool_path} Administrator@{_vm_ip_addr}:C:/ 2>/dev/null'
         [exit_status, output] = ssh_run(cmd)
@@ -135,7 +135,7 @@ def vm_install_win_drivers(idn: str, vz_guest_tools: bool, cloud_init_install, v
         ):
             return False
 
-    if vz_guest_tools:
+    if vm_handler.vz_guest_tools:
         exit_status, output = _vm_ssh.execute(
             "mkdir -p 'C:/vz-guest-tools-win'; "
             "tar --force-local -xf 'C:/vz-guest-tools-win.tar' -C 'C:/vz-guest-tools-win'; "
@@ -157,13 +157,10 @@ def cli():
 
 @click.command()
 @click.option('--idn', '--vm', '--identifier', '--vm-identifier', default='', help="OnApp VM identifier.")
-@click.option('--vz_guest_tools', default=True, help="Boolean flag, set `false` to NOT install vz_guest_tools")
-@click.option('--cloud_init_install', help="Option whether to install cloud-init or not")
-def windrivers(idn='', vz_guest_tools=True, cloud_init_install='', vm_properties=''):
+def windrivers(vm_handler, idn='', vm_properties=''):
     vm_install_win_drivers(idn=idn,
-                           vz_guest_tools=vz_guest_tools,
-                           cloud_init_install=cloud_init_install,
-                           vm_properties=vm_properties)
+                           vm_properties=vm_properties,
+                           vm_handler=vm_handler)
 
 
 cli.add_command(windrivers)
