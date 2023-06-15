@@ -21,6 +21,8 @@ Scenario: Cold migration with user's SSH key
   And I wait for 10 minutes
   And the virtual machine (windows-vm-without-startup) is built successfully
 
-  When I migrate the virtual machine (windows-vm-without-startup)
+  # To test for new migrated user, we delete the existing user account
+  When I delete the existing user account (uda) from the VHI portal
+  And I migrate the virtual machine (windows-vm-without-startup)
   Then I wait for 10 seconds
   And I should see the virtual machine is SHUTOFF in VHI portal
