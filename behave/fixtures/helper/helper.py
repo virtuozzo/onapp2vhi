@@ -72,6 +72,6 @@ def open_vhi_ssh_connection(config, command):
         --vinfra-username {vinfra_username} \
         --vinfra-password {vinfra_password}" \
             .format(vinfra_portal=config["vinfra_portal"], vinfra_username=config["vinfra_username"], vinfra_password=config["vinfra_password"])
-    output = conn.run("vinfra " + command + vinfra_credential)
+    output = conn.run("vinfra " + command + vinfra_credential, hide=True)
 
     return output
