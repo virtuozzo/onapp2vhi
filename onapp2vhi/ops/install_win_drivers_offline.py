@@ -18,7 +18,7 @@ from onapp2vhi.utilities.config import OnApp2VHIConfig
 logs = OnAppVHILogger()
 
 
-def vm_install_win_drivers_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool, cloud_init_install, vm_properties: dict):
+def vm_install_win_drivers_offline(cfg: OnApp2VHIConfig, vm_handler, idn: str, vm_properties: dict):
     if not idn:
         logs.error('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -34,11 +34,11 @@ def vm_install_win_drivers_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tool
     _vm_hv_ip = _vm_properties['hv_ip']
     _vm_ip_addr = _vm_properties['vm_ip_addr']
     _nics = _vm_properties['network_info']
-    _user_choice = cloud_init_install['user']
+    _user_choice = vm_handler.cloud_init['user']
     _cloud_init = True
-    if _user_choice and cloud_init_install['install']:
+    if _user_choice and vm_handler.cloud_init['install']:
         _cloud_init = True
-    elif _user_choice and not cloud_init_install['install']:
+    elif _user_choice and not vm_handler.cloud_init['install']:
         _cloud_init = False
     else:
         for _nic_id, _nic_addrs in _nics.items():
@@ -49,13 +49,13 @@ def vm_install_win_drivers_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tool
 
     package_path = os.path.dirname(__file__)
     install_script = os.path.join(package_path, "scripts/onapp.bat_ci_vz")
-    if not vz_guest_tools and _cloud_init:
+    if not vm_handler.vz_guest_tools and _cloud_init:
         logs.info(msg='Installing only `CLOUD INIT`', separator=True)
         install_script = os.path.join(package_path, "scripts/onapp.bat_ci")
-    elif not _cloud_init and vz_guest_tools:
+    elif not _cloud_init and vm_handler.vz_guest_tools:
         logs.info(msg='Installing only `VZ GUEST TOOLS`', separator=True)
         install_script = os.path.join(package_path, "scripts/onapp.bat_vz")
-    elif not _cloud_init and not vz_guest_tools:
+    elif not _cloud_init and not vm_handler.vz_guest_tools:
         logs.info(msg='Chosen nothing to install.', separator=True)
         return True
 
@@ -124,7 +124,7 @@ def vm_install_win_drivers_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tool
         download_file("http://downloads.repo.onapp.com/vz-guest-tools-win.tar",
                       os.path.join(package_path, "scripts"))
 
-    if vz_guest_tools:
+    if vm_handler.vz_guest_tools:
         cmd = f"scp -r {vz_guest_tool_path} root@{_vm_hv_ip}:/mnt/{vm_idn}/vz-guest-tools-win.tar"
         [exit_status, output] = ssh_run(cmd)
         if not exit_status_code_handler(

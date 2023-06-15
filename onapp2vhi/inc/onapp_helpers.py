@@ -680,6 +680,9 @@ class VmHandler:
         self._ip_addr = kwargs.get("ip_addr", "")
         self._os = kwargs.get("operating_system", "")
         self._user = 'root' if self._os == self.LINUX_OS else 'Administrator'
+        self.guest_tools_result = ''
+        self.vz_guest_tools = ''
+        self.cloud_init = ''
 
     def vm_handler(self):
         """

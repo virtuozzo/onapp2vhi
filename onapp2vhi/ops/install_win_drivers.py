@@ -11,7 +11,7 @@ from onapp2vhi.utilities.web import download_file
 logs = OnAppVHILogger()
 
 
-def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool, cloud_init_install, vm_properties: dict):
+def vm_install_win_drivers(cfg: OnApp2VHIConfig, vm_handler, idn: str, vm_properties: dict):
     if not idn:
         logs.error('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -27,11 +27,11 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool,
     _vm_hv_ip = _vm_properties['hv_ip']
     _vm_ip_addr = _vm_properties['vm_ip_addr']
     _nics = _vm_properties['network_info']
-    _user_choice = cloud_init_install['user']
+    _user_choice = vm_handler.cloud_init['user']
     _cloud_init = True
-    if _user_choice and cloud_init_install['install']:
+    if _user_choice and vm_handler.cloud_init['install']:
         _cloud_init = True
-    elif _user_choice and not cloud_init_install['install']:
+    elif _user_choice and not vm_handler.cloud_init['install']:
         _cloud_init = False
     else:
         for _nic_id, _nic_addrs in _nics.items():
@@ -40,7 +40,7 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool,
                 logs.warn(msg='The `cloud-init` will not be installed. You will need to install it manually.')
                 break
 
-    if not _cloud_init and not vz_guest_tools:
+    if not _cloud_init and not vm_handler.vz_guest_tools:
         logs.info(msg='Chosen nothing to install.', separator=True)
         return True
 
@@ -88,7 +88,7 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool,
         download_file("http://downloads.repo.onapp.com/vz-guest-tools-win.tar",
                       os.path.join(package_path, "scripts"))
 
-    if vz_guest_tools:
+    if vm_handler.vz_guest_tools:
         cmd = f'scp -P{cfg.onapp_conf["hv_ssh_port"]} {Helper.SCP_OPTS.value}' \
               f' {vz_guest_tool_path} Administrator@{_vm_ip_addr}:C:/ 2>/dev/null'
         [exit_status, output] = ssh_run(cmd)
@@ -146,7 +146,7 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool,
         ):
             return False
 
-    if vz_guest_tools:
+    if vm_handler.vz_guest_tools:
         exit_status, output = _vm_ssh.execute(
             "mkdir -p 'C:/vz-guest-tools-win'; "
             "tar --force-local -xf 'C:/vz-guest-tools-win.tar' -C 'C:/vz-guest-tools-win'; "
