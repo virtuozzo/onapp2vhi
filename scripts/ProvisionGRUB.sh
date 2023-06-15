@@ -21,19 +21,24 @@ cp -u /proc/mounts /etc/mtab
 sed -i 's/^GRUB_DISABLE_LINUX_UUID/#GRUB_DISABLE_LINUX_UUID/' /etc/default/grub
 sed -i 's/^GRUB_DISABLE_UUID/#GRUB_DISABLE_UUID/' /etc/default/grub
 
+DATE=`date +%R-%m-%d-%Y`
+
 if [ "$GRUB_VERSION" -lt 1 ];then
 #Run grub install
         grub-install --recheck $ROOT_DEV
-        if  command -v update-grub &>/dev/null; then
-                rm -f /boot/grub/menu.lst
-		cp /usr/sbin/update-grub /usr/sbin/update-grub.orig
-		#Ubuntu16
-		sed -i 's/kopt="$default_kopt"/kopt="$default_kopt net.ifnames=0 biosdevname=0"/g' /usr/sbin/update-grub
+        UUID=`blkid -s UUID -o value ${ROOT_DEV}1`
+        if [ "$(. /etc/os-release; echo $ID)" = "ubuntu" ]; then
+                cp /boot/grub/menu.lst /boot/grub/menu.lst.onapp2vhi$DATE
+                sed -i "s|root=${ROOT_DEV}1|root=UUID=${UUID}|" /boot/grub/menu.lst
+        elif  [ "$(. /etc/os-release; echo $ID)" = "debian" ]; then
+                mv /boot/grub/menu.lst /boot/grub/menu.lst.onapp2vhi$DATE
+                cp /usr/sbin/update-grub /usr/sbin/update-grub.orig$DATE
                 #Debian10
-		sed -i 's/kopt="root=$linux_root_device ro"/kopt="root=$linux_root_device net.ifnames=0 biosdevname=0 ro"/g' /usr/sbin/update-grub
+                sed -i 's/kopt="root=$linux_root_device ro"/kopt="root=$linux_root_device net.ifnames=0 biosdevname=0 ro"/g' /usr/sbin/update-grub
                 update-grub -y
         else
-                sed -i "s|/dev/vd|/dev/sd|" /boot/grub/grub.conf
+                cp /boot/grub/grub.conf /boot/grub/grub.conf.onapp2vhi$DATE
+                sed -i "s|root=${ROOT_DEV}1|root=UUID=${UUID}|" /boot/grub/grub.conf
         fi
 else
         if [ -f /boot/grub/grub.cfg ]; then

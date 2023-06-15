@@ -1,5 +1,6 @@
 #!/bin/bash
-cp /etc/fstab /etc/fstab.backup
+DATE=`date +%R-%m-%d-%Y`
+cp /etc/fstab /etc/fstab.onapp2vhi$DATE
 
 sed -n 's|^/dev/\([xvsh]\+da[0-9]\?\).*|\1|p' </etc/fstab >/tmp/devices   			# Stores primary /dev entries from fstab into a file
 
