@@ -10,7 +10,9 @@ Scenario: Cold migration without user's SSH key
   And I wait for 2 minutes
   And the virtual machine (linux-vm-without-startup) is built successfully
 
-  When I migrate the virtual machine (linux-vm-without-startup)
+  # To test for new migrated user, we delete the existing user account
+  When I delete the existing user account (ultron) from the VHI portal
+  And I migrate the virtual machine (linux-vm-without-startup)
   Then I wait for 10 seconds
   And I should see the virtual machine is SHUTOFF in VHI portal
 
