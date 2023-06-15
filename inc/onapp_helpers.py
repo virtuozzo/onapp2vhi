@@ -594,8 +594,7 @@ def transfer_firewall_rules_to_sg(vm_idn: str, vhiproj: str, drop: str = "DROP",
 
     # https://virtuozzo.atlassian.net/wiki/spaces/PROD/pages/2616033301/WiP+-+Compare+OnApp+firewall+rules+with+Virtuozzo+security+groups#The-first-scenario%3A-The-default-firewall-rule-of-OnApp-VS-is-Drop
     accept_only_rules = [rule for rule in firewall_rules_for_primary_nic if rule.command == accept]
-
-    if primary_nic.default_firewall_rule == drop and accept_only_rules:
+    if primary_nic.default_firewall_rule in (drop, accept) and accept_only_rules:
         for rule in accept_only_rules:
             logs.debug(f"Rule position is: {rule.position}")
             data = copy.deepcopy(sgr_data)
@@ -617,6 +616,14 @@ def transfer_firewall_rules_to_sg(vm_idn: str, vhiproj: str, drop: str = "DROP",
                     output = json.loads(output)
             if not output:
                 logs.warn(msg=f"Firewall rule: {rule} was not transferred correctly")
+        if primary_nic.default_firewall_rule == accept:
+            _, output = sgr.create(sg_name=sg_name, **{"ethertype": "IPv4",
+                                                       "port-range-min": 1,
+                                                       "port-range-max": 65535,
+                                                       "remote-ip": '0.0.0.0/0'})
+            output = json.loads(output)
+            if not output:
+                logs.warn(msg=f"All Accept rule: '0.0.0.0/0' was not set correctly.")
 
         _, output = sg.list_security_group(**{'name': f"{sg_name}"})
         custom_sg_id = json.loads(output)[0]['id']
