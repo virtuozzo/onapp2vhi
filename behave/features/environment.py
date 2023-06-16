@@ -27,10 +27,18 @@ def after_scenario(context, scenario):
         data = context.cp.search(entity_plural, args=label)
 
         if data:
+            id = data[0][entity_singular]["id"]
+
+            # check whether vm is in suspended state before delete
+            if data[0][entity_singular]["suspended"]:
+                # activate it back by sending 'suspend' action again
+                suspension_response = context.cp.post_action(entity_plural, id, "suspend")
+
+                if suspension_response.status_code != 201:
+                    assert False, "error: unable to activate the VM (%s) in onapp cloud" % label
 
             print("VM found in Onapp cloud, proceed to delete...")
 
-            id = data[0][entity_singular]["id"]
             response = {}
             response[entity_plural] = context.cp.delete(entity_plural, id)
 
