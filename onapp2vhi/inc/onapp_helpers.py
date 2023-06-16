@@ -625,7 +625,7 @@ def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
                                                        "remote-ip": '0.0.0.0/0'})
             output = json.loads(output)
             if not output:
-                logs.warn(msg=f"All Accept rule: '0.0.0.0/0' was not set correctly.")
+                logs.warn(msg="All Accept rule: '0.0.0.0/0' was not set correctly.")
 
         _, output = sg.list_security_group(**{'name': f"{sg_name}"})
         custom_sg_id = json.loads(output)[0]['id']
