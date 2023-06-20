@@ -1,0 +1,15 @@
+cp_url: https://onapp2vhi.onappdev.com
+
+# user with ssh key
+uda:
+  login: uda-behave@virtuozzo.com
+  password: abfa85365b9e4391c60e1a1de9b5a63ce990e78f
+  email: uda-behave@virtuozzo.com
+  billing_plan_id: 1
+
+# user without ssh key
+ultron:
+  login: ultron-behave@virtuozzo.com
+  password: 6b6936426d27f9ebb68132198b71063d6780f5ee
+  email: ultron-behave@virtuozzo.com
+  billing_plan_id: 1
