@@ -12,7 +12,7 @@ from onapp2vhi.inc.onapp_helpers import (
     get_onapp_vm_disks,
     get_onapp_vm_nics,
     get_onapp_vm_flavor,
-    get_vm_source_properties,
+    suspend_vm,
 )
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.network_hanlder import get_network_configuration
@@ -25,17 +25,17 @@ from onapp2vhi.inc.vinfra_wrapper import VinfraCommand, VinfraError
 logs = OnAppVHILogger()
 
 
-def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, network: str, vhi_obj, placement=''):
+def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_properties: dict, vhi_obj, placement=''):
     # ToDo
     #  verify IP address before running script
     if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
-    VM_IDn = idn
+    vm_idn = idn
 
-    _network = network if network else cfg.vhi_conf['network']
     _vhidom = vdom if vdom else cfg.vhi_conf['vinfra_domain']
     _vhiproj = vproj if vproj else cfg.vhi_conf['vinfra_project']
+    _migration_network_id = cfg.vhi_conf['migration_network_id']
 
     _spaces = Helper.SPACES.value
     _cm_msg = 'COLD MIGRATION -- '
@@ -43,10 +43,10 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
 
     # -- STEP 1 --
     logs.info(f"{_spaces}{_cm_msg}STEP #1 -- OnApp: Get source VM properties --", header=True)
-    _vm_properties = get_vm_source_properties(cfg, vm_idn=VM_IDn)
+    _vm_properties = vm_properties
     _vm_hv_ip = _vm_properties['hv_ip']
     vhi = vhi_obj
-    _on_app_flavor = get_onapp_vm_flavor(cfg, vm_idn=VM_IDn)
+    _on_app_flavor = get_onapp_vm_flavor(cfg, vm_idn=vm_idn)
     logs.debug(f'OnApp flavor: {_on_app_flavor}')
     result = vhi.flavor_handler(onapp_flavor=_on_app_flavor, placement=placement)
     if not result:
@@ -68,16 +68,16 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
     _onapp_disks = get_onapp_vm_disks(cfg, idn)
 
     # -- STEP 4 --
-    logs.info(f"{_spaces}{_cm_msg}STEP #4 -- OnApp: check if VM [{VM_IDn}] is running on HV [{_vm_hv_ip}] --",
+    logs.info(f"{_spaces}{_cm_msg}STEP #4 -- OnApp: check if VM [{vm_idn}] is running on HV [{_vm_hv_ip}] --",
               header=True)
     _hv_ssh = SSH(**{'host': _vm_hv_ip, 'ssh_key': cfg.ssh_key})
-    exit_status, output = _hv_ssh.execute(f"virsh list | grep {VM_IDn}")
+    exit_status, output = _hv_ssh.execute(f"virsh list | grep {vm_idn}")
     if output:
         logs.warn("VM IS RUNNING.\n PLEASE, STOP THE VM BEFORE ITS OFFLINE MIGRATION.")
         return False
 
     # -- STEP 5 --
-    logs.info(f"{_spaces}{_cm_msg}STEP #5 -- VHI: create similar to OnApp VM [{VM_IDn}] on VHI side --",
+    logs.info(f"{_spaces}{_cm_msg}STEP #5 -- VHI: create similar to OnApp VM [{vm_idn}] on VHI side --",
               separator=True)
     onappvm_pri_ip = _onapp_nics[0]['ips'][0]
     onappvm_pri_mac = _onapp_nics[0]['mac']
@@ -104,7 +104,7 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
         _vm_id = _vm['id']
         _error_msg = (f"VM with [IP: {onappvm_pri_ip} | MAC: {onappvm_pri_mac}] ALREADY EXISTS on VHI side.\n"
                       f"VM: {cfg.vhi_conf['url']}/compute/servers/instances/{_vm_id}/")
-        if not _vm['networks'] and _vm['name'] == f'vm_{_vm_properties["hostname"].lower()}_{VM_IDn}':
+        if not _vm['networks'] and _vm['name'] == f'vm_{_vm_properties["hostname"].lower()}_{vm_idn}':
             vm_created = True
             break
 
@@ -113,7 +113,7 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
             break
 
     _vhi_vm_id = ''
-    _network = get_network_configuration(cfg, virtual_server_identifier=VM_IDn, vinfra_project=_vhiproj)
+    _network = get_network_configuration(cfg, virtual_server_identifier=vm_idn, vinfra_project=_vhiproj)
     if not _network:
         logs.error("The network issue is hit. Could you please check logs.")
         return False
@@ -123,7 +123,7 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
         _vhi_vm_id = create_new_vhi_vm(cfg,
                                        vhi_ssh=_vhi_ssh,
                                        vinfra_access=vinfra_access,
-                                       vm_idn=VM_IDn,
+                                       vm_idn=vm_idn,
                                        network=_network,
                                        vhi_image=_vhi_image,
                                        onapp_disks=_onapp_disks,
@@ -141,19 +141,25 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
     # -- Attach Security group to NIC
     # -- Enable Spoofing for NIC
     iface_id = get_iface_from_specific_vs(cfg, vm_name=_vhi_vm_id)
-    security_group_id = transfer_firewall_rules_to_sg(cfg, vm_idn=VM_IDn, vhiproj=_vhiproj)
+    security_group_id = transfer_firewall_rules_to_sg(cfg, vm_idn=vm_idn, vhiproj=_vhiproj)
     attach_security_group_to_nic_and_enable_spoofing(cfg, vm_name=_vhi_vm_id, iface=iface_id, sg_id=security_group_id)
 
     # -- STEP 6 --
     logs.info(f"{_spaces}{_cm_msg}STEP #6 -- VHI: define VHI VM's hypervisor and disks --", header=True)
-    exit_status, output = _vhi_ssh.execute(f"host `{cfg.ADMIN_AUTH} service compute server show {_vhi_vm_id} -f json"
-                                           f" | jq -r .host` 2>/dev/null | awk '/ has address /{{print $NF}}'")
-    if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', output):
-        _vhi_hv_ip = output.strip("\n")
-        logs.info(f"VMs HV IP: {_vhi_hv_ip}")
+    _vhi_hv_ip = ""
+    if not _migration_network_id:
+        logs.warn(msg='Migration Network ID [migration_network_id] is NOT set in config properties `cfg/config.cfg`.'
+                      ' Using default VHI management IP')
+        exit_status, output = _vhi_ssh.execute(f"host `{cfg.ADMIN_AUTH} service compute server show {_vhi_vm_id} -f json"
+                                               f" | jq -r .host` 2>/dev/null | awk '/ has address /{{print $NF}}'")
+        if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', output):
+            _vhi_hv_ip = output.strip("\n")
+            logs.info(f"VMs HV IP: {_vhi_hv_ip}")
     else:
-        logs.error("Error: Destination Appliance network is not configured properly:")
-        return False
+        from onapp2vhi.inc.vhi_helpers import get_vhi_hv_ip
+        _vhi_hv_ip = get_vhi_hv_ip(cfg, vhi_vm_id=_vhi_vm_id, vhi_ssh=_vhi_ssh)
+        if not _vhi_hv_ip:
+            return False
 
     vinfra_command = VinfraCommand(cfg, vinfra_access=vinfra_access, host=_vhi_hv_ip)
     try:
@@ -205,7 +211,7 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
     for ovm_dsk in _onapp_disks:
         store_idn = ovm_dsk['datastore_idn']
         disk_idn = ovm_dsk['disk_idn']
-        activate_disk(cfg, vm_idn=VM_IDn, vm_ohv_ip=_vm_hv_ip, multiply_disks=True, disk=ovm_dsk)
+        activate_disk(cfg, vm_idn=vm_idn, vm_ohv_ip=_vm_hv_ip, multiply_disks=True, disk=ovm_dsk)
         exit_status, output = _hv_ssh.execute(
             f"for port in {{2048..2064}}; do nbd=`qemu-nbd -f -t --nocache --aio=native -p $port -f raw "
             f"/dev/{store_idn}/{disk_idn} --fork 2>&1` ; res=$? ; if [[ $res == 0 ]] && [[ $nbd == \"\" ]];"
@@ -239,5 +245,15 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
             return False
 
     logs.info(f"The virtual server ``COLD MIGRATION`` has completed successfully:"
-              f" {cfg.vhi_conf['url']}/compute/servers/instances/{_vhi_vm_id}")
+              f" {cfg.vhi_conf.url}/compute/servers/instances/{_vhi_vm_id}")
+
+    # -- STEP 9 --
+    logs.info(f"{_spaces}{_cm_msg}STEP #9 -- OnApp: Suspend VM [{vm_idn} | {_vm_properties['vm_ip_addr']}] --",
+              header=True)
+    result = suspend_vm(cfg, vm_id=vm_idn)
+    if not result:
+        logs.warn(msg=f'{_spaces} -- VM [{vm_idn} | {_vm_properties["vm_ip_addr"]}] has NOT been suspended.')
+
+    logs.info(f"The virtual server ``COLD MIGRATION`` has completed successfully:"
+              f" {cfg.vhi_conf.url}/compute/servers/instances/{_vhi_vm_id}")
     return True

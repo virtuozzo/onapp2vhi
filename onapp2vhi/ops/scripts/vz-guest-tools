@@ -1,4 +1,6 @@
 #!/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
 
 if [ ! -f /opt/vz-guest-tools-lin.tar ]; then
     echo "File vz-guest-tools-lin.tar does not exist."
@@ -21,4 +23,5 @@ tar  -xvf /opt/vz-guest-tools-lin.tar -C /opt/vz-guest-tools-lin
 bash /opt/vz-guest-tools-lin/install
 
 rm -rf /opt/vz-guest-tools-lin
+rm -rf /opt/vz-guest-tools-lin.tar
 rm -f /etc/cron.d/cron-vz-guest-tools-install

@@ -18,7 +18,6 @@
 #### Please provide SSH KEYS to VHI(HV, CP) and OnApp(HV, CP, BS) from machine you are going to run migration.
 
 - Before running "onapp2vhi" command please do next steps:
-    - you should be in onapp2vhi project `[~/onapp2vhi] $ `
     - ensure you have access to virtualenv (installed from os distro)
     ```
     [onapp@cp ~]$ which virtualenv
@@ -53,48 +52,85 @@
     You are using pip version 21.3.1, however version 23.0.1 is available.
     You should consider upgrading via the 'pip install --upgrade pip' command.
     ```
-    - install tool dependecies into virtualenv
-    ```
-    (myenv) [onapp@cp onapp2vhi]$ pip install -r requirements.txt
-    Collecting appdirs==1.4.3
-      Using cached appdirs-1.4.3-py2.py3-none-any.whl (12 kB)
-    Collecting bcrypt==4.0.0
-      Using cached bcrypt-4.0.0-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (594 kB)
-    .
-    .
-    .
-    Installing collected packages: zipp, pycparser, importlib-metadata, cffi, urllib3, six, PyNaCl, pyflakes, pycodestyle, mccabe, importlib-resources, idna, filelock, distlib, cryptography, click, charset-normalizer, certifi, bcrypt, appdirs, virtualenv, typing, singledispatch, scandir, requests, pathlib2, paramiko, flake8, enum34, contextlib2, configparser, colorlog, click-default-group, chardet
-    Successfully installed PyNaCl-1.5.0 appdirs-1.4.3 bcrypt-4.0.0 certifi-2021.10.8 cffi-1.15.1 chardet-4.0.0 charset-normalizer-2.0.12 click-7.1.2 click-default-group-1.2.2 colorlog-4.8.0 configparser-4.0.2 contextlib2-0.6.0.post1 cryptography-38.0.1 distlib-0.3.0 enum34-1.1.10 filelock-3.0.12 flake8-3.9.2 idna-2.10 importlib-metadata-1.6.0 importlib-resources-1.4.0 mccabe-0.6.1 paramiko-2.11.0 pathlib2-2.3.5 pycodestyle-2.7.0 pycparser-2.21 pyflakes-2.3.1 requests-2.27.1 scandir-1.10.0 singledispatch-3.4.0.3 six-1.14.0 typing-3.7.4.1 urllib3-1.26.11 virtualenv-20.0.18 zipp-1.2.0
-    ```
     - install onapp2vhi CLI tool from source:
     ```
-    (myenv) [onapp@cp onapp2vhi]$ pip install .
-    Processing /home/onapp/yusri/src/onapp2vhi
-      Preparing metadata (setup.py) ... done
+    (myenv) [onapp@cp onapp2vhi]$ pip install git+ssh://git@bitbucket.org/onappcore/onapp2vhi.git@v1.0.0
+    Collecting git+ssh://****@bitbucket.org/onappcore/onapp2vhi.git@v1.0.0
+      Cloning ssh://****@bitbucket.org/onappcore/onapp2vhi.git (to revision v1.0.0) to /tmp/pip-req-build-tcd_5faw
+      Running command git clone -q 'ssh://****@bitbucket.org/onappcore/onapp2vhi.git' /tmp/pip-req-build-tcd_5faw
+      Running command git checkout -b v1.0.0 --track origin/v1.0.0
+      Switched to a new branch 'v1.0.0'
+      Branch v1.0.0 set up to track remote branch v1.0.0 from origin.
+      Resolved ssh://****@bitbucket.org/onappcore/onapp2vhi.git to commit c7ff0d423fa5b6446eb8e69fca5af295f81a8e00
+      Installing build dependencies: started
+      Installing build dependencies: finished with status 'done'
+      Getting requirements to build wheel: started
+      Getting requirements to build wheel: finished with status 'done'
+      Preparing metadata (pyproject.toml): started
+      Preparing metadata (pyproject.toml): finished with status 'done'
+    Requirement already satisfied: requests==2.27.1 in ./venv/lib/python3.6/site-packages (from onapp2vhi==1.0.0) (2.27.1)
+    Requirement already satisfied: colorlog==4.8.0 in ./venv/lib/python3.6/site-packages (from onapp2vhi==1.0.0) (4.8.0)
+    Requirement already satisfied: importlib-resources==1.4.0 in ./venv/lib/python3.6/site-packages (from onapp2vhi==1.0.0) (1.4.0)
+    Requirement already satisfied: paramiko==3.1.0 in ./venv/lib/python3.6/site-packages (from onapp2vhi==1.0.0) (3.1.0)
+    Requirement already satisfied: click==7.1.2 in ./venv/lib/python3.6/site-packages (from onapp2vhi==1.0.0) (7.1.2)
+    Requirement already satisfied: importlib-metadata in ./venv/lib/python3.6/site-packages (from importlib-resources==1.4.0->onapp2vhi==1.0.0) (4.8.3)
+    Requirement already satisfied: zipp>=0.4 in ./venv/lib/python3.6/site-packages (from importlib-resources==1.4.0->onapp2vhi==1.0.0) (3.6.0)
+    Requirement already satisfied: cryptography>=3.3 in ./venv/lib/python3.6/site-packages (from paramiko==3.1.0->onapp2vhi==1.0.0) (40.0.2)
+    Requirement already satisfied: bcrypt>=3.2 in ./venv/lib/python3.6/site-packages (from paramiko==3.1.0->onapp2vhi==1.0.0) (4.0.1)
+    Requirement already satisfied: pynacl>=1.5 in ./venv/lib/python3.6/site-packages (from paramiko==3.1.0->onapp2vhi==1.0.0) (1.5.0)
+    Requirement already satisfied: idna<4,>=2.5 in ./venv/lib/python3.6/site-packages (from requests==2.27.1->onapp2vhi==1.0.0) (3.4)
+    Requirement already satisfied: charset-normalizer~=2.0.0 in ./venv/lib/python3.6/site-packages (from requests==2.27.1->onapp2vhi==1.0.0) (2.0.12)
+    Requirement already satisfied: urllib3<1.27,>=1.21.1 in ./venv/lib/python3.6/site-packages (from requests==2.27.1->onapp2vhi==1.0.0) (1.26.16)
+    Requirement already satisfied: certifi>=2017.4.17 in ./venv/lib/python3.6/site-packages (from requests==2.27.1->onapp2vhi==1.0.0) (2023.5.7)
+    Requirement already satisfied: cffi>=1.12 in ./venv/lib/python3.6/site-packages (from cryptography>=3.3->paramiko==3.1.0->onapp2vhi==1.0.0) (1.15.1)
+    Requirement already satisfied: typing-extensions>=3.6.4 in ./venv/lib/python3.6/site-packages (from importlib-metadata->importlib-resources==1.4.0->onapp2vhi==1.0.0) (4.1.1)
+    Requirement already satisfied: pycparser in ./venv/lib/python3.6/site-packages (from cffi>=1.12->cryptography>=3.3->paramiko==3.1.0->onapp2vhi==1.0.0) (2.21)
     Building wheels for collected packages: onapp2vhi
-      Building wheel for onapp2vhi (setup.py) ... done
-      Created wheel for onapp2vhi: filename=onapp2vhi-0.1.dev0-py3-none-any.whl size=60255 sha256=3343ae7dbbd8816a3bf72e6db4549fc127a9066dfa1dbee9f097737d32b59092
-      Stored in directory: /tmp/pip-ephem-wheel-cache-uyx8dv6h/wheels/98/c3/10/b31a96f0af812deb8b2057c40a50bd0a764566a19c5e96c8a8
+      Building wheel for onapp2vhi (pyproject.toml): started
+      Building wheel for onapp2vhi (pyproject.toml): finished with status 'done'
+      Created wheel for onapp2vhi: filename=onapp2vhi-1.0.0-py2.py3-none-any.whl size=4583729 sha256=1a7c49755c3b170aefe9ba960ecaad048c457827958bba3a4467ee707c9460da
+      Stored in directory: /tmp/pip-ephem-wheel-cache-ul0oapdk/wheels/e6/91/36/97eaffd224cca1ef714dad490b42599841e1454d3d1b5bc5a6
     Successfully built onapp2vhi
     Installing collected packages: onapp2vhi
-    Successfully installed onapp2vhi-0.1.dev0
+    Successfully installed onapp2vhi-1.0.0
     ```
-  - at this point you will get an error due to missing config
+  - create configuration file at `~/.config/onapp2vhi/config.ini` using the following template, provide credentials related to OnApp and VHI clouds
   ```
-  (myenv) [onapp@cp onapp2vhi]$ onapp2vhi --help
-  [2023-03-31 10:24:04,794] ERROR    ##################################################
-  [2023-03-31 10:24:04,794] ERROR    Config file does NOT exist: /home/onapp/myenv/lib/python3.6/site-packages/cfg/config.cfg
-  Please create file with name "config.cfg" and provide properties as in "config-example.cfg" file
-  [2023-03-31 10:24:04,794] ERROR    ##################################################
+  [onapp]
+  host = 69.168.239.170
+  url = http://69.168.239.170
+  api_key = here_is_yours_admin_api_key
+  email = your_mail@gmail.com
+  cp_ssh_port = 2222
+  hv_ssh_port = 22
 
+  [vhi]
+  url = https://cvhi.onappdev.com:8888
+  panel_url = https://cvhi.onappdev.com:8800
+  api_path = /api/v2
+  login = admin
+  admin_ui_pwd = ui_admin_password
+  hv_ip = 10.63.0.64
+  cp_ip = 10.63.0.63
+  network = public2
+  cloud_ssh_port = 2222
+  hv_ssh_port = 22
+  linux_image = debian-10-openstack-amd64.qcow2
+  windows_image = windows2012
+  domain_id = 58fa18b2cefc4bad8a52f11008dfbf72
+  vinfra_domain = Migration
+  vinfra_project = migproj
+  vinfra_user = user_login
+  vinfra_pass = user_pwd
+  vinfra_domain_user = ''
+  vinfra_domain_pass = ''
+
+  #Network ID for migration VM's, you can get it on VHI cloud
+  migration_network_id = 5afcb27b-1c92-4561-a81c-fcf4f89bd543
+
+  [key]
+  ssh_key = path/to/your/ssh_key/id_rsa
   ```
-  - Please provide credentials related to OnApp and VHI clouds in the file __cfg/config.cfg__ (example: __cfg/config-example.cfg__)
-    - `vi ./cfg/config.cfg`
-    - save file
-    - Temporary hack:
-    ```
-    ln -s ./cfg/config.cfg /home/onapp/myenv/lib/python3.6/site-packages/cfg/config.cfg
-    ```
 - run next commands under `onapp` user:
     - `su - onapp`
     - `export SSH_AUTH_SOCK=/onapp/interface/tmp/onapp-ssh-agent.socket`
@@ -108,7 +144,7 @@
 
 - run virtual env [~/onapp2vhi]# source .venv/bin/activate
     - run next command: `(.venv)[~/onapp2vhi]# onapp2vhi create_service_user`
-    - user for migrations will be created and saved into cfg/config.cfg file with credentials
+    - user for migrations will be created and saved into `~/.config/onapp2vhi/config.ini` file with credentials
 - On VHI server do next steps:
     - set into .bashrc file:
         - `source /etc/kolla/admin-openrc.sh`

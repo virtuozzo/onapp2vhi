@@ -8,9 +8,11 @@ from onapp2vhi.inc.onapp_helpers import (
     get_onapp_vm_disks,
     get_onapp_vm_nics,
     create_new_vhi_vm,
-    get_vm_source_properties,
-    transfer_firewall_rules_to_sg, get_iface_from_specific_vs, attach_security_group_to_nic_and_enable_spoofing,
-    deactivate_disk
+    transfer_firewall_rules_to_sg,
+    get_iface_from_specific_vs,
+    attach_security_group_to_nic_and_enable_spoofing,
+    deactivate_disk,
+    suspend_vm,
 )
 from onapp2vhi.inc.utils import exit_status_code_handler
 from onapp2vhi.inc.network_hanlder import get_network_configuration
@@ -22,15 +24,15 @@ from onapp2vhi.inc.vinfra_wrapper import VinfraCommand, VinfraError
 logs = OnAppVHILogger()
 
 
-def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, network: str, vhi_obj, placement=''):
+def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_properties: dict, vhi_obj, placement=''):
     if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
 
     vm_idn = idn
-    _network = network if network else cfg.vhi_conf['network']
     _vhidom = vdom if vdom else cfg.vhi_conf['vinfra_domain']
     _vhiproj = vproj if vproj else cfg.vhi_conf['vinfra_project']
+    _migration_network_id = cfg.vhi_conf['migration_network_id']
 
     _spaces = Helper.SPACES.value
     live_migration = 'LIVE MIGRATION -- '
@@ -38,7 +40,7 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
 
     # -- STEP 1 --
     logs.info(f"{_spaces}{live_migration}STEP #1 -- OnApp: Get source VM properties --", header=True)
-    _vm_properties = get_vm_source_properties(cfg, vm_idn=vm_idn)
+    _vm_properties = vm_properties
     _vm_hv_ip = _vm_properties['hv_ip']
     _vm_ip_addr = _vm_properties['vm_ip_addr']
     _hot_migrate = _vm_properties['hot_migrate']
@@ -180,15 +182,20 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
 
     # -- STEP 7 --
     logs.info(f"{_spaces}{live_migration}STEP #7 -- VHI: define VM's hypervisor and disks --", header=True)
-    exit_status, output = _vhi_ssh.execute(f"host `{cfg.ADMIN_AUTH} service compute server show {_vhi_vm_id} -f json"
-                                           f" | jq -r .host` 2>/dev/null | awk '/ has address /{{print $NF}}'")
-    if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', output):
-        _vhi_hv_ip = output.strip("\n")
-        logs.info(f"VMs HV IP: {_vhi_hv_ip}")
+    _vhi_hv_ip = ""
+    if not _migration_network_id:
+        logs.warn(msg='Migration Network ID [migration_network_id] is NOT set in config properties `cfg/config.cfg`.'
+                      ' Using default VHI management IP')
+        exit_status, output = _vhi_ssh.execute(f"host `{cfg.ADMIN_AUTH} service compute server show {_vhi_vm_id} -f json"
+                                               f" | jq -r .host` 2>/dev/null | awk '/ has address /{{print $NF}}'")
+        if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', output):
+            _vhi_hv_ip = output.strip("\n")
+            logs.info(f"VMs HV IP: {_vhi_hv_ip}")
     else:
-        logs.error(f"Destination Appliance network is not configured properly:\nOnApp VM IP [{_vm_ip_addr}]"
-                   f" | Output: [{output}]")
-        return False
+        from onapp2vhi.inc.vhi_helpers import get_vhi_hv_ip
+        _vhi_hv_ip = get_vhi_hv_ip(cfg, vhi_vm_id=_vhi_vm_id, vhi_ssh=_vhi_ssh)
+        if not _vhi_hv_ip:
+            return False
 
     vinfra_command = VinfraCommand(cfg, vinfra_access=vinfra_access, host=_vhi_hv_ip)
     try:
@@ -251,6 +258,7 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
                     driver.attrib['type'] = 'qcow2'
                     driver.attrib['io'] = 'native'
                     driver.attrib['discard'] = 'unmap'
+                    driver.attrib['detect_zeroes'] = 'unmap'
                 for source in disk.findall('source'):
                     # We faced with an issue with different disks
                     # vda, vdb == sda, sdb
@@ -339,6 +347,11 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, netwo
                                             f' service compute server start {_vhi_vm_id} on VHI node failed.'):
         return False
 
+    # -- STEP 15 --
+    logs.info(f"{_spaces}{live_migration}STEP #15 -- OnApp: Suspend VM [{vm_idn} | {_vm_ip_addr}] --", header=True)
+    result = suspend_vm(cfg, vm_id=vm_idn)
+    if not result:
+        logs.warn(msg=f'{_spaces} -- VM [{vm_idn} | {_vm_ip_addr}] has NOT been suspended.')
     logs.info(f"The virtual server ``LIVE MIGRATION`` has completed successfully:"
               f" {cfg.vhi_conf['url']}/compute/servers/instances/{_vhi_vm_id}")
     return True

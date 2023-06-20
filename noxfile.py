@@ -38,5 +38,9 @@ def behave(session):
         "pyyaml==6.0",
         "fabric==2.7.1",
     )
+
     session.cd("behave")
-    session.run("behave", "-e", "features/create_vm.feature")
+    if not session.posargs:
+        session.run("behave", "-e", "features/create_vm.feature")
+    else:
+        session.run("behave", *session.posargs)

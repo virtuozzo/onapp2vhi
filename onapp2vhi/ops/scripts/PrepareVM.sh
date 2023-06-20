@@ -16,20 +16,27 @@ else
         ROOT_DEV=/dev/vda
 fi
 
-sed -i 's/^GRUB_DISABLE_LINUX_UUID=true/#GRUB_DISABLE_LINUX_UUID=true/' /etc/default/grub
-sed -i 's/^GRUB_DISABLE_UUID=true/#GRUB_DISABLE_UUID=true/' /etc/default/grub
+sed -i 's/^GRUB_DISABLE_LINUX_UUID/#GRUB_DISABLE_LINUX_UUID/' /etc/default/grub
+sed -i 's/^GRUB_DISABLE_UUID/#GRUB_DISABLE_UUID/' /etc/default/grub
+
+DATE=`date +%R-%m-%d-%Y`
 
 if [ "$GRUB_VERSION" -lt 1 ];then
 #Run grub install
         grub-install --recheck $ROOT_DEV
-        if  command -v update-grub &>/dev/null; then
-                rm -f /boot/grub/menu.lst
-                cp /usr/sbin/update-grub /usr/sbin/update-grub.orig
-                #Ubuntu16
-                sed -i 's/kopt="$default_kopt"/kopt="$default_kopt net.ifnames=0 biosdevname=0"/g' /usr/sbin/update-grub
+	UUID=`blkid -s UUID -o value ${ROOT_DEV}1`
+	if [ "$(. /etc/os-release; echo $ID)" = "ubuntu" ]; then
+                cp /boot/grub/menu.lst /boot/grub/menu.lst.onapp2vhi$DATE
+                sed -i "s|root=${ROOT_DEV}1|root=UUID=${UUID}|" /boot/grub/menu.lst
+        elif  [ "$(. /etc/os-release; echo $ID)" = "debian" ]; then
+		mv /boot/grub/menu.lst /boot/grub/menu.lst.onapp2vhi$DATE
+                cp /usr/sbin/update-grub /usr/sbin/update-grub.orig$DATE
                 #Debian10
                 sed -i 's/kopt="root=$linux_root_device ro"/kopt="root=$linux_root_device net.ifnames=0 biosdevname=0 ro"/g' /usr/sbin/update-grub
                 update-grub -y
+        else
+		cp /boot/grub/grub.conf /boot/grub/grub.conf.onapp2vhi$DATE
+	        sed -i "s|root=${ROOT_DEV}1|root=UUID=${UUID}|" /boot/grub/grub.conf
         fi
 else
         if [ -f /boot/grub/grub.cfg ]; then
@@ -52,7 +59,7 @@ else
 fi
 
 #RegenerateUUID
-cp /etc/fstab /etc/fstab.backup
+cp /etc/fstab /etc/fstab.onapp2vhi$DATE
 
 sed -n 's|^/dev/\([xvsh]\+d[a-z][0-9]\?\).*|\1|p' </etc/fstab >/tmp/devices   # Stores all /dev entries from fstab into a file
 
