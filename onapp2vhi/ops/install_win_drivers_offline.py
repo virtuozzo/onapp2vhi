@@ -8,7 +8,6 @@ from onapp2vhi.inc.ssh_connector import ssh_run, SSH
 from onapp2vhi.inc.utils import exit_status_code_handler
 from onapp2vhi.inc.windows_network_reconfig import WindowsNetworkReconfig
 from onapp2vhi.inc.onapp_helpers import (
-    get_vm_source_properties,
     get_disk_type,
     activate_disk,
     deactivate_disk
@@ -19,7 +18,7 @@ from onapp2vhi.utilities.config import OnApp2VHIConfig
 logs = OnAppVHILogger()
 
 
-def vm_install_win_drivers_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tools: bool, cloud_init_install: bool):
+def vm_install_win_drivers_offline(cfg: OnApp2VHIConfig, vm_handler, idn: str, vm_properties: dict):
     if not idn:
         logs.error('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -29,26 +28,36 @@ def vm_install_win_drivers_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tool
     _dri_msg = 'WIN DRIVERS OFFLINE -- '
     logs.info(f'{_spaces}-- INSTALLING {_dri_msg}', header=True)
 
-    package_path = os.path.dirname(__file__)
-    install_script = os.path.join(package_path, "scripts/onapp.bat_ci_vz")
-    if not vz_guest_tools and cloud_init_install:
-        logs.info(msg='Installing only `CLOUD INIT`', separator=True)
-        install_script = os.path.join(package_path, "scripts/onapp.bat_ci")
-    elif not cloud_init_install and vz_guest_tools:
-        logs.info(msg='Installing only `VZ GUEST TOOLS`', separator=True)
-        install_script = os.path.join(package_path, "scripts/onapp.bat_vz")
-    elif not cloud_init_install and not vz_guest_tools:
-        logs.info(msg='Chosen nothing to install.', separator=True)
-        install_script = ""
-
-    if not install_script:
-        return True
-
     # -- STEP 1 --
     logs.info(f'{_spaces}{_dri_msg}STEP #1 -- OnApp: get source VM properties --', header=True)
-    _vm_properties = get_vm_source_properties(cfg, vm_idn=vm_idn)
+    _vm_properties = vm_properties
     _vm_hv_ip = _vm_properties['hv_ip']
     _vm_ip_addr = _vm_properties['vm_ip_addr']
+    _nics = _vm_properties['network_info']
+    _user_choice = vm_handler.cloud_init['user']
+    _cloud_init = True
+    if _user_choice and vm_handler.cloud_init['install']:
+        _cloud_init = True
+    elif _user_choice and not vm_handler.cloud_init['install']:
+        _cloud_init = False
+    else:
+        for _nic_id, _nic_addrs in _nics.items():
+            if len(_nic_addrs) > 1 and not _user_choice:
+                _cloud_init = False
+                logs.warn(msg='The `cloud-init` will not be installed. You will need to install it manually.')
+                break
+
+    package_path = os.path.dirname(__file__)
+    install_script = os.path.join(package_path, "scripts/onapp.bat_ci_vz")
+    if not vm_handler.vz_guest_tools and _cloud_init:
+        logs.info(msg='Installing only `CLOUD INIT`', separator=True)
+        install_script = os.path.join(package_path, "scripts/onapp.bat_ci")
+    elif not _cloud_init and vm_handler.vz_guest_tools:
+        logs.info(msg='Installing only `VZ GUEST TOOLS`', separator=True)
+        install_script = os.path.join(package_path, "scripts/onapp.bat_vz")
+    elif not _cloud_init and not vm_handler.vz_guest_tools:
+        logs.info(msg='Chosen nothing to install.', separator=True)
+        return True
 
     # -- STEP 2 --
     logs.info(f"{_spaces}{_dri_msg}STEP #2 -- OnApp: Get VM primary disk info --", header=True)
@@ -115,7 +124,7 @@ def vm_install_win_drivers_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tool
         download_file("http://downloads.repo.onapp.com/vz-guest-tools-win.tar",
                       os.path.join(package_path, "scripts"))
 
-    if vz_guest_tools:
+    if vm_handler.vz_guest_tools:
         cmd = f"scp -r {vz_guest_tool_path} root@{_vm_hv_ip}:/mnt/{vm_idn}/vz-guest-tools-win.tar"
         [exit_status, output] = ssh_run(cmd)
         if not exit_status_code_handler(
@@ -129,7 +138,7 @@ def vm_install_win_drivers_offline(cfg: OnApp2VHIConfig, idn: str, vz_guest_tool
         download_file("https://cloudbase.it/downloads/CloudbaseInitSetup_Stable_x64.msi",
                       os.path.join(package_path, "scripts"))
 
-    if cloud_init_install:
+    if _cloud_init:
         cmd = f"scp -r {cloudbase_init_path}  root@{_vm_hv_ip}:/mnt/{vm_idn}/CloudbaseInitSetup_Stable_x64.msi"
         [exit_status, output] = ssh_run(cmd)
         if not exit_status_code_handler(
