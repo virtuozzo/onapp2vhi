@@ -79,6 +79,7 @@ class OnAppVhiCP:
              'hv_ip': self._config.get(self.VHI, "hv_ip", raw=True),
              'cp_ip': self._config.get(self.VHI, "cp_ip", raw=True),
              'cloud_ssh_port': self._config.get(self.VHI, "vhi_ssh_port", raw=True),
+             'vhi_storage_policy': self._config.get(self.VHI, "vhi_storage_policy", raw=True),
              'hv_ssh_port': self._config.get(self.VHI, "vhi_ssh_port_hv", raw=True),
              'linux_image': self._config.get(self.VHI, "vhi_linux_image", raw=True),
              'windows_image': self._config.get(self.VHI, "vhi_windows_image", raw=True),
