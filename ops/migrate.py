@@ -55,6 +55,7 @@ def cli():
 @click.option('--cloud_init_install', default=SENTINEL,
               help="Option whether to install cloud-init or not")
 @click.option('--placement', default='', help="Boolean flag, set `false` to NOT install cloud_init_install")
+@click.option('--storage_policy', default='', help="string flag, set `default`")
 @click.option('--vz_guest_tools_install', default='',
               help="Boolean flag, set `false` to NOT install vz_guest_tools_install")
 def migrate(user='',
@@ -63,6 +64,7 @@ def migrate(user='',
             vz_guest_tools_install='true',
             cloud_init_install='',
             placement='',
+            storage_policy='',
             ):
     """
     Migrate all resources from OnApp to VHI:
@@ -92,6 +94,7 @@ def migrate(user='',
     :param vz_guest_tools_install: project
     :param cloud_init_install: project
     :param placement: placement "name" or "id"
+    :param storage_policy: storage_policy "name"
     :return:
     """
     # Arrange
@@ -105,6 +108,7 @@ def migrate(user='',
             exit(1)
         user_idn = int(user)
     vz_guest_tools = False if vz_guest_tools_install == 'false' else True
+    _storage_policy = storage_policy if storage_policy else VHI_CREDS['vhi_storage_policy']
     if cloud_init_install is SENTINEL:
         cloud_init = {'user': False, 'install': True}
     elif cloud_init_install == 'false':
@@ -211,6 +215,7 @@ def migrate(user='',
                 continue
 
             _vm_properties = get_vm_source_properties(vm_idn=_idn)
+            _vm_properties['storage_policy'] = _storage_policy
             _cloud_init_log = _prepare_cloud_init_msg(cloud_init_install=cloud_init, vm_properties=_vm_properties)
             if not _vm['built_from_iso'] and not _vm['built_from_ova']:
                 result = bootloader_drivers(idn=_idn,
