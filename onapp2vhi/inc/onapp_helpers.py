@@ -328,7 +328,7 @@ def _get_primary_vm_ip(cfg: OnApp2VHIConfig, vm: dict):
 
 def _vhi_virtual_machine_list(cfg: OnApp2VHIConfig):
     _vs = VinfraServer(cfg, service_user=False)
-    exit_code, server_list = _vs.list_server()
+    server_list = _vs.list_server()
     server_list = json.loads(server_list)
     return [vm['name'] for vm in server_list if vm['domain_id'] == cfg.vhi_conf['domain_id']]
 
@@ -559,9 +559,9 @@ def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
     firewall_rules_for_vm = get_vm_firewall_rules(cfg, vm_idn=vm_idn)
     firewall_rules_for_primary_nic = get_firewall_rules_for_specific_nic(nic=primary_nic, rules=firewall_rules_for_vm)
     security_group_name = f'sg_from_vs_{vm_idn}_and_nic_{primary_nic.nic_idn}'
-    _, output = proj.show(domain=cfg.vhi_conf['vinfra_domain'], project_name=vhiproj)
+    output = proj.show(domain=cfg.vhi_conf['vinfra_domain'], project_name=vhiproj)
     proj_id = json.loads(output)['id']
-    _, sg_list = sg.list_security_group(**{'project': proj_id})
+    sg_list = sg.list_security_group(**{'project': proj_id})
     sg_list = json.loads(sg_list)
     if not firewall_rules_for_primary_nic:
         logs.debug(msg='No rules for transfer!')
@@ -583,10 +583,10 @@ def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
     _description = f'Security group created from the VS: {vm_idn} with primary NIC: {primary_nic.nic_idn}'
     _cmd_create_sg = (f"{cfg.DOMAIN_AUTH} --vinfra-domain='{cfg.vhi_conf['vinfra_domain']}' --vinfra-project='{vhiproj}'"
                       f" service compute security-group create {security_group_name} --description '{_description}'")
-    _, sg_create = sg.execute(_cmd_create_sg)
+    sg_create = sg.execute(_cmd_create_sg)
     sg_create = json.loads(sg_create)
     sg_name = sg_create.get('name', '')
-    _, output = sg.list_security_group(**{'name': f"{sg_name}"})
+    output = sg.list_security_group(**{'name': f"{sg_name}"})
     output = json.loads(output)
     if not output:
         logs.error(msg="Security group hasn't been created")
@@ -608,26 +608,26 @@ def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
                         data["port-range-min"] = port
                         data["port-range-max"] = port
 
-                        _, output = sgr.create(sg_name=sg_name, **data)
+                        output = sgr.create(sg_name=sg_name, **data)
                         output = json.loads(output)
                 else:
                     data["port-range-min"] = rule.port
                     data["port-range-max"] = rule.port
                     # create the rule
-                    _, output = sgr.create(sg_name=sg_name, **data)
+                    output = sgr.create(sg_name=sg_name, **data)
                     output = json.loads(output)
             if not output:
                 logs.warn(msg=f"Firewall rule: {rule} was not transferred correctly")
         if primary_nic.default_firewall_rule == accept:
-            _, output = sgr.create(sg_name=sg_name, **{"ethertype": "IPv4",
-                                                       "port-range-min": 1,
-                                                       "port-range-max": 65535,
-                                                       "remote-ip": '0.0.0.0/0'})
+            output = sgr.create(sg_name=sg_name, **{"ethertype": "IPv4",
+                                                    "port-range-min": 1,
+                                                    "port-range-max": 65535,
+                                                    "remote-ip": '0.0.0.0/0'})
             output = json.loads(output)
             if not output:
                 logs.warn(msg="All Accept rule: '0.0.0.0/0' was not set correctly.")
 
-        _, output = sg.list_security_group(**{'name': f"{sg_name}"})
+        output = sg.list_security_group(**{'name': f"{sg_name}"})
         custom_sg_id = json.loads(output)[0]['id']
         logs.debug(f"Transferred firewall rules list: {custom_sg_id} for newly created Security group")
         return custom_sg_id
@@ -636,18 +636,13 @@ def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
         return custom_sg_id
 
 
-# init
-#vs = VinfraServer()
-#vsi = VinfraServerInterface()
-
-
 def get_iface_from_specific_vs(cfg: OnApp2VHIConfig, vm_name: str):
     """
     Get iface from specific VS
     """
     vsi = VinfraServerInterface(cfg)
 
-    _, output = vsi.list_server(server_name=vm_name)
+    output = vsi.list_server(server_name=vm_name)
     ifaces = json.loads(output)
     if not ifaces:
         return False
@@ -672,7 +667,7 @@ def attach_security_group_to_nic_and_enable_spoofing(cfg: OnApp2VHIConfig,
         logs.error('*** Iface has NOT been found. Please check logs. ***')
         return False
 
-    _, output = vsi.set(vm_name=vm_name, iface=iface, spoofing=True, **{'security-group': sg_id})
+    output = vsi.set(vm_name=vm_name, iface=iface, spoofing=True, **{'security-group': sg_id})
     logs.info(iface)
     iface = json.loads(output)
     logs.debug(iface)
