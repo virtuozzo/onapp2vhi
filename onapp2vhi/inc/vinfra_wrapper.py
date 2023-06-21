@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Dict
+from typing import Optional, Dict
 
 from onapp2vhi.inc.ssh_connector import SSH, CONNECT_TIMEOUT, CHANNEL_TIMEOUT
 from onapp2vhi.utilities.config import OnApp2VHIConfig
@@ -43,12 +43,16 @@ class VinfraBase:
         if access_domain:
             self.vinfra_root += f" --vinfra-domain={cfg.vhi_conf['vinfra_domain']}"
 
-    def execute(self, cmd: str, long: bool = False, json: bool = True) -> Tuple[int, str]:
+    def execute(self, cmd: str, long: bool = False, json: bool = True) -> str:
         if long:
             cmd += ' --long'
         if json:
             cmd += ' -f json'
-        return self.ssh.execute(cmd)
+
+        exit_code, output = self.ssh.execute(cmd)
+        if exit_code != 0:
+            raise VinfraError(cmd, exit_code, output)
+        return output
 
 
 class VinfraCommand:
@@ -76,7 +80,7 @@ class VinfraCommand:
                           "ssh_key": cfg.ssh_key})
         self.vinfra_access = vinfra_access
 
-    def execute(self, cmd: str) -> Tuple[int, str]:
+    def execute(self, cmd: str) -> str:
         cmd = f'{self.vinfra_access} {cmd}'
 
         exit_code, output = self.ssh.execute(cmd)
