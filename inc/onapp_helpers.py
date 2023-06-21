@@ -905,7 +905,7 @@ def create_new_vhi_vm(vhi_ssh: SSH,
                       onapp_nics: list,
                       hostname: str,
                       domain: str,
-                      vhi_storage_policy=str):
+                      vhi_storage_policy: str):
     """
     Create new VM on VHI side with the same properties as at OnApp
     Disks and Networks
