@@ -915,7 +915,8 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
                       flavour: str,
                       onapp_nics: list,
                       hostname: str,
-                      domain: str):
+                      domain: str,
+                      vhi_storage_policy: str):
     """
     Create new VM on VHI side with the same properties as at OnApp
     Disks and Networks
@@ -929,6 +930,7 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
     :param onapp_nics: list [{"ips": ["0.0.0.0", "1.1.1.1"], "mac": "MAC-Addr"}, {. . .}]
     :param hostname: "virtual_server"
     :param domain: "domain"
+    :param vhi_storage_policy: "default"
     :return: str VHI VM ID: "3647dfe-ewr34v3rg4b-34tgfbvdzfjh"
     """
     _vhi_vm_id = ''
@@ -936,7 +938,8 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
     onappvm_pri_ips = onapp_nics[0]['ips']
     create_cmd = (f"{vinfra_access} service compute server create '{hostname_domain}'"
                   f" --description '{hostname_domain}_{vm_idn}' {network} --volume source=image,id={vhi_image},"
-                  f"size={onapp_disks[0]['size']} --flavor {flavour} -f json | jq -r \".id\"")
+                  f"size={onapp_disks[0]['size']},storage-policy={vhi_storage_policy}"
+                  f" --flavor {flavour} -f json | jq -r \".id\"")
     exit_status, output = vhi_ssh.execute(command=create_cmd)
     if 'INTERNAL SERVER ERROR' in output:
         logs.error(f'*** SOMETHING WENT WRONG. MIGRATION FAILED DUE TO ERROR:\n{Bcolors.BOLD}{output}{Bcolors.ENDC}\n'
