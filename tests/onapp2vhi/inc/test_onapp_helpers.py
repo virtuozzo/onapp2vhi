@@ -6,6 +6,8 @@ from onapp2vhi.inc.onapp_helpers import (
     list_onapp_users,
     list_onapp_vms,
     get_all_virtual_machines,
+    get_iface_from_specific_vs,
+    attach_security_group_to_nic_and_enable_spoofing,
 )
 from onapp2vhi.inc.rest_client import OnAppRequests
 from onapp2vhi.utilities.config import OnApp2VHIConfig
@@ -422,3 +424,79 @@ class GetAllVirtualMachinesTestCase(unittest.TestCase):
         expected = {}
         results = get_all_virtual_machines(self.mock_cfg)
         self.assertEquals(results, expected)
+
+
+class GetIfaceFromSpecificVSTestCase(unittest.TestCase):
+
+    @patch("builtins.open", mock_open(read_data=TEST_CONFIG))
+    def setUp(self):
+        self.mock_cfg = OnApp2VHIConfig('test.ini')
+        self.mock_ssh = Mock(spec=SSH)
+
+    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
+    def test_get_iface_ok(self, mock_ssh):
+        self.mock_ssh.execute.side_effect = [
+            (0, json.dumps([{'id': 'eth0'}])),
+        ]
+        mock_ssh.return_value = self.mock_ssh
+        expected = 'eth0'
+
+        results = get_iface_from_specific_vs(self.mock_cfg, vm_name='vm1')
+
+        self.assertEquals(results, expected)
+
+    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
+    def test_get_iface_not_ok(self, mock_ssh):
+        self.mock_ssh.execute.side_effect = [
+            (0, json.dumps([])),
+        ]
+        mock_ssh.return_value = self.mock_ssh
+        expected = False
+
+        results = get_iface_from_specific_vs(self.mock_cfg, vm_name='vm1')
+
+        self.assertEquals(results, expected)
+
+
+class AttachSecurityGroupToNicAndEnableSpoofing(unittest.TestCase):
+
+    @patch("builtins.open", mock_open(read_data=TEST_CONFIG))
+    def setUp(self):
+        self.mock_cfg = OnApp2VHIConfig('test.ini')
+        self.mock_ssh = Mock(spec=SSH)
+
+    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    def test_attach_ok(self, mock_ssh):
+        mock_ssh_execute_results = (0, json.dumps([]))
+        self.mock_ssh.execute.return_value = mock_ssh_execute_results
+        mock_ssh.return_value = self.mock_ssh
+
+        attach_security_group_to_nic_and_enable_spoofing(self.mock_cfg,
+                                                         'vm1',
+                                                         'eth0',
+                                                         'security_group_a')
+        #TODO! fix extra whitespace
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service compute "
+            "server iface set eth0  --server vm1 --spoofing-protection-enable "
+            "--security-group security_group_a  -f json")
+
+    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    def test_attach_no_security_group(self, mock_ssh):
+        mock_ssh.return_value = self.mock_ssh
+
+        self.assertFalse(attach_security_group_to_nic_and_enable_spoofing(self.mock_cfg,
+                                                                          'vm1',
+                                                                          'eth0',
+                                                                          ''))
+        self.mock_ssh.execute.assert_not_called()
+
+    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    def test_attach_no_iface(self, mock_ssh):
+        mock_ssh.return_value = self.mock_ssh
+
+        self.assertFalse(attach_security_group_to_nic_and_enable_spoofing(self.mock_cfg,
+                                                                          'vm1',
+                                                                          '',
+                                                                          'security_group_a'))
+        self.mock_ssh.execute.assert_not_called()
