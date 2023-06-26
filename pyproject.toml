@@ -21,7 +21,7 @@ dependencies = [
 [project.urls]
 Documentation = "https://bitbucket.org/onappcore/onapp2vhi/src/master/README.md"
 Source = "https://bitbucket.org/onappcore/onapp2vhi/src/master/"
-Changelog = "https://bitbucket.org/onappcore/onapp2vhi/src/master/CHANGELOG.md
+Changelog = "https://bitbucket.org/onappcore/onapp2vhi/src/master/CHANGELOG.md"
 
 [project.scripts]
 onapp2vhi = "onapp2vhi.main:run"
