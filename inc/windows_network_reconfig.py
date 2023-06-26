@@ -1,6 +1,6 @@
 import ipaddress
 import os
-from inc.onapp_helpers import _spaces
+from inc.onapp_helpers import _spaces, ONAPP_VERSION
 from inc.logger import logs
 from os.path import join, dirname, abspath
 from inc.network_onapp import (
@@ -186,11 +186,22 @@ FOR /F "usebackq tokens=1-13,* delims=.-: " %%a IN (`"route print | C:\Windows\S
             _network['primary'] = _nic['primary']
             _network['mac_dash'] = _nic['mac_address'].replace(':', '-')
             _network['mac_space'] = _nic['mac_address'].replace(':', ' ')
-            ip_addr = [
-                {k: v for k, v in addr.items() if k in
-                 ["address", "gateway", "primary", "network_id", "ip_net_id", "ipv4", "prefix"]} for addr in
-                ip_addresses
-            ]
+            _ip_addr_values = ["address", "gateway", "primary", "network_id", "ip_net_id", "ipv4", "prefix"]
+            if ONAPP_VERSION <= 6.0:
+                ip_addr = []
+                for addr in ip_addresses:
+                    _ip_properties = {}
+                    _primary = True if _network['primary'] and addr["ipv4"] else False
+                    for k, v in addr.items():
+                        if k not in _ip_addr_values:
+                            continue
+
+                        _ip_properties[k] = v
+                    _ip_properties['primary'] = _primary
+                    ip_addr.append(_ip_properties)
+
+            else:
+                ip_addr = [{k: v for k, v in addr.items() if k in _ip_addr_values} for addr in ip_addresses]
             ip_addr.sort(key=lambda x: not x["primary"])
             _network['ip_addr_info'] = ip_addr
             network_id = _network['ip_addr_info'][0]['network_id']
