@@ -636,11 +636,6 @@ def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
         return custom_sg_id
 
 
-# init
-#vs = VinfraServer()
-#vsi = VinfraServerInterface()
-
-
 def get_iface_from_specific_vs(cfg: OnApp2VHIConfig, vm_name: str):
     """
     Get iface from specific VS
