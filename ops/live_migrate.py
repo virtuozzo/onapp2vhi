@@ -15,6 +15,7 @@ from inc.onapp_helpers import (
     attach_security_group_to_nic_and_enable_spoofing,
     deactivate_disk,
     suspend_vm,
+    find_correct_disk_key
 )
 from inc.utils import exit_status_code_handler
 from inc.network_hanlder import get_network_configuration
@@ -241,6 +242,8 @@ def vm_live_migrate(vdom: str, vproj: str, idn: str, vm_properties: dict, vhi_ob
                 for source in disk.findall('source'):
                     # We faced with an issue with different disks
                     # vda, vdb == sda, sdb
+                    disk_label = find_correct_disk_key(on_app_disks=_xml_ovm_disks,
+                                                       target=disk_label)
                     try:
                         source.attrib['file'] = _vhi_vm_disks[disk_label]
                     except KeyError:
