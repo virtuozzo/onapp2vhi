@@ -23,6 +23,8 @@ Scenario: Cold migration with user's SSH key
 
   # To test for new migrated user, we delete the existing user account
   When I delete the existing user account (uda) from the VHI portal
+  And I set the logging path (uda-log)
   And I migrate the virtual machine (windows-vm-without-startup)
   Then I wait for 10 seconds
   And I should see the virtual machine is SHUTOFF in VHI portal
+  And the log is seen in logging path (uda-log)
