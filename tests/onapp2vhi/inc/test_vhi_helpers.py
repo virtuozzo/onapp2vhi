@@ -50,6 +50,31 @@ class TestVhiHelpers(unittest.TestCase):
         self.vhi = Vhi(self.cfg)
         self.mock_flavor_ssh = Mock(spec=SSH)
         self.mock_placement_ssh = Mock(spec=SSH)
+        self.mock_user_ssh = Mock(spec=SSH)
+
+        self.user_data = {
+            "user_email": "roman.holovko@virtuozzo.com",
+            "id": 4,
+            "first_name": "Roman",
+            "last_name": "Holovko",
+            "password": "pwd",
+            "user_login": "roman_holovko@virtuozzo_com",
+            "project_name": "project_roman.holovko@virtuozzo.com",
+            "quotas": {"cores": -1, "RAM": -1, "storage": -1},
+            "roles": [{"role": {"identifier": "staff"}}],
+        }
+
+        self.user_data_admin = {
+            "user_email": "roman.holovko@virtuozzo.com",
+            "id": 4,
+            "first_name": "Roman",
+            "last_name": "Holovko",
+            "password": "pwd",
+            "user_login": "roman_holovko@virtuozzo_com",
+            "project_name": "project_roman.holovko@virtuozzo.com",
+            "quotas": {"cores": -1, "RAM": -1, "storage": -1},
+            "roles": [{"role": {"identifier": "admin"}}],
+        }
 
     def test_vhi_flavor_payload(self):
         flavor_payload = {
@@ -497,30 +522,6 @@ class TestVhiHelpers(unittest.TestCase):
 
     @patch("onapp2vhi.inc.vhi_helpers.VinfraUser", autospec=True)
     def test_create_user(self, mock_user):
-        user_data = {
-            "user_email": "roman.holovko@virtuozzo.com",
-            "id": 4,
-            "first_name": "Roman",
-            "last_name": "Holovko",
-            "password": "pwd",
-            "user_login": "roman_holovko@virtuozzo_com",
-            "project_name": "project_roman.holovko@virtuozzo.com",
-            "quotas": {"cores": -1, "RAM": -1, "storage": -1},
-            "roles": [{"role": {"identifier": "staff"}}],
-        }
-
-        user_data_admin = {
-            "user_email": "roman.holovko@virtuozzo.com",
-            "id": 4,
-            "first_name": "Roman",
-            "last_name": "Holovko",
-            "password": "pwd",
-            "user_login": "roman_holovko@virtuozzo_com",
-            "project_name": "project_roman.holovko@virtuozzo.com",
-            "quotas": {"cores": -1, "RAM": -1, "storage": -1},
-            "roles": [{"role": {"identifier": "admin"}}],
-        }
-
         # user exists
         mock_user_instance = mock_user.return_value
         mock_user_instance.user_list.return_value = [
@@ -528,7 +529,7 @@ class TestVhiHelpers(unittest.TestCase):
             ('[{"email": "roman.holovko@virtuozzo.com"}] '),
         ]
 
-        result, passwd = self.vhi.create_user(user_data)
+        result, passwd = self.vhi.create_user(self.user_data)
         self.assertTrue(result)
         self.assertEqual(len(passwd), 24)
 
@@ -540,7 +541,7 @@ class TestVhiHelpers(unittest.TestCase):
         ]
         mock_user_instance.create.return_value = [0, '{"id": 888}']
 
-        result, passwd = self.vhi.create_user(user_data_admin)
+        result, passwd = self.vhi.create_user(self.user_data_admin)
         self.assertTrue(result)
         self.assertEqual(len(passwd), 24)
         self.assertEqual(self.vhi.user_id, 888)
@@ -553,7 +554,53 @@ class TestVhiHelpers(unittest.TestCase):
         ]
         mock_user_instance.create.return_value = [0, '{"id": 777}']
 
-        result, passwd = self.vhi.create_user(user_data)
+        result, passwd = self.vhi.create_user(self.user_data)
+        self.assertTrue(result)
+        self.assertEqual(len(passwd), 24)
+        self.assertEqual(self.vhi.user_id, 777)
+
+    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    def test_create_user_user_exists(self, mock_ssh_ctor):
+        # user exists
+        self.mock_user_ssh.execute.side_effect = [
+            (0, '[{"email": "roman.holovko@virtuozzo.com"}]'),  # list users reply
+        ]
+        mock_ssh_ctor.side_effect = [
+            self.mock_user_ssh,     # in create_user()
+            self.mock_user_ssh,     # in _verify_user_exists()
+        ]
+
+        result, passwd = self.vhi.create_user(self.user_data)
+        self.assertTrue(result)
+        self.assertEqual(len(passwd), 24)
+
+    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    def test_create_user_with_admin_role_user_not_exists(self, mock_ssh_ctor):
+        # user does not exist with admin role
+        self.mock_user_ssh.execute.side_effect = [
+            (0, '[{"email": "fake@email.com"}] '),  # list users reply
+            (0, '{"id": 888}'),                     # create result
+        ]
+        mock_ssh_ctor.side_effect = [
+            self.mock_user_ssh,     # in create_user()
+            self.mock_user_ssh,     # in _verify_user_exists()
+        ]
+
+        result, passwd = self.vhi.create_user(self.user_data_admin)
+        self.assertTrue(result)
+        self.assertEqual(len(passwd), 24)
+        self.assertEqual(self.vhi.user_id, 888)
+
+    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    def test_create_user_with_non_admin_user_not_exists(self, mock_ssh_ctor):
+        # user does not exist with non-admin role
+        self.mock_user_ssh.execute.side_effect = [
+            (0, '[{"email": "fake@email.com"}] '),  # list user reply
+            (0, '{"id": 777}'),                     # create result
+        ]
+        mock_ssh_ctor.return_value = self.mock_user_ssh
+
+        result, passwd = self.vhi.create_user(self.user_data)
         self.assertTrue(result)
         self.assertEqual(len(passwd), 24)
         self.assertEqual(self.vhi.user_id, 777)
