@@ -1,3 +1,4 @@
+from fabric import Connection
 from fixtures.helper import helper
 import json
 
@@ -337,7 +338,13 @@ def step_impl(context, name):
         assert CHECK_FAILED, "error: no machine found"
 
     config = helper.get_config()
-    command = "migrate --vm {vm_id} --user {user_id}".format(vm_id=vm_identifier, user_id=user_id)
+    
+    if hasattr(context, "log_path"):
+        command = context.log_path + "migrate --vm {vm_id} --user {user_id}".format(vm_id=vm_identifier, user_id=user_id)
+    else:
+        command = "migrate --vm {vm_id} --user {user_id}".format(vm_id=vm_identifier, user_id=user_id)
+    
+    print(command)
     _ = helper.open_onapp_ssh_connection(config["onapp"], command)
 
 use_step_matcher('parse')
@@ -369,7 +376,6 @@ use_step_matcher('parse')
 def step_impl(context, name):
 
     # read config.ini (O2V-51) in onapp CP server to extract the vinfra_domain
-    from fabric import Connection
     config = helper.get_config()
     vinfra_domain = ""
 
@@ -408,3 +414,22 @@ def step_impl(context, name):
     else:
         print("user is not found in VHI portal, proceeding with the test...")
     
+use_step_matcher('parse')
+@when('I set the logging path ({path})')
+def step_impl(context, path):
+    
+    command = "--log-output-path " + path + " "
+    context.log_path = command
+
+    config = helper.get_config()
+
+    conn = Connection(host=config["onapp"]["host"], user=config["onapp"]["user"], port=config["onapp"]["port"], forward_agent=True)
+    
+    with conn.cd(config["onapp"]["migration_tool_dir"]):
+
+        try:
+            # to ensure there is no folder created before
+            if "exists" in vars(conn.run("test -d {path} && echo {path}/ exists".format(path=path)))["stdout"]:
+                conn.run("rm -rf %s/" % path)
+        except:
+            print("existing %s/ is not found, proceeding..." % path)

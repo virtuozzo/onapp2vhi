@@ -12,9 +12,11 @@ Scenario: Hot migration without user's SSH key
 
   # To test for new migrated user, we delete the existing user account
   When I delete the existing user account (ultron) from the VHI portal
+  And I set the logging path (ultron_log/log)
   And I migrate the virtual machine (linux-vm-with-startup)
   Then I wait for 10 seconds
   And I should see the virtual machine is ACTIVE in VHI portal
+  And the log is seen in logging path (ultron_log/log)
 
 Scenario: Hot migration with user's SSH key
   Given I am a cloud user (uda)

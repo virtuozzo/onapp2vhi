@@ -10,9 +10,11 @@ Scenario: Hot migration without user's SSH key
   And I wait for 10 minutes
   And the virtual machine (windows-vm-with-startup) is built successfully
 
-  When I migrate the virtual machine (windows-vm-with-startup)
+  When I set the logging path (ultron_log/log)
+  And I migrate the virtual machine (windows-vm-with-startup)
   Then I wait for 10 seconds
   And I should see the virtual machine is ACTIVE in VHI portal
+  And the log is seen in logging path (ultron_log/log)
 
 Scenario: Hot migration with user's SSH key
   Given I am a cloud user (uda)
