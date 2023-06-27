@@ -695,7 +695,7 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
             self.mock_image_ssh,    # in _create_domain_service_user()
         ]
 
-        with patch('builtins.open', mock_open()) as m:
+        with patch('builtins.open', mock_open()):
             self.assertFalse(self.vhi.create_service_user())
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
@@ -724,6 +724,6 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
             self.mock_node_ssh,
         ]
 
-        with patch('builtins.open', mock_open()) as m:
+        with patch('builtins.open', mock_open()):
             self.assertTrue(self.vhi.create_service_user())
             self.assertEqual(self.cfg.vhi_conf["vinfra_pass"], "user_pwd")
