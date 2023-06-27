@@ -132,3 +132,32 @@ def step_impl(context, name):
 
     if match:
         assert CHECK_FAILED, "error: virtual machine is not deleted"
+
+use_step_matcher('parse')
+@then('the log is seen in logging path ({path})')
+def step_impl(context, path):
+
+    if not hasattr(context, "log_path"):
+        assert CHECK_FAILED, "error: this step has to be used with step 'When I set the logging path (path)"
+
+    user = context.cp.search("users", vars(vars(context.cp)["auth"])["username"])[0]["user"]
+    user_id = user["id"]
+    user_login = user["login"].replace(".", "_")
+
+    # read config.ini (O2V-51) in onapp CP server to extract the vinfra_domain
+    from fabric import Connection
+    config = helper.get_config()
+
+    conn = Connection(host=config["onapp"]["host"], user=config["onapp"]["user"], port=config["onapp"]["port"], forward_agent=True)
+    
+    with conn.cd(config["onapp"]["migration_tool_dir"]):
+        if "exists" in vars(conn.run("test -f {path}/migration_logs/migration_*.log && test -f {path}/migration_logs/{user_login}/migrated_*_user_{user_id}.log && echo log exists"
+                                         .format(path=path, user_login=user_login, user_id=user_id)))["stdout"]:
+            
+            # remove for next run
+            conn.run("rm -rf {path}".format(path=path))
+
+        else:
+            assert CHECK_FAILED, "error: logs are not found in the %s" % path
+
+    del context.log_path
