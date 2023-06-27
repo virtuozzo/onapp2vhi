@@ -2,7 +2,7 @@
 
 ### Feature
 
-- Adding `--storage-policy` parameter to `migrate` command
+- O2V-151: Adding `--storage-policy` parameter to `migrate` command
 
 ## v1.0.0 (20/06/2023)
 
