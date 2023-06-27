@@ -1,4 +1,5 @@
 import unittest
+import json
 
 from mock import mock_open, patch, Mock, call
 from onapp2vhi.inc.vhi_helpers import Vhi
@@ -48,33 +49,6 @@ class TestVhiHelpers(unittest.TestCase):
     def setUp(self, mock_ssh):
         self.cfg = OnApp2VHIConfig.load_config("test.ini")
         self.vhi = Vhi(self.cfg)
-        self.mock_flavor_ssh = Mock(spec=SSH)
-        self.mock_placement_ssh = Mock(spec=SSH)
-        self.mock_user_ssh = Mock(spec=SSH)
-
-        self.user_data = {
-            "user_email": "roman.holovko@virtuozzo.com",
-            "id": 4,
-            "first_name": "Roman",
-            "last_name": "Holovko",
-            "password": "pwd",
-            "user_login": "roman_holovko@virtuozzo_com",
-            "project_name": "project_roman.holovko@virtuozzo.com",
-            "quotas": {"cores": -1, "RAM": -1, "storage": -1},
-            "roles": [{"role": {"identifier": "staff"}}],
-        }
-
-        self.user_data_admin = {
-            "user_email": "roman.holovko@virtuozzo.com",
-            "id": 4,
-            "first_name": "Roman",
-            "last_name": "Holovko",
-            "password": "pwd",
-            "user_login": "roman_holovko@virtuozzo_com",
-            "project_name": "project_roman.holovko@virtuozzo.com",
-            "quotas": {"cores": -1, "RAM": -1, "storage": -1},
-            "roles": [{"role": {"identifier": "admin"}}],
-        }
 
     def test_vhi_flavor_payload(self):
         flavor_payload = {
@@ -204,99 +178,6 @@ class TestVhiHelpers(unittest.TestCase):
         ]
         self.assertTrue(self.vhi.flavor_handler(flavor, "test_placement"))
         self.assertEqual(self.vhi.flavor_name, "flavorless")
-
-    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
-    def test_flavor_handler_vinfra_check_no_flavor(self, mock_ssh_ctor):
-        flavor = {"vcpus": 2, "ram": 512, "name": "flavor_2_512"}
-
-        # No flavor returned
-        mock_ssh_ctor.side_effect = [
-            self.mock_flavor_ssh,
-            self.mock_placement_ssh,
-        ]
-        self.mock_flavor_ssh.execute.side_effect = [
-            (2, {"name": "flavorless"}),
-        ]
-        self.assertFalse(self.vhi.flavor_handler(flavor))
-        self.mock_flavor_ssh.execute.assert_called_once_with(
-            "vinfra --vinfra-username='user_login' --vinfra-password='user_pwd' service compute "
-            "flavor list -f json")
-        self.mock_placement_ssh.execute.assert_not_called()
-
-    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
-    def test_flavor_handler_vinfra_check_flavor_returned_and_exists_in_vhi(self, mock_ssh_ctor):
-        flavor = {"vcpus": 2, "ram": 512, "name": "flavor_2_512"}
-
-        # Flavor returned and exist in vhi
-        mock_ssh_ctor.side_effect = [
-            self.mock_flavor_ssh,
-            self.mock_placement_ssh,
-        ]
-        self.mock_flavor_ssh.execute.side_effect = [
-            (0, '[{"name": "flavor_2_512"}]'),
-        ]
-        self.assertTrue(self.vhi.flavor_handler(flavor))
-        self.assertEqual(self.vhi.flavor_name, "flavor_2_512")
-        self.mock_flavor_ssh.execute.assert_called_once_with(
-            "vinfra --vinfra-username='user_login' --vinfra-password='user_pwd' service compute "
-            "flavor list -f json")
-        self.mock_placement_ssh.execute.assert_not_called()
-
-    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
-    def test_flavor_handler_vinfra_check_flavor_returned_and_exist_in_vhi_with_placement(
-            self, mock_ssh_ctor):
-        flavor = {"vcpus": 2, "ram": 512, "name": "flavor_2_512"}
-
-        # Flavor returned and exist in vhi with placement
-        self.mock_flavor_ssh.execute.side_effect = [
-            (0, '[{"name": "flavor_2_512"}]'),
-        ]
-        self.mock_placement_ssh.execute.side_effect = [
-            (0, "test_placement"),
-        ]
-        mock_ssh_ctor.side_effect = [
-            self.mock_flavor_ssh,
-            self.mock_placement_ssh,
-        ]
-
-        self.assertTrue(self.vhi.flavor_handler(flavor, "test_placement"))
-        self.assertEqual(self.vhi.flavor_name, "flavor_2_512")
-        self.mock_flavor_ssh.execute.assert_called_once_with(
-            "vinfra --vinfra-username='user_login' --vinfra-password='user_pwd' service compute "
-            "flavor list -f json")
-        self.mock_placement_ssh.execute.assert_called_once_with(
-            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service compute "
-            "placement assign --flavors flavor_2_512 test_placement")
-
-    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
-    def test_flavor_handler_vinfra_check_flavor_returned_and_not_in_vhi_with_placemant(
-            self, mock_ssh_ctor):
-        flavor = {"vcpus": 2, "ram": 512, "name": "flavor_2_512"}
-
-        # Flavor returned and not in vhi with placement
-        self.mock_flavor_ssh.execute.side_effect = [
-            (0, '[{"name": "flavorless"}]'),
-            (0, '{"name": "flavorless"}'),
-        ]
-        self.mock_placement_ssh.execute.side_effect = [
-            (0, "test_placement"),
-        ]
-        mock_ssh_ctor.side_effect = [
-            self.mock_flavor_ssh,
-            self.mock_placement_ssh,
-        ]
-
-        self.assertTrue(self.vhi.flavor_handler(flavor, "test_placement"))
-        self.assertEqual(self.vhi.flavor_name, "flavorless")
-        self.mock_flavor_ssh.execute.assert_has_calls([
-            call("vinfra --vinfra-username='user_login' --vinfra-password='user_pwd' service compute "
-                 "flavor list -f json"),
-            call("vinfra --vinfra-username='user_login' --vinfra-password='user_pwd' service compute "
-                 "flavor create flavor_2_512 --vcpus=2 --ram=512 -f json")
-        ])
-        self.mock_placement_ssh.execute.assert_called_once_with(
-            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service compute "
-            "placement assign --flavors flavorless test_placement")
 
     @patch("onapp2vhi.inc.vhi_helpers.VinfraUser", autospec=True)
     def test_verify_user_exists(self, mock_user):
@@ -522,6 +403,30 @@ class TestVhiHelpers(unittest.TestCase):
 
     @patch("onapp2vhi.inc.vhi_helpers.VinfraUser", autospec=True)
     def test_create_user(self, mock_user):
+        user_data = {
+            "user_email": "roman.holovko@virtuozzo.com",
+            "id": 4,
+            "first_name": "Roman",
+            "last_name": "Holovko",
+            "password": "pwd",
+            "user_login": "roman_holovko@virtuozzo_com",
+            "project_name": "project_roman.holovko@virtuozzo.com",
+            "quotas": {"cores": -1, "RAM": -1, "storage": -1},
+            "roles": [{"role": {"identifier": "staff"}}],
+        }
+
+        user_data_admin = {
+            "user_email": "roman.holovko@virtuozzo.com",
+            "id": 4,
+            "first_name": "Roman",
+            "last_name": "Holovko",
+            "password": "pwd",
+            "user_login": "roman_holovko@virtuozzo_com",
+            "project_name": "project_roman.holovko@virtuozzo.com",
+            "quotas": {"cores": -1, "RAM": -1, "storage": -1},
+            "roles": [{"role": {"identifier": "admin"}}],
+        }
+
         # user exists
         mock_user_instance = mock_user.return_value
         mock_user_instance.user_list.return_value = [
@@ -529,7 +434,7 @@ class TestVhiHelpers(unittest.TestCase):
             ('[{"email": "roman.holovko@virtuozzo.com"}] '),
         ]
 
-        result, passwd = self.vhi.create_user(self.user_data)
+        result, passwd = self.vhi.create_user(user_data)
         self.assertTrue(result)
         self.assertEqual(len(passwd), 24)
 
@@ -541,7 +446,7 @@ class TestVhiHelpers(unittest.TestCase):
         ]
         mock_user_instance.create.return_value = [0, '{"id": 888}']
 
-        result, passwd = self.vhi.create_user(self.user_data_admin)
+        result, passwd = self.vhi.create_user(user_data_admin)
         self.assertTrue(result)
         self.assertEqual(len(passwd), 24)
         self.assertEqual(self.vhi.user_id, 888)
@@ -554,10 +459,144 @@ class TestVhiHelpers(unittest.TestCase):
         ]
         mock_user_instance.create.return_value = [0, '{"id": 777}']
 
-        result, passwd = self.vhi.create_user(self.user_data)
+        result, passwd = self.vhi.create_user(user_data)
         self.assertTrue(result)
         self.assertEqual(len(passwd), 24)
         self.assertEqual(self.vhi.user_id, 777)
+
+
+class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
+
+    @patch("builtins.open", mock_open(read_data=TEST_CFG))
+    @patch("onapp2vhi.inc.vhi_helpers.SSH", autospec=True)
+    def setUp(self, mock_ssh):
+        self.cfg = OnApp2VHIConfig.load_config("test.ini")
+        self.vhi = Vhi(self.cfg)
+
+        self.mock_flavor_ssh = Mock(spec=SSH)
+        self.mock_placement_ssh = Mock(spec=SSH)
+        self.mock_user_ssh = Mock(spec=SSH)
+        self.mock_node_ssh = Mock(spec=SSH)
+        self.mock_image_ssh = Mock(spec=SSH)
+        self.mock_ssh = Mock(spec=SSH)
+        mock_ssh.return_value = self.mock_ssh
+
+        self.user_data = {
+            "user_email": "roman.holovko@virtuozzo.com",
+            "id": 4,
+            "first_name": "Roman",
+            "last_name": "Holovko",
+            "password": "pwd",
+            "user_login": "roman_holovko@virtuozzo_com",
+            "project_name": "project_roman.holovko@virtuozzo.com",
+            "quotas": {"cores": -1, "RAM": -1, "storage": -1},
+            "roles": [{"role": {"identifier": "staff"}}],
+        }
+
+        self.user_data_admin = {
+            "user_email": "roman.holovko@virtuozzo.com",
+            "id": 4,
+            "first_name": "Roman",
+            "last_name": "Holovko",
+            "password": "pwd",
+            "user_login": "roman_holovko@virtuozzo_com",
+            "project_name": "project_roman.holovko@virtuozzo.com",
+            "quotas": {"cores": -1, "RAM": -1, "storage": -1},
+            "roles": [{"role": {"identifier": "admin"}}],
+        }
+
+    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
+    def test_flavor_handler_vinfra_check_no_flavor(self, mock_ssh_ctor):
+        flavor = {"vcpus": 2, "ram": 512, "name": "flavor_2_512"}
+
+        # No flavor returned
+        mock_ssh_ctor.side_effect = [
+            self.mock_flavor_ssh,
+            self.mock_placement_ssh,
+        ]
+        self.mock_flavor_ssh.execute.side_effect = [
+            (2, {"name": "flavorless"}),
+        ]
+        self.assertFalse(self.vhi.flavor_handler(flavor))
+        self.mock_flavor_ssh.execute.assert_called_once_with(
+            "vinfra --vinfra-username='user_login' --vinfra-password='user_pwd' service compute "
+            "flavor list -f json")
+        self.mock_placement_ssh.execute.assert_not_called()
+
+    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
+    def test_flavor_handler_vinfra_check_flavor_returned_and_exists_in_vhi(self, mock_ssh_ctor):
+        flavor = {"vcpus": 2, "ram": 512, "name": "flavor_2_512"}
+
+        # Flavor returned and exist in vhi
+        mock_ssh_ctor.side_effect = [
+            self.mock_flavor_ssh,
+            self.mock_placement_ssh,
+        ]
+        self.mock_flavor_ssh.execute.side_effect = [
+            (0, '[{"name": "flavor_2_512"}]'),
+        ]
+        self.assertTrue(self.vhi.flavor_handler(flavor))
+        self.assertEqual(self.vhi.flavor_name, "flavor_2_512")
+        self.mock_flavor_ssh.execute.assert_called_once_with(
+            "vinfra --vinfra-username='user_login' --vinfra-password='user_pwd' service compute "
+            "flavor list -f json")
+        self.mock_placement_ssh.execute.assert_not_called()
+
+    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
+    def test_flavor_handler_vinfra_check_flavor_returned_and_exist_in_vhi_with_placement(
+            self, mock_ssh_ctor):
+        flavor = {"vcpus": 2, "ram": 512, "name": "flavor_2_512"}
+
+        # Flavor returned and exist in vhi with placement
+        self.mock_flavor_ssh.execute.side_effect = [
+            (0, '[{"name": "flavor_2_512"}]'),
+        ]
+        self.mock_placement_ssh.execute.side_effect = [
+            (0, "test_placement"),
+        ]
+        mock_ssh_ctor.side_effect = [
+            self.mock_flavor_ssh,
+            self.mock_placement_ssh,
+        ]
+
+        self.assertTrue(self.vhi.flavor_handler(flavor, "test_placement"))
+        self.assertEqual(self.vhi.flavor_name, "flavor_2_512")
+        self.mock_flavor_ssh.execute.assert_called_once_with(
+            "vinfra --vinfra-username='user_login' --vinfra-password='user_pwd' service compute "
+            "flavor list -f json")
+        self.mock_placement_ssh.execute.assert_called_once_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service compute "
+            "placement assign --flavors flavor_2_512 test_placement")
+
+    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
+    def test_flavor_handler_vinfra_check_flavor_returned_and_not_in_vhi_with_placemant(
+            self, mock_ssh_ctor):
+        flavor = {"vcpus": 2, "ram": 512, "name": "flavor_2_512"}
+
+        # Flavor returned and not in vhi with placement
+        self.mock_flavor_ssh.execute.side_effect = [
+            (0, '[{"name": "flavorless"}]'),
+            (0, '{"name": "flavorless"}'),
+        ]
+        self.mock_placement_ssh.execute.side_effect = [
+            (0, "test_placement"),
+        ]
+        mock_ssh_ctor.side_effect = [
+            self.mock_flavor_ssh,
+            self.mock_placement_ssh,
+        ]
+
+        self.assertTrue(self.vhi.flavor_handler(flavor, "test_placement"))
+        self.assertEqual(self.vhi.flavor_name, "flavorless")
+        self.mock_flavor_ssh.execute.assert_has_calls([
+            call("vinfra --vinfra-username='user_login' --vinfra-password='user_pwd' service compute "
+                 "flavor list -f json"),
+            call("vinfra --vinfra-username='user_login' --vinfra-password='user_pwd' service compute "
+                 "flavor create flavor_2_512 --vcpus=2 --ram=512 -f json")
+        ])
+        self.mock_placement_ssh.execute.assert_called_once_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service compute "
+            "placement assign --flavors flavorless test_placement")
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
     def test_create_user_user_exists(self, mock_ssh_ctor):
@@ -604,3 +643,87 @@ class TestVhiHelpers(unittest.TestCase):
         self.assertTrue(result)
         self.assertEqual(len(passwd), 24)
         self.assertEqual(self.vhi.user_id, 777)
+
+    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    def test_create_service_user_with_wrong_credentials(self, mock_ssh_ctor):
+        self.mock_node_ssh.execute.side_effect = [
+            (0, "[]"),  # verify password change ok
+        ]
+
+        # service user exist with wrong credentials
+        #mock_password.return_value = "test_password"
+        self.mock_user_ssh.execute.side_effect = [
+            # mock service user is present
+            (0, '[{"email": "Migration@user.com"}, {"email": "migration_helper@user.com"}]'),
+            (0, '[{"email": "Migration@user.com"}, {"email": "migration_helper@user.com"}]'),
+        ]
+        self.mock_image_ssh.execute.side_effect = [
+            (1, "list imeage operation failed due credentials"),    # trigger password update
+        ]
+        mock_ssh_ctor.side_effect = [
+            # TODO: \.create_service_user(): reduce VinfraUser creation!
+            self.mock_user_ssh,     # in create_service__user()
+            self.mock_user_ssh,     # in _create_domain_service_user()
+            self.mock_user_ssh,     # in _verify_user_exists()
+            self.mock_image_ssh,    # in _create_domain_service_user(), v_image
+            self.mock_user_ssh,     # in _verify_user_exists()
+            self.mock_node_ssh,     # in create_service_user()
+        ]
+
+        with patch('builtins.open', mock_open()) as m:
+            self.assertTrue(self.vhi.create_service_user())
+            self.assertEqual(self.cfg.vhi_conf["vinfra_user"], "migration_user")
+            m.return_value.write.assert_has_calls([
+                call('vinfra_user = migration_user\n'),
+            ])
+
+    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    def test_create_service_user_exists_fail_creation(self, mock_ssh_ctor):
+        # service user not exists failed creation
+
+        self.mock_user_ssh.execute.side_effect = [
+            (0, '[{"email": "Migration@notuser.com"}]'),
+            (1, 'create failed' ),
+        ]
+        self.mock_image_ssh.execute.side_effect = [
+            #(0, "some_output"),
+        ]
+        mock_ssh_ctor.side_effect = [
+            self.mock_user_ssh,     # in _create_domain_service_user()
+            self.mock_user_ssh,     # in create_service__user()
+            self.mock_user_ssh,     # in _verify_user_exists()
+            self.mock_image_ssh,    # in _create_domain_service_user()
+        ]
+
+        with patch('builtins.open', mock_open()) as m:
+            self.assertFalse(self.vhi.create_service_user())
+
+    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    def test_create_service_user_not_exists_success_creation(self, mock_ssh_ctor):
+        # service user not exists success creation
+
+        self.mock_user_ssh.execute.side_effect = [
+            (0, '[{"email": "Migration@user.com"}]'),
+            (0, json.dumps([{"email": "migration_helper@user.com",
+                             "system_permissions": "compute", "name": "migration_user",
+                             "enable": True, "assign-domain": ["Default", "compute"],
+                             "domain": "Default"}])),
+        ]
+        self.mock_image_ssh.execute.side_effect = [
+            (0, json.dumps([{'result': 'ok'}])),
+        ]
+        self.mock_node_ssh.execute.side_effect = [
+            (0, json.dumps([{'result': 'ok'}])),
+        ]
+        mock_ssh_ctor.side_effect = [
+            self.mock_user_ssh,
+            self.mock_user_ssh,
+            self.mock_user_ssh,
+            self.mock_image_ssh,
+            self.mock_user_ssh,
+            self.mock_node_ssh,
+        ]
+
+        with patch('builtins.open', mock_open()) as m:
+            self.assertTrue(self.vhi.create_service_user())
+            self.assertEqual(self.cfg.vhi_conf["vinfra_pass"], "user_pwd")
