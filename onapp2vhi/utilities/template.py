@@ -23,6 +23,7 @@ CONFIG_TEMPLATE = """#[onapp]
 #vinfra_domain = Migration
 #vinfra_project = migproj
 #vinfra_user = user_login
+#vhi_storage_policy = default
 #vinfra_pass = user_pwd
 #vinfra_domain_user = ''
 #vinfra_domain_pass = ''
