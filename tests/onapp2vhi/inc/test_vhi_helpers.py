@@ -531,7 +531,6 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
             }
         }
 
-
     @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
     def test_flavor_handler_vinfra_check_no_flavor(self, mock_ssh_ctor):
         flavor = {"vcpus": 2, "ram": 512, "name": "flavor_2_512"}
