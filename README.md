@@ -120,6 +120,7 @@
   domain_id = 58fa18b2cefc4bad8a52f11008dfbf72
   vinfra_domain = Migration
   vinfra_project = migproj
+  vhi_storage_policy = default
   vinfra_user = user_login
   vinfra_pass = user_pwd
   vinfra_domain_user = ''
