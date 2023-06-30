@@ -21,7 +21,7 @@ def unittest(session):
 @nox.session
 def code_coverage(session):
     session.install("nox==2022.1.7", "nose==1.3.7", "mock==5.0.1", "requests-mock==1.10.0", "coverage==6.2", ".")
-    session.run("nosetests", "--with-coverage", "--cover-inclusive")
+    session.run("nosetests", "--with-coverage", "--cover-inclusive", "--cover-branches")
     session.run("coverage", "report")
     session.run("coverage", "html")
 
