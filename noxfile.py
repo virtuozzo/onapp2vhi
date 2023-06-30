@@ -26,7 +26,7 @@ def code_coverage(session):
         os.remove(os.path.join(os.getcwd(), '.coverage'))
     except OSError:
         pass
-    session.run("nosetests", "--with-coverage", "--cover-inclusive")
+    session.run("nosetests", "--with-coverage", "--cover-inclusive", "--cover-branches")
     session.run("coverage", "report")
     session.run("coverage", "html")
 

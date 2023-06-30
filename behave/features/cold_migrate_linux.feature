@@ -23,6 +23,8 @@ Scenario: Cold migration with user's SSH key
   And I wait for 2 minutes
   And the virtual machine (linux-vm-without-startup) is built successfully
 
-  When I migrate the virtual machine (linux-vm-without-startup)
+  When I set the logging path (uda-log)
+  And I migrate the virtual machine (linux-vm-without-startup)
   Then I wait for 10 seconds
   And I should see the virtual machine is SHUTOFF in VHI portal
+  And the log is seen in logging path (uda-log)

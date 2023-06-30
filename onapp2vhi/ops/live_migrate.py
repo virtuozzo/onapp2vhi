@@ -165,7 +165,8 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
                                        flavour=_flavour,
                                        onapp_nics=_onapp_nics,
                                        hostname=_vm_properties['hostname'],
-                                       domain=_vm_properties['domain'])
+                                       domain=_vm_properties['domain'],
+                                       vhi_storage_policy=_vm_properties['storage_policy'])
         if not _vhi_vm_id:
             return False
 

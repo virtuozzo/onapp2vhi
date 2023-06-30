@@ -49,6 +49,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                  vz_guest_tools_install='true',
                  cloud_init_install='',
                  placement='',
+                 storage_policy='',
                  ):
     """
     Migrate all resources from OnApp to VHI:
@@ -78,6 +79,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
     :param vz_guest_tools_install: project
     :param cloud_init_install: project
     :param placement: placement "name" or "id"
+    :param storage_policy: storage_policy "name"
     :return:
     """
     # Arrange
@@ -91,6 +93,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
             exit(1)
         user_idn = int(user)
     vz_guest_tools = False if vz_guest_tools_install == 'false' else True
+    _storage_policy = storage_policy if storage_policy else cfg.vhi_conf['vhi_storage_policy']
     if cloud_init_install is SENTINEL:
         cloud_init = {'user': False, 'install': True}
     elif cloud_init_install == 'false':
@@ -197,6 +200,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                 continue
 
             _vm_properties = get_vm_source_properties(cfg, vm_idn=_idn)
+            _vm_properties['storage_policy'] = _storage_policy
             _cloud_init_log = _prepare_cloud_init_msg(cloud_init_install=cloud_init, vm_properties=_vm_properties)
             if not _vm['built_from_iso'] and not _vm['built_from_ova']:
                 result = bootloader_drivers(cfg,

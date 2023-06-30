@@ -151,6 +151,11 @@ def create_service_user():
     help="Boolean flag, set `false` to NOT install cloud_init_install"
 )
 @click.option(
+    '--storage_policy',
+    default='',
+    help="string flag, set `default`"
+)
+@click.option(
     "--vz_guest_tools_install",
     default="",
     help="Boolean flag, set `false` to NOT install vz_guest_tools_install",
@@ -161,7 +166,8 @@ def migrate(
     project="",
     vz_guest_tools_install="true",
     cloud_init_install="true",
-    placement=""
+    placement="",
+    storage_policy=""
 ):
     from onapp2vhi.ops.migrate import migrate_impl
 
@@ -173,4 +179,5 @@ def migrate(
         vz_guest_tools_install=vz_guest_tools_install,
         cloud_init_install=cloud_init_install,
         placement=placement,
+        storage_policy=storage_policy,
     )
