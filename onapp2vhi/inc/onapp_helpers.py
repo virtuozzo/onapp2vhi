@@ -970,7 +970,7 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
             if idx >= 1:
                 exit_status, output = vhi_ssh.execute(
                     f"{vinfra_access} service compute volume create --size {dsk['size']} "
-                    f"onapp-{_vhi_vm_id} --storage-policy default -f json | jq -c -r \".id\""
+                    f"onapp-{_vhi_vm_id} --storage-policy {vhi_storage_policy} -f json | jq -c -r \".id\""
                 )
                 new_disk_id = output.strip()
                 exit_status, output = vhi_ssh.execute(
