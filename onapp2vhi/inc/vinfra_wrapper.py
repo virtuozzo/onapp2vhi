@@ -8,8 +8,8 @@ class VinfraError(Exception):
 
     def __init__(self, command, exit_code, output):
         super().__init__()
-        self.exit_code = command
-        self.command = exit_code
+        self.command = command
+        self.exit_code = exit_code
         self.output = output
 
     def __str__(self):

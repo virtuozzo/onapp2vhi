@@ -15,6 +15,7 @@ from onapp2vhi.inc.vinfra_wrapper import (
     VinfraStoragePolicies,
     VinfraQuotas,
     VinfraPlacement,
+    VinfraError,
 )
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 
@@ -122,9 +123,11 @@ class Vhi:
         self._vhi_flavor_payload(vm_data=onapp_flavor)
         _vinfra = VinfraFlavor(self.cfg, service_user=True)
         vinfra_placement = VinfraPlacement(self.cfg)
-        exit_status, output = _vinfra.flavor_list()
-        if not exit_status_code_handler(exit_code=exit_status,
-                                        message=f'Impossible to get Flavor list. Output:\n\t{output}'):
+        try:
+            output = _vinfra.flavor_list()
+        except VinfraError as e:
+            exit_status_code_handler(exit_code=e.exit_code,
+                                     message=f'Impossible to get Flavor list.\n\t{e}')
             return False
 
         _vhi_flavors = [_flavor['name'] for _flavor in json.loads(output)]
@@ -133,26 +136,34 @@ class Vhi:
             self.flavor_name = _flavor_name
             if placement:
                 logs.info(msg=f"{Helper.SPACES.value} -- Assigning placement to the flavor on VHI side.", header=True)
-                exit_status, output = vinfra_placement.assign_placement_to_flavor(flavor=self.flavor_name,
-                                                                                  placement=placement)
-                exit_status_code_handler(exit_code=exit_status,
-                                         message=f'Placement Assignment result. Output:\n\t{output}')
+                try:
+                    output = vinfra_placement.assign_placement_to_flavor(flavor=self.flavor_name,
+                                                                         placement=placement)
+                except VinfraError as e:
+                    # log initial error and continue bye creating flavor and assign
+                    exit_status_code_handler(exit_code=e.exit_code,
+                                             message=f'Placement Assignment result.\n\t{e}')
             return True
 
-        exit_status, output = _vinfra.create(flavor_name=_flavor_name,
-                                             vcpus=onapp_flavor['vcpus'],
-                                             ram=onapp_flavor['ram'])
-        if not exit_status_code_handler(exit_code=exit_status,
-                                        message=f'Flavor has NOT been created. Output:\n\t{output}'):
+        try:
+            output = _vinfra.create(flavor_name=_flavor_name,
+                                    vcpus=onapp_flavor['vcpus'],
+                                    ram=onapp_flavor['ram'])
+        except VinfraError as e:
+            exit_status_code_handler(exit_code=e.exit_code,
+                                     message=f'Flavor has NOT been created.\n\t{e}')
             return False
 
         self.flavor_name = json.loads(output)['name']
         if placement:
             logs.info(msg=f"{Helper.SPACES.value} -- Assigning placement to the flavor on VHI side.", header=True)
-            exit_status, output = vinfra_placement.assign_placement_to_flavor(flavor=self.flavor_name,
-                                                                              placement=placement)
-            exit_status_code_handler(exit_code=exit_status,
-                                     message=f'Placement Assignment result. Output:\n\t{output}')
+            try:
+                output = vinfra_placement.assign_placement_to_flavor(flavor=self.flavor_name,
+                                                                     placement=placement)
+            except VinfraError as e:
+                exit_status_code_handler(exit_code=e.exit_code,
+                                         message=f'Placement Assignment result.\n\t{e}')
+                return False
         return True
 
     def _verify_user_exists(self, user_email: str, domain: str):
@@ -164,7 +175,7 @@ class Vhi:
         v_user = VinfraUser(self.cfg)
 
         # Get List of users
-        exit_status, output = v_user.user_list(domain=domain)
+        output = v_user.user_list(domain=domain)
         _user_emails = [_user['email'] for _user in json.loads(output)]
         if user_email in _user_emails:
             return True
@@ -198,17 +209,21 @@ class Vhi:
                                 value=_domain_service_user['name'])
 
             v_image = VinfraImage(self.cfg, channel_timeout=5)
-            exit_status, output = v_image.images()
-            if not exit_status_code_handler(exit_code=exit_status,
-                                            message=f'Domain Service User password is wrong. Output:\n\t{output}'):
+            try:
+                v_image.images()
+            except VinfraError as e:
+                exit_status_code_handler(exit_code=e.exit_code,
+                                         message=f'Domain Service User password is wrong.\n\t{e}')
                 _new_pwd = self.update_user_password(user_login=_domain_service_user['name'])
                 logs.warn(msg='Changed password to the new one for Domain Service User')
                 self.cfg.update(section="vhi", option="vinfra_domain_pass", value=_new_pwd)
             return True
 
-        exit_status, output = v_user.create(user_data=_domain_service_user, pwd=_pwd)
-        if not exit_status_code_handler(exit_code=exit_status,
-                                        message=f'Domain Service User has not been created. Output:\n\t{output}'):
+        try:
+            v_user.create(user_data=_domain_service_user, pwd=_pwd)
+        except VinfraError as e:
+            exit_status_code_handler(exit_code=e.exit_code,
+                                     message=f'Domain Service User has not been created.\n\t{e}')
             return False
 
         v_user.set(user_name=_domain_service_user['name'],
@@ -252,9 +267,11 @@ class Vhi:
                     f' Checking ``Service User`` credentials. . .')
             logs.info(msg=_msg, header=True)
             vinfra_node = VinfraNode(self.cfg, channel_timeout=5)
-            exit_status, output = vinfra_node.list_node()
-            if not exit_status_code_handler(exit_code=exit_status,
-                                            message=f'Service User creds are not valid. Output:\n\t{output}'):
+            try:
+                output = vinfra_node.list_node()
+            except VinfraError as e:
+                exit_status_code_handler(exit_code=e.exit_code,
+                                         message=f'Service User creds are not valid.\n\t{e}')
                 logs.debug('Updating credentials for SERVICE USER and save them into `cfg/config.cfg`')
 
                 # Generating new pwd for Service User and save it into config file, after check credentials again
@@ -263,9 +280,11 @@ class Vhi:
                 self.vinfra_domain = self.cfg.vhi_conf['vinfra_domain']
                 self.cfg.update(section="vhi", option="vinfra_pass", value=new_pwd)
                 v_node = VinfraNode(self.cfg, channel_timeout=5)
-                exit_status, output = v_node.list_node()
-                if not exit_status_code_handler(exit_code=exit_status,
-                                                message=f'Updating Service User creds failed. Output:\n\t{output}'):
+                try:
+                    output = v_node.list_node()
+                except VinfraError as e:
+                    exit_status_code_handler(exit_code=e.exit_code,
+                                             message=f'Updating Service User creds failed.\n\t{e}')
                     return False
 
                 try:
@@ -280,9 +299,11 @@ class Vhi:
             logs.info(msg='SERVICE USER credentials are valid and stored in `cfg/config.cfg`')
             return True
 
-        exit_status, output = v_user.create(user_data=_service_user_payload, pwd=_pwd)
-        if not exit_status_code_handler(exit_code=exit_status,
-                                        message=f'Service User has not been created. Output:\n\t{output}'):
+        try:
+            output = v_user.create(user_data=_service_user_payload, pwd=_pwd)
+        except VinfraError as e:
+            exit_status_code_handler(exit_code=e.exit_code,
+                                     message=f'Service User has not been created. {e}\n\t')
             return False
 
         user_response = json.loads(output)
@@ -298,12 +319,16 @@ class Vhi:
         self.cfg.update(section="vhi", option="vinfra_pass", value=_pwd)
         time.sleep(1)
         v_node = VinfraNode(self.cfg, channel_timeout=5)
-        exit_status, output = v_node.list_node()
         try:
-            assert exit_status_code_handler(exit_code=exit_status)
+            output = v_node.list_node()
             assert type(json.loads(output)) == list
-        except AssertionError:
-            logs.error(f'Service User password has NOT been changed. Output from getting node list:\n{output}')
+        except VinfraError as e:
+            logs.error('Service User password has NOT been changed. '
+                       f'Output from getting node list:\n\t{e}')
+            return False
+        except AssertionError as e:
+            logs.error('Service User password has NOT been changed. '
+                       f'Output from getting node list:\n\t{e}')
             return False
 
         logs.info(msg='Service user has been created, credentials saved into `cfg/config.cfg`')
@@ -331,7 +356,7 @@ class Vhi:
         project_name = user_data['project_name']
         quotas = user_data['quotas']
         _v_project = VinfraProject(self.cfg)
-        exit_status, projects = _v_project.projects(**{'domain': self.vinfra_domain})
+        projects = _v_project.projects(**{'domain': self.vinfra_domain})
         _projects = [_proj['name'] for _proj in json.loads(projects)]
         if project_name in _projects:
             logs.warn(msg=f'Project with name `{project_name}` exists on VHI side!')
@@ -340,13 +365,15 @@ class Vhi:
 
         # Create new project
         logs.info(msg=f"{Helper.SPACES.value} -- Creating new project [{project_name}] on VHI side.", header=True)
-        exit_status, output = _v_project.create(
-            project_name=project_name,
-            domain=self.vinfra_domain,
-            description=f"OnApp User {user_data['first_name']} {user_data['last_name']}"
-        )
-        if not exit_status_code_handler(exit_code=exit_status,
-                                        message=f'New Project was NOT created. Output:\n\t{output}'):
+        try:
+            output = _v_project.create(
+                project_name=project_name,
+                domain=self.vinfra_domain,
+                description=f"OnApp User {user_data['first_name']} {user_data['last_name']}"
+            )
+        except VinfraError as e:
+            exit_status_code_handler(exit_code=e.exit_code,
+                                     message=f'New Project was NOT created.\n\t{e}')
             return False
 
         create_project = json.loads(output)
@@ -356,7 +383,7 @@ class Vhi:
 
         # Storage Policies
         v_storage = VinfraStoragePolicies(self.cfg)
-        exit_status, storage_output = v_storage.storage_policy_list()
+        storage_output = v_storage.storage_policy_list()
         storage_policy_name = json.loads(storage_output)[0]['name']
         new_quotas = {}
         for quota_name, quota_value in quotas.items():
@@ -374,10 +401,13 @@ class Vhi:
         if new_quotas:
             v_quotas = VinfraQuotas(self.cfg)
             logs.info(msg=f"Setting Up quotas for project [{project_name}] on VHI side.", header=True)
-            exit_status, output = v_quotas.update_quotas(project_id=self.project_id, **new_quotas)
-            exit_status_code_handler(exit_code=exit_status,
-                                     message=f'Quotas has NOT been set for Project {self.project_name}.'
-                                             f' Output:\n\t{output}\n\tPlease set quotas MANUALLY.')
+            try:
+                output = v_quotas.update_quotas(project_id=self.project_id, **new_quotas)
+            except VinfraError as e:
+                exit_status_code_handler(exit_code=e.exit_code,
+                                         message=f'Quotas has NOT been set for Project '
+                                                 f'{self.project_name}.\n\t{e}\n\tPlease set '
+                                                 'quotas MANUALLY.')
 
         return True
 
@@ -427,14 +457,15 @@ class Vhi:
 
         logs.info(msg=f"{Helper.SPACES.value} -- Creating new user [{_user['name']}] on VHI side.", header=True)
         _pwd = generate_random_password()
-        exit_status, output = v_user.create(user_data=_user, pwd=_pwd)
-        if not exit_status_code_handler(exit_code=exit_status,
-                                        message=f'New User was NOT created. Output:\n\t{output}'):
+        try:
+            output = v_user.create(user_data=_user, pwd=_pwd)
+            new_user = json.loads(output)
+            self.user_id = new_user['id']
+            return True, _pwd
+        except VinfraError as e:
+            exit_status_code_handler(exit_code=e.exit_code,
+                                     message=f'New User was NOT created.\n\t{e}')
             return False, ''
-
-        new_user = json.loads(output)
-        self.user_id = new_user['id']
-        return True, _pwd
 
 
 def get_vhi_hv_ip(cfg: OnApp2VHIConfig, vhi_vm_id: str, vhi_ssh):
