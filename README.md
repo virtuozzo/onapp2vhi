@@ -183,19 +183,20 @@
       - `--vm=vm_identifier_1,vm_identifier_2` - comma separated `list` of Virtual Machines to be migrated(can be
         empty, then all VM's will be migrated for specified user)
       - `--project=my_project` - stands for pre-created project `NAME` at VHI side
-      - `--network=public_network` - stands for network `NAME` at VHI side
       - `--cloud_init_install` - Boolean flag, default value is `true`, set `false` to **NOT** install cloud_init
       - `--vz_guest_tools_install` - Boolean flag, default value is `true`, set `false` to **NOT** install vz-guest-tools
+      - `--storage_policy` - stands for pre-created project `NAME` at VHI side
+      - `--placement` - stands for pre-created project `NAME` at VHI side
         - **Examples**:
        
           Full possible flags:
           ```
-          ./onapp2vhi migrate --user=7 --vm=sydarelogizozd,sy43relogizozd --project=my_project --network=public_network --vz_guest_tools_install=false --cloud_init_install=false
+          ./onapp2vhi migrate --user=7 --vm=sydarelogizozd,sy43relogizozd --storage_policy=not_default --project=my_project --vz_guest_tools_install=false --cloud_init_install=false
           ```        
 
           User + VM + network + disable cloud-init installation:
           ```
-          ./onapp2vhi migrate --user=2 --vm=sydarelogizozd --network=public_network --cloud_init_install=false
+          ./onapp2vhi migrate --user=2 --vm=sydarelogizozd --cloud_init_install=false
           ```
           
           User + disable vz-guest-tools installation:

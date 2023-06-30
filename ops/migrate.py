@@ -54,7 +54,7 @@ def cli():
 @click.option('--project', default='', help="Project where all objects will be migrated")
 @click.option('--cloud_init_install', default=SENTINEL,
               help="Option whether to install cloud-init or not")
-@click.option('--placement', default='', help="Boolean flag, set `false` to NOT install cloud_init_install")
+@click.option('--placement', default='', help="string flag, specify placement name")
 @click.option('--storage_policy', default='', help="string flag, set `default`")
 @click.option('--vz_guest_tools_install', default='',
               help="Boolean flag, set `false` to NOT install vz_guest_tools_install")
