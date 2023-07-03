@@ -8,6 +8,7 @@ from onapp2vhi.inc.onapp_helpers import (
     get_onapp_vm_nics,
     get_onapp_vm_disks,
     get_onapp_vm_flavor,
+    get_user_data,
     get_user_ssh_keys,
     get_all_virtual_machines,
     get_iface_from_specific_vs,
@@ -254,6 +255,7 @@ class TestOnAppVms(TestOnAppHelper):
         list_onapp_vms(self.mock_config, find="label=debian11")
         mock_parse_matrix.assert_not_called()
 
+
 class TestOnAppGetVmNics(TestOnAppHelper):
 
     @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
@@ -353,15 +355,19 @@ class TestOnAppGetDisk(TestOnAppHelper):
             }
         ]
 
-        expected_results = [{'datastore_idn': 'test',
-                           'number': 'test321',
-                           'is_swap': 'true',
-                           'primary': ["1.2.3.4"],
-                           'path': '/dev/test/vms',
-                           'ds_id': 'test123',
-                           'disk_idn': 'vms',
-                           'size': '1024',
-                           'datastore_type': 'test'}]
+        expected_results = [
+            {
+                'datastore_idn': 'test',
+                'number': 'test321',
+                'is_swap': 'true',
+                'primary': ["1.2.3.4"],
+                'path': '/dev/test/vms',
+                'ds_id': 'test123',
+                'disk_idn': 'vms',
+                'size': '1024',
+                'datastore_type': 'test'
+            }
+        ]
 
         self.mock_onapprequests.get.side_effect = [mock_data_stores, mock_disks]
         mock_onapp_request.return_value = self.mock_onapprequests
@@ -409,12 +415,13 @@ class TestOnAppGetVmFlavor(TestOnAppHelper):
     def test_get_onapp_flavors_ok(self, mock_logs, mock_onapp_request):
 
         mock_results = {
-                "virtual_machine": {
-                    "cpus": "test_cpu",
-                    "memory": "10",
-                }
+            "virtual_machine":
+            {
+                "cpus": "test_cpu",
+                "memory": "10",
             }
-        
+        }
+
         expected_results = {'vcpus': 'test_cpu', 'ram': '10', 'name': 'flavor_test_cpu_10'}
 
         self.mock_onapprequests.get.return_value = mock_results
@@ -459,6 +466,82 @@ class TestGetUserSshKeys(TestOnAppHelper):
         results = get_user_ssh_keys(self.mock_config, {"id": 3, "first_name": "test1", "last_name": "test2"})
 
         self.assertEqual(results, expected_results)
+
+
+class TestGetUserData(TestOnAppHelper):
+
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    @patch("onapp2vhi.inc.onapp_helpers.logs")
+    def test_get_user_data_with_type(self, mock_logs, mock_onapp_request):
+
+        mock_results = {
+            "user": {
+                "id": "1",
+                "first_name": "test1",
+                "last_name": "test2"
+            }
+        }
+        self.mock_onapprequests.get.return_value = mock_results
+        mock_onapp_request.return_value = self.mock_onapprequests
+
+        expected_results = [{ "user": {'id': '1', 'first_name': 'test1', 'last_name': 'test2'}}]
+
+        results = get_user_data(self.mock_config, url="users/1", get_type="ID")
+
+        self.assertEqual(results, expected_results)
+
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    @patch("onapp2vhi.inc.onapp_helpers.logs")
+    def test_get_user_data_with_all_users(self, mock_logs, mock_onapp_request):
+
+        mock_results = [
+            {"user": {"id": "1", "first_name": "test1", "last_name": "test2"}},
+            {"user": {"id": "2", "first_name": "test3", "last_name": "test4"}},
+        ]
+
+        self.mock_onapprequests.get.return_value = mock_results
+        mock_onapp_request.return_value = self.mock_onapprequests
+
+        expected_results = [{"user": {'id': '1', 'first_name': 'test1', 'last_name': 'test2'}},
+                            {"user": {'id': '2', 'first_name': 'test3', 'last_name': 'test4'}}]
+
+        results = get_user_data(self.mock_config, url="users", get_type="", all_users=True)
+
+        self.assertEqual(results, expected_results)
+
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    @patch("onapp2vhi.inc.onapp_helpers.logs")
+    def test_get_user_data_with_value_to_search(self, mock_logs, mock_onapp_request):
+
+        mock_results = [
+            {"user": {"id": "1", "first_name": "test1", "last_name": "test2"}},
+            {"user": {"id": "2", "first_name": "test3", "last_name": "test4"}},
+        ]
+
+        self.mock_onapprequests.get.return_value = mock_results
+        mock_onapp_request.return_value = self.mock_onapprequests
+
+        expected_results = {'id': '1', 'first_name': 'test1', 'last_name': 'test2'}
+
+        results = get_user_data(self.mock_config, url="users", get_type="", value_to_search="test1")
+
+        self.assertEqual(results, expected_results)
+
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    @patch("onapp2vhi.inc.onapp_helpers.logs")
+    def test_get_user_data_return_none(self, mock_logs, mock_onapp_request):
+
+        mock_results = []
+
+        self.mock_onapprequests.get.return_value = mock_results
+        mock_onapp_request.return_value = self.mock_onapprequests
+
+        expected_results = False
+
+        results = get_user_data(self.mock_config, url="users", get_type="",)
+
+        self.assertEqual(results, expected_results)
+
 
 class GetAllVirtualMachinesTestCase(unittest.TestCase):
 
