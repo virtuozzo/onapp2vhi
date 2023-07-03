@@ -13,6 +13,7 @@ from onapp2vhi.inc.onapp_helpers import (
     attach_security_group_to_nic_and_enable_spoofing,
     deactivate_disk,
     suspend_vm,
+    find_correct_disk_key
 )
 from onapp2vhi.inc.utils import exit_status_code_handler
 from onapp2vhi.inc.network_hanlder import get_network_configuration
@@ -244,6 +245,8 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
                 for source in disk.findall('source'):
                     # We faced with an issue with different disks
                     # vda, vdb == sda, sdb
+                    disk_label = find_correct_disk_key(on_app_disks=_xml_ovm_disks,
+                                                       target=disk_label)
                     try:
                         source.attrib['file'] = _vhi_vm_disks[disk_label]
                     except KeyError:

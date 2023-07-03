@@ -965,7 +965,7 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
             if idx >= 1:
                 exit_status, output = vhi_ssh.execute(
                     f"{vinfra_access} service compute volume create --size {dsk['size']} "
-                    f"onapp-{_vhi_vm_id} --storage-policy default -f json | jq -c -r \".id\""
+                    f"onapp-{_vhi_vm_id} --storage-policy {vhi_storage_policy} -f json | jq -c -r \".id\""
                 )
                 new_disk_id = output.strip()
                 exit_status, output = vhi_ssh.execute(
@@ -1091,3 +1091,38 @@ def suspend_vm(cfg: OnApp2VHIConfig, vm_id: str):
     onapp_requests = OnAppRequests(cfg)
     response = onapp_requests.post(route=f'virtual_machines/{vm_id}/suspend', data={})
     return response
+
+
+def find_correct_disk_key(on_app_disks: list, target: str):
+    """
+    Find correct key for disk on VHI side
+    Example:
+    _xml_ovm_disks = [
+                        {'name': 'vda', 'path': '/dev/onapp-xlyddnqwojryqp/axyuggvjelzfsm'},
+                        {'name': 'vdb', 'path': '/dev/onapp-xlyddnqwojryqp/wiqvbnptgtzegl'},
+                        {'name': 'vdd', 'path': '/dev/onapp-xlyddnqwojryqp/blghrixkzbdnig'}
+                    ]
+    _vhi_vm_disks = {
+                        'sda': '/mnt/vstorage/vols/datastores/cinder/volume-...',
+                        'sdb': '/mnt/vstorage/vols/datastores/cinder/volume-...',
+                        'sdc': '/mnt/vstorage/vols/datastores/cinder/volume-...'
+                    }
+    Here "vdd" and "sdc" do not have the same ending, method is returning the correct key based on alphabet sequence
+    :param on_app_disks: [{'name': 'vda', 'path': '/dev/onapp-xlyddnqwojryqp/axyuggvjelzfsm'},
+                        {'name': 'vdb', 'path': '/dev/onapp-xlyddnqwojryqp/wiqvbnptgtzegl'},
+                        {'name': 'vdd', 'path': '/dev/onapp-xlyddnqwojryqp/blghrixkzbdnig'}]
+    :param target: "vdd"
+    :return:
+    """
+    import string
+    alphabet = list(string.ascii_lowercase)
+    for num, disk_info in enumerate(on_app_disks):
+        if disk_info['name'] != target:
+            continue
+
+        _onapp_last_letter = disk_info['name'][-1]
+        _letter = alphabet[num]
+        if _onapp_last_letter != _letter:
+            return f"{disk_info['name'][:2]}{_letter}"
+
+        return disk_info['name']
