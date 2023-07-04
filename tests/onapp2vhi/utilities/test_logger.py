@@ -1,5 +1,6 @@
 from unittest import TestCase
 from mock import patch, call
+from onapp2vhi.utilities.logs.logger import hide_password
 
 
 class TestLogger(TestCase):
@@ -31,3 +32,14 @@ class TestLogger(TestCase):
 
         for mock_method in [mock_warn, mock_error]:
             mock_method.assert_has_calls([call("test_warn_error")])
+
+
+class TestFilter(TestCase):
+    def test_filter(self):
+        string1 = "Password='some_password'"
+        string2 = '"password":"some_password"'
+        string3 = '"Password: "some_password"'
+
+        self.assertIn("*hidden*", hide_password(string1))
+        self.assertIn("*hidden*", hide_password(string2))
+        self.assertIn("*hidden*", hide_password(string3))
