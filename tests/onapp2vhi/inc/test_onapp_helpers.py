@@ -59,7 +59,7 @@ ssh_key = path/to/your/ssh_key/id_rsa
 """
 
 
-class TestOnAppHelper(unittest.TestCase):
+class TestOnAppHelpers(unittest.TestCase):
 
     def setUp(self):
         self.mock_config = Mock(spec=OnApp2VHIConfig)
@@ -67,7 +67,7 @@ class TestOnAppHelper(unittest.TestCase):
         self.mock_parse_matrix = Mock(spec=parse_matrix)
 
 
-class TestListOnAppUsers(TestOnAppHelper):
+class TestListOnAppUsers(TestOnAppHelpers):
 
     @patch("onapp2vhi.inc.onapp_helpers.parse_matrix")
     @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
@@ -161,7 +161,7 @@ class TestListOnAppUsers(TestOnAppHelper):
         mock_parse_matrix.assert_not_called()
 
 
-class TestOnAppVms(TestOnAppHelper):
+class TestOnAppVms(TestOnAppHelpers):
 
     @patch("onapp2vhi.inc.onapp_helpers.parse_matrix")
     @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
@@ -256,7 +256,7 @@ class TestOnAppVms(TestOnAppHelper):
         mock_parse_matrix.assert_not_called()
 
 
-class TestOnAppGetVmNics(TestOnAppHelper):
+class TestOnAppGetVmNics(TestOnAppHelpers):
 
     @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
     @patch("onapp2vhi.inc.onapp_helpers.logs")
@@ -325,7 +325,7 @@ class TestOnAppGetVmNics(TestOnAppHelper):
         self.assertEqual(results, expected_results)
 
 
-class TestOnAppGetDisk(TestOnAppHelper):
+class TestOnAppGetDisk(TestOnAppHelpers):
 
     @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
     @patch("onapp2vhi.inc.onapp_helpers.logs")
@@ -408,7 +408,7 @@ class TestOnAppGetDisk(TestOnAppHelper):
         self.assertEqual(results, expected_results)
 
 
-class TestOnAppGetVmFlavor(TestOnAppHelper):
+class TestOnAppGetVmFlavor(TestOnAppHelpers):
 
     @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
     @patch("onapp2vhi.inc.onapp_helpers.logs")
@@ -431,7 +431,7 @@ class TestOnAppGetVmFlavor(TestOnAppHelper):
         self.assertEqual(results, expected_results)
 
 
-class TestGetUserSshKeys(TestOnAppHelper):
+class TestGetUserSshKeys(TestOnAppHelpers):
 
     @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
     @patch("onapp2vhi.inc.onapp_helpers.logs")
@@ -468,7 +468,7 @@ class TestGetUserSshKeys(TestOnAppHelper):
         self.assertEqual(results, expected_results)
 
 
-class TestGetUserData(TestOnAppHelper):
+class TestGetUserData(TestOnAppHelpers):
 
     @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
     @patch("onapp2vhi.inc.onapp_helpers.logs")
