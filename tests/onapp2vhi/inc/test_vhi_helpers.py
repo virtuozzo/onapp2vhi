@@ -5,6 +5,7 @@ from mock import mock_open, patch, Mock, call
 from onapp2vhi.inc.vhi_helpers import Vhi
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.inc.ssh_connector import SSH
+from onapp2vhi.inc.vinfra_wrapper import VinfraError
 
 # pylint: disable=no-member
 
@@ -135,57 +136,33 @@ class TestVhiHelpers(unittest.TestCase):
         mock_placement_instance = mock_placement.return_value
 
         # No flavor returned
-        mock_flavor_instance.flavor_list.return_value = [
-            2,
-            {"name": "flavorless"},
-        ]
+        mock_flavor_instance.flavor_list.side_effect =\
+            VinfraError(command='list flavor', exit_code=2, output='No flavor')
         self.assertFalse(self.vhi.flavor_handler(flavor))
 
         # Flavor returned and exist in vhi
-        mock_flavor_instance.flavor_list.return_value = [
-            0,
-            '[{"name": "flavor_2_512"}]',
-        ]
+        mock_flavor_instance.flavor_list.side_effect = None
+        mock_flavor_instance.flavor_list.return_value = '[{"name": "flavor_2_512"}]'
         self.assertTrue(self.vhi.flavor_handler(flavor))
         self.assertEqual(self.vhi.flavor_name, "flavor_2_512")
 
         # Flavor returned and exist in vhi with placement
-        mock_flavor_instance.flavor_list.return_value = [
-            0,
-            '[{"name": "flavor_2_512"}]',
-        ]
-        mock_placement_instance.assign_placement_to_flavor.return_value = [
-            0,
-            "test_placement",
-        ]
+        mock_flavor_instance.flavor_list.return_value = '[{"name": "flavor_2_512"}]'
+        mock_placement_instance.assign_placement_to_flavor.return_value = "test_placement"
         self.assertTrue(self.vhi.flavor_handler(flavor, "test_placement"))
         self.assertEqual(self.vhi.flavor_name, "flavor_2_512")
 
         # Flavor returned and not in vhi with placement
-        mock_flavor_instance.flavor_list.return_value = [
-            0,
-            '[{"name": "flavorless"}]',
-        ]
-
-        mock_flavor_instance.create.return_value = [
-            0,
-            '{"name": "flavorless"}',
-        ]
-
-        mock_placement_instance.assign_placement_to_flavor.return_value = [
-            0,
-            "test_placement",
-        ]
+        mock_flavor_instance.flavor_list.return_value = '[{"name": "flavorless"}]'
+        mock_flavor_instance.create.return_value = '{"name": "flavorless"}'
+        mock_placement_instance.assign_placement_to_flavor.return_value = "test_placement"
         self.assertTrue(self.vhi.flavor_handler(flavor, "test_placement"))
         self.assertEqual(self.vhi.flavor_name, "flavorless")
 
     @patch("onapp2vhi.inc.vhi_helpers.VinfraUser", autospec=True)
     def test_verify_user_exists(self, mock_user):
         mock_user_instance = mock_user.return_value
-        mock_user_instance.user_list.return_value = [
-            0,
-            '[{"name": "test_user", "email": "a@a.com"}]',
-        ]
+        mock_user_instance.user_list.return_value = '[{"name": "test_user", "email": "a@a.com"}]'
         self.assertTrue(self.vhi._verify_user_exists("a@a.com", "test_domain"))
         self.assertFalse(
             self.vhi._verify_user_exists("b@b.com", "test_domain")
@@ -201,35 +178,32 @@ class TestVhiHelpers(unittest.TestCase):
         mock_password.return_value = "test_password"
 
         mock_user_instance = mock_user.return_value
-        mock_user_instance.user_list.return_value = [
-            0,
-            '[{"name": "test_user", "email": "Migration@user.com"}]',
-        ]
+        mock_user_instance.user_list.return_value =\
+            '[{"name": "test_user", "email": "Migration@user.com"}]'
 
         mock_image_instance = mock_image.return_value
 
         # user exist
-        mock_image_instance.images.return_value = [0, "some_output"]
+        mock_image_instance.images.return_value = json.dumps([{"some_output": "some_value"}])
         self.assertTrue(self.vhi._create_domain_service_user())
 
         # user exist but wrong password
-        mock_image_instance.images.return_value = [1, "some_output"]
+        mock_image_instance.images.side_effect = VinfraError(command='the failed command', exit_code=1, output='failed password')
         self.assertTrue(self.vhi._create_domain_service_user())
 
         # user does not exist failed created
-        mock_user_instance.user_list.return_value = [
-            1,
-            '[{"name": "test_user", "email": "no_exist@user.com"}]',
-        ]
-        mock_user_instance.create.return_value = [1, "some_output"]
+        mock_user_instance.user_list.return_value =\
+            '[{"name": "test_user", "email": "no_exist@user.com"}]'
+        mock_user_instance.create.side_effect = VinfraError(command='create command',
+                                                            exit_code=1,
+                                                            output='failed user create')
         self.assertFalse(self.vhi._create_domain_service_user())
 
         # user does not exist create success
-        mock_user_instance.user_list.return_value = [
-            1,
-            '[{"name": "test_user", "email": "no_exist@user.com"}]',
-        ]
-        mock_user_instance.create.return_value = [0, "some_output"]
+        mock_user_instance.user_list.return_value =\
+            '[{"name": "test_user", "email": "no_exist@user.com"}]'
+        mock_user_instance.create.side_effect = None
+        mock_user_instance.create.return_value = "some_output"
         self.assertTrue(self.vhi._create_domain_service_user())
         mock_user_instance.set.assert_called_with(
             user_name="dom_migration_user_migration",
@@ -264,13 +238,8 @@ class TestVhiHelpers(unittest.TestCase):
 
         # service user exist with wrong credentials
         mock_password.return_value = "test_password"
-        mock_user_instance.user_list.return_value = [
-            0,
-            (
-                '[{"email": "Migration@user.com"}, '
-                '{"email": "migration_helper@user.com"}]'
-            ),
-        ]
+        mock_user_instance.user_list.return_value = '[{"email": "Migration@user.com"}, '\
+            '{"email": "migration_helper@user.com"}]'
         mock_image_instance.images.return_value = [0, "some_output"]
 
         self.vhi.create_service_user()
@@ -278,36 +247,27 @@ class TestVhiHelpers(unittest.TestCase):
 
         # service user not exists failed creation
 
-        mock_user_instance.user_list.return_value = [
-            0,
-            ('[{"email": "Migration@user.com"}] '),
-        ]
+        mock_user_instance.user_list.return_value = '[{"email": "Migration@user.com"}] '
 
-        mock_user_instance.create.return_value = [
-            0,
-            '{"email": "migration_helper@user.com",'
-            '"system_permissions": "no_permission", "name": "migration_user",'
-            '"enable": true, "assign-domain": ["Default", "compute"],'
-            '"domain": "Default"}',
-        ]
+        mock_user_instance.create.return_value = '{"email": "migration_helper@user.com",'\
+            '"system_permissions": "no_permission", "name": "migration_user",'\
+            '"enable": true, "assign-domain": ["Default", "compute"],'\
+            '"domain": "Default"}'
 
         self.assertFalse(self.vhi.create_service_user())
 
         # service user not exists success creation
 
-        mock_user_instance.user_list.return_value = [
-            0,
-            ('[{"email": "Migration@user.com"}] '),
-        ]
+        mock_user_instance.user_list.return_value = '[{"email": "Migration@user.com"}]'
 
-        mock_user_instance.create.return_value = [
-            0,
-            '{"email": "migration_helper@user.com",'
-            '"system_permissions": "compute", "name": "migration_user",'
-            '"enable": true, "assign-domain": ["Default", "compute"],'
-            '"domain": "Default"}',
-        ]
+        mock_user_instance.create.return_value =\
+            '{"email": "migration_helper@user.com",'\
+            '"system_permissions": "compute", "name": "migration_user",'\
+            '"enable": true, "assign-domain": ["Default", "compute"],'\
+            '"domain": "Default"}'
         mock_password.return_value = "new_password"
+        mock_node_instance.list_node.side_effect = None
+        mock_node_instance.list_node.return_value = '[]'
 
         self.assertTrue(self.vhi.create_service_user())
         self.assertEqual(self.cfg.vhi_conf["vinfra_pass"], "new_password")
@@ -319,10 +279,8 @@ class TestVhiHelpers(unittest.TestCase):
     def test_create_project(self, mock_quota, mock_policy, mock_project):
         # project exist
         mock_project_instance = mock_project.return_value
-        mock_project_instance.projects.return_value = [
-            0,
-            '[{"name": "project_roman.holovko@virtuozzo.com"}]',
-        ]
+        mock_project_instance.projects.return_value =\
+            '[{"name": "project_roman.holovko@virtuozzo.com"}]'
 
         user_data = {
             "user_email": "roman.holovko@virtuozzo.com",
@@ -339,14 +297,9 @@ class TestVhiHelpers(unittest.TestCase):
         # project does not exist and quota unlimited
 
         mock_project_instance = mock_project.return_value
-        mock_project_instance.projects.return_value = [
-            0,
-            '[{"name": "project_test"}]',
-        ]
-        mock_project_instance.create.return_value = [
-            0,
-            '{"name": "project_roman.holovko@virtuozzo.com", "id": "4"}',
-        ]
+        mock_project_instance.projects.return_value = '[{"name": "project_test"}]'
+        mock_project_instance.create.return_value =\
+            '{"name": "project_roman.holovko@virtuozzo.com", "id": "4"}'
 
         user_data = {
             "user_email": "roman.holovko@virtuozzo.com",
@@ -360,24 +313,16 @@ class TestVhiHelpers(unittest.TestCase):
         }
 
         mock_storage_instance = mock_policy.return_value
-        mock_storage_instance.storage_policy_list.return_value = [
-            0,
-            '[{"name": "Default"}]',
-        ]
+        mock_storage_instance.storage_policy_list.return_value = '[{"name": "Default"}]'
 
         self.assertTrue(self.vhi.create_project(user_data))
 
         # Project does not exist and storage quota limited
 
         mock_project_instance = mock_project.return_value
-        mock_project_instance.projects.return_value = [
-            0,
-            '[{"name": "project_test"}]',
-        ]
-        mock_project_instance.create.return_value = [
-            0,
-            '{"name": "project_roman.holovko@virtuozzo.com", "id": "4"}',
-        ]
+        mock_project_instance.projects.return_value = '[{"name": "project_test"}]'
+        mock_project_instance.create.return_value =\
+            '{"name": "project_roman.holovko@virtuozzo.com", "id": "4"}'
 
         user_data = {
             "user_email": "roman.holovko@virtuozzo.com",
@@ -391,10 +336,7 @@ class TestVhiHelpers(unittest.TestCase):
         }
 
         mock_storage_instance = mock_policy.return_value
-        mock_storage_instance.storage_policy_list.return_value = [
-            0,
-            '[{"name": "Default"}]',
-        ]
+        mock_storage_instance.storage_policy_list.return_value = '[{"name": "Default"}]'
 
         mock_quota_instance = mock_quota.return_value
         mock_quota_instance.update_quotas.return_value = [0, "some_output"]
@@ -429,10 +371,7 @@ class TestVhiHelpers(unittest.TestCase):
 
         # user exists
         mock_user_instance = mock_user.return_value
-        mock_user_instance.user_list.return_value = [
-            0,
-            ('[{"email": "roman.holovko@virtuozzo.com"}] '),
-        ]
+        mock_user_instance.user_list.return_value = '[{"email": "roman.holovko@virtuozzo.com"}]'
 
         result, passwd = self.vhi.create_user(user_data)
         self.assertTrue(result)
@@ -440,11 +379,8 @@ class TestVhiHelpers(unittest.TestCase):
 
         # user does not exist with admin role
         mock_user_instance = mock_user.return_value
-        mock_user_instance.user_list.return_value = [
-            0,
-            ('[{"email": "fake@email.com"}] '),
-        ]
-        mock_user_instance.create.return_value = [0, '{"id": 888}']
+        mock_user_instance.user_list.return_value = '[{"email": "fake@email.com"}]'
+        mock_user_instance.create.return_value = '{"id": 888}'
 
         result, passwd = self.vhi.create_user(user_data_admin)
         self.assertTrue(result)
@@ -453,11 +389,8 @@ class TestVhiHelpers(unittest.TestCase):
 
         # user does not exist with non-admin role
         mock_user_instance = mock_user.return_value
-        mock_user_instance.user_list.return_value = [
-            0,
-            ('[{"email": "fake@email.com"}] '),
-        ]
-        mock_user_instance.create.return_value = [0, '{"id": 777}']
+        mock_user_instance.user_list.return_value = '[{"email": "fake@email.com"}]'
+        mock_user_instance.create.return_value = '{"id": 777}'
 
         result, passwd = self.vhi.create_user(user_data)
         self.assertTrue(result)
@@ -732,7 +665,7 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
     def test_create_domain_migration_user_ok_correct_migration_user_domain_different(
             self, mock_ssh_ctor):
         self.mock_hv_user_ssh.execute.side_effect = [
-            (0, json.dumps([])),    # domain migration user not created
+            (0, json.dumps([{'email': 'fake@fake.com'}])),    # domain migration user not created
             (0, json.dumps([{'email': 'migration_helper@user.com'}]))   # migration user created
         ]
         self.mock_cp_user_ssh.execute.side_effect = [
@@ -785,6 +718,8 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
             (0, json.dumps([])),     # no existing projects
             (0, json.dumps({'id': 'project_id_unit_test',
                             'name': 'unittesting',
+                            'first_name': 'unit',
+                            'last_name': 'test',
                             })),
         ]
         self.mock_storage_policy_ssh.execute.side_effect = [
@@ -801,7 +736,7 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
 
         self.assertTrue(self.vhi.create_project(self.project_data))
         self.mock_project_ssh.execute.assert_has_calls([
-            call('vinfra admin_auth domain project list --domain behave  -f json'),
+            call('vinfra admin_auth domain project list --domain behave -f json'),
             call('vinfra admin_auth domain project create unittest --domain behave '
                  '--description "OnApp User unit test" --enable -f json'),
         ])

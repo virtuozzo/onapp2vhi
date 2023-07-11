@@ -812,7 +812,7 @@ class TransferFirewallRulesToSecurityGroup(unittest.TestCase):
         self.mock_ssh_vinfra_security_group.execute.assert_has_calls([
             # first check purposely return empty
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --project 123  -f json"),
+                 "compute security-group list --project 123 -f json"),
             # security group creation
             call("vinfra --vinfra-username='domain_user' --vinfra-password='domain_pass' "
                  "--vinfra-domain='Migration' --vinfra-project='dummy_vhi_proj' service compute "
@@ -821,18 +821,18 @@ class TransferFirewallRulesToSecurityGroup(unittest.TestCase):
                  "-f json"),
             # verify creation
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --name test_grp  -f json"),
+                 "compute security-group list --name test_grp -f json"),
             # get security group name
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --name test_grp  -f json")
+                 "compute security-group list --name test_grp -f json")
         ])
         self.mock_ssh_vinfra_security_group_rules.execute.assert_has_calls([
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group rule  create test_grp --ethertype IPv4 --protocol tcp "
-                 "--remote-ip 2.3.4.5 --port-range-min 80 --port-range-max 80  --ingress -f json"),
+                 "compute security-group rule create test_grp --ethertype IPv4 --protocol tcp "
+                 "--remote-ip 2.3.4.5 --port-range-min 80 --port-range-max 80 --ingress -f json"),
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group rule  create test_grp --ethertype IPv4 --port-range-min 1 "
-                 "--port-range-max 65535 --remote-ip 0.0.0.0/0  --ingress -f json"),
+                 "compute security-group rule create test_grp --ethertype IPv4 --port-range-min 1 "
+                 "--port-range-max 65535 --remote-ip 0.0.0.0/0 --ingress -f json"),
         ])
 
     @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
@@ -918,7 +918,7 @@ class TransferFirewallRulesToSecurityGroup(unittest.TestCase):
         self.mock_ssh_vinfra_security_group.execute.assert_has_calls([
             # first check purposely return empty
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --project 123  -f json"),
+                 "compute security-group list --project 123 -f json"),
             # security group creation
             call("vinfra --vinfra-username='domain_user' --vinfra-password='domain_pass' "
                  "--vinfra-domain='Migration' --vinfra-project='dummy_vhi_proj' service compute "
@@ -927,15 +927,15 @@ class TransferFirewallRulesToSecurityGroup(unittest.TestCase):
                  "-f json"),
             # verify creation
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --name test_grp  -f json"),
+                 "compute security-group list --name test_grp -f json"),
             # get security group name
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --name test_grp  -f json")
+                 "compute security-group list --name test_grp -f json")
         ])
         self.mock_ssh_vinfra_security_group_rules.execute.assert_has_calls([
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group rule  create test_grp --ethertype IPv4 --protocol tcp "
-                 "--remote-ip 2.3.4.5 --port-range-min 80 --port-range-max 80  --ingress -f json"),
+                 "compute security-group rule create test_grp --ethertype IPv4 --protocol tcp "
+                 "--remote-ip 2.3.4.5 --port-range-min 80 --port-range-max 80 --ingress -f json"),
         ])
 
     @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
@@ -1022,7 +1022,7 @@ class TransferFirewallRulesToSecurityGroup(unittest.TestCase):
         self.mock_ssh_vinfra_security_group.execute.assert_has_calls([
             # first check purposely return empty
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --project 123  -f json"),
+                 "compute security-group list --project 123 -f json"),
             # security group creation
             call("vinfra --vinfra-username='domain_user' --vinfra-password='domain_pass' "
                  "--vinfra-domain='Migration' --vinfra-project='dummy_vhi_proj' service compute "
@@ -1031,21 +1031,21 @@ class TransferFirewallRulesToSecurityGroup(unittest.TestCase):
                  "-f json"),
             # verify creation
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --name test_grp  -f json"),
+                 "compute security-group list --name test_grp -f json"),
             # get security group name
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --name test_grp  -f json")
+                 "compute security-group list --name test_grp -f json")
         ])
         self.mock_ssh_vinfra_security_group_rules.execute.assert_has_calls([
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group rule  create test_grp --ethertype IPv4 --protocol udp "
-                 "--remote-ip 1.2.3.4 --port-range-min 234 --port-range-max 234  --ingress -f json"),
+                 "compute security-group rule create test_grp --ethertype IPv4 --protocol udp "
+                 "--remote-ip 1.2.3.4 --port-range-min 234 --port-range-max 234 --ingress -f json"),
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group rule  create test_grp --ethertype IPv4 --protocol udp "
-                 "--remote-ip 1.2.3.4 --port-range-min 123 --port-range-max 123  --ingress -f json"),
+                 "compute security-group rule create test_grp --ethertype IPv4 --protocol udp "
+                 "--remote-ip 1.2.3.4 --port-range-min 123 --port-range-max 123 --ingress -f json"),
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group rule  create test_grp --ethertype IPv4 --protocol tcp "
-                 "--remote-ip 2.3.4.5 --port-range-min 80 --port-range-max 80  --ingress -f json"),
+                 "compute security-group rule create test_grp --ethertype IPv4 --protocol tcp "
+                 "--remote-ip 2.3.4.5 --port-range-min 80 --port-range-max 80 --ingress -f json"),
         ], any_order=True)
 
     # TODO! cases not covered:
@@ -1104,11 +1104,10 @@ class AttachSecurityGroupToNicAndEnableSpoofing(unittest.TestCase):
                                                          'vm1',
                                                          'eth0',
                                                          'security_group_a')
-        #TODO! fix extra whitespace
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service compute "
-            "server iface set eth0  --server vm1 --spoofing-protection-enable "
-            "--security-group security_group_a  -f json")
+            "server iface set eth0 --server vm1 --spoofing-protection-enable "
+            "--security-group security_group_a -f json")
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
     def test_attach_no_security_group(self, mock_ssh):
