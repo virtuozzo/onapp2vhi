@@ -543,11 +543,17 @@ class TestGetUserData(TestOnAppHelpers):
         self.assertEqual(results, expected_results)
 
 
-class GetAllVirtualMachinesTestCase(unittest.TestCase):
+class OnAppHelpersTestCase(unittest.TestCase):
 
     @patch("builtins.open", mock_open(read_data=TEST_CONFIG))
     def setUp(self):
         self.mock_cfg = OnApp2VHIConfig('test.ini')
+
+
+class GetAllVirtualMachinesTestCase(OnAppHelpersTestCase):
+
+    def setUp(self):
+        super().setUp()
         self.mock_onapprequests = Mock(spec=OnAppRequests)
         self.mock_ssh = Mock(spec=SSH)
 
@@ -719,11 +725,10 @@ class GetAllVirtualMachinesTestCase(unittest.TestCase):
         self.assertEquals(results, expected)
 
 
-class TransferFirewallRulesToSecurityGroup(unittest.TestCase):
+class TransferFirewallRulesToSecurityGroup(OnAppHelpersTestCase):
 
-    @patch("builtins.open", mock_open(read_data=TEST_CONFIG))
     def setUp(self):
-        self.mock_cfg = OnApp2VHIConfig('test.ini')
+        super().setUp()
         self.mock_onapprequests = Mock(spec=OnAppRequests, name='mock_onapprequests')
         self.mock_ssh_vinfra_security_group = Mock(spec=SSH, name='mock_visg')
         self.mock_ssh_vinfra_security_group_rules = Mock(spec=SSH, name='mock_visgr')
@@ -1055,11 +1060,10 @@ class TransferFirewallRulesToSecurityGroup(unittest.TestCase):
     # - security group already exists in vhi
 
 
-class GetIfaceFromSpecificVSTestCase(unittest.TestCase):
+class GetIfaceFromSpecificVSTestCase(OnAppHelpersTestCase):
 
-    @patch("builtins.open", mock_open(read_data=TEST_CONFIG))
     def setUp(self):
-        self.mock_cfg = OnApp2VHIConfig('test.ini')
+        super().setUp()
         self.mock_ssh = Mock(spec=SSH)
 
     @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
@@ -1087,11 +1091,10 @@ class GetIfaceFromSpecificVSTestCase(unittest.TestCase):
         self.assertEquals(results, expected)
 
 
-class AttachSecurityGroupToNicAndEnableSpoofing(unittest.TestCase):
+class AttachSecurityGroupToNicAndEnableSpoofing(OnAppHelpersTestCase):
 
-    @patch("builtins.open", mock_open(read_data=TEST_CONFIG))
     def setUp(self):
-        self.mock_cfg = OnApp2VHIConfig('test.ini')
+        super().setUp()
         self.mock_ssh = Mock(spec=SSH)
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
