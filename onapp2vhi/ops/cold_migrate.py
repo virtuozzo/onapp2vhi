@@ -20,6 +20,7 @@ from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.utils import exit_status_code_handler
 from onapp2vhi.inc.ssh_connector import SSH
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+from onapp2vhi.inc.vinfra_wrapper import VinfraCommand, VinfraError
 
 logs = OnAppVHILogger()
 
@@ -86,11 +87,14 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
     if cfg.vhi_conf['vinfra_domain'] != 'Default':
         vinfra_access = f"{cfg.DOMAIN_AUTH}  --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
     _vhi_ssh = SSH(**{'host': cfg.vhi_conf['cp_ip'], 'port': cfg.vhi_conf['cloud_ssh_port'], 'ssh_key': cfg.ssh_key})
-    exit_status, output = _vhi_ssh.execute(f"{cfg.ADMIN_AUTH} service compute server list --long -f json")
-    if not exit_status_code_handler(
-            exit_code=exit_status,
-            message=f"[cold_migrate.py | STEP 5] Compute server list command failed. Output:\n\t{output}"
-    ):
+
+    vinfra_command = VinfraCommand(cfg, vinfra_access=cfg.ADMIN_AUTH, cp_ip=True)
+    try:
+        output = vinfra_command.execute("service compute server list --long -f json")
+    except VinfraError as e:
+        exit_status_code_handler(
+            exit_code=e.exit_code,
+            message=f"[cold_migrate.py | STEP 5] {e}")
         return False
 
     vhi_vms = json.loads(output)
@@ -158,11 +162,19 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
         if not _vhi_hv_ip:
             return False
 
-    _vhi_hv_ssh = SSH(**{'host': _vhi_hv_ip, 'ssh_key': cfg.ssh_key})
-    exit_status, output = _vhi_hv_ssh.execute(f"{vinfra_access} service compute server volume list"
-                                              f" --server {_vhi_vm_id} -f json | jq -c 2>/dev/null")
+    vinfra_command = VinfraCommand(cfg, vinfra_access=vinfra_access, host=_vhi_hv_ip)
+    try:
+        output = vinfra_command.execute("service compute server volume list"
+                                        f" --server {_vhi_vm_id} -f json | jq -c 2>/dev/null")
+    except VinfraError as e:
+        exit_status_code_handler(
+            exit_code=e.exit_code,
+            message=f"[cold_migrate.py | STEP 6] {e}")
+        return False
+
     vhivm_disks = json.loads(output)
     _vhi_vm_disks = {str(x['device'].split('/')[2]): str(x['id']) for x in vhivm_disks}
+    _vhi_hv_ssh = SSH(**{'host': _vhi_hv_ip, 'ssh_key': cfg.ssh_key})
     for disk_lb, disk_id in _vhi_vm_disks.items():
         exit_status, output = _vhi_hv_ssh.execute(
             f"find /mnt/vstorage/vols/datastores/cinder/ -type f -name \"*volume-{disk_id}\" 2>/dev/null"

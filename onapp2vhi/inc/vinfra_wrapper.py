@@ -1,7 +1,20 @@
-from typing import Optional, Tuple, Dict
+from typing import Optional, Dict
 
 from onapp2vhi.inc.ssh_connector import SSH, CONNECT_TIMEOUT, CHANNEL_TIMEOUT
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+
+
+class VinfraError(Exception):
+
+    def __init__(self, command, exit_code, output):
+        super().__init__()
+        self.command = command
+        self.exit_code = exit_code
+        self.output = output
+
+    def __str__(self):
+        return f'VinfraError: command = {self.command}, exit_code = {self.exit_code}, '\
+               f'output = {self.output}'
 
 
 class VinfraBase:
@@ -30,12 +43,50 @@ class VinfraBase:
         if access_domain:
             self.vinfra_root += f" --vinfra-domain={cfg.vhi_conf['vinfra_domain']}"
 
-    def execute(self, cmd: str, long: bool = False, json: bool = True) -> Tuple[int, str]:
+    def execute(self, cmd: str, long: bool = False, json: bool = True) -> str:
         if long:
             cmd += ' --long'
         if json:
             cmd += ' -f json'
-        return self.ssh.execute(cmd)
+
+        exit_code, output = self.ssh.execute(cmd)
+        if exit_code != 0:
+            raise VinfraError(cmd, exit_code, output)
+        return output
+
+
+class VinfraCommand:
+
+    def __init__(self,
+                 cfg: OnApp2VHIConfig,
+                 vinfra_access: str,
+                 host: str = '',
+                 port: int = 22,
+                 connect_timeout: int = CONNECT_TIMEOUT,
+                 channel_timeout: int = CHANNEL_TIMEOUT,
+                 cp_ip: bool = False):
+        self.cp_ip = cp_ip
+        if host:
+            _host = host
+        else:
+            _host = cfg.vhi_conf['hv_ip']
+            if self.cp_ip:
+                _host = cfg.vhi_conf['cp_ip']
+
+        self.ssh = SSH(**{"host": _host,
+                          "port": port,
+                          "connect_timeout": connect_timeout,
+                          "channel_timeout": channel_timeout,
+                          "ssh_key": cfg.ssh_key})
+        self.vinfra_access = vinfra_access
+
+    def execute(self, cmd: str) -> str:
+        cmd = f'{self.vinfra_access} {cmd}'
+
+        exit_code, output = self.ssh.execute(cmd)
+        if exit_code != 0:
+            raise VinfraError(cmd, exit_code, output)
+        return output
 
 
 class VinfraServiceCompute(VinfraBase):
@@ -122,8 +173,10 @@ class VinfraServer(VinfraServiceCompute):
         """
         cmd = self.vinfra_root + f' create {server_name}'
         if kwargs:
+            param_list = []
             for key, value in kwargs.items():
-                cmd += f'--{key} {value} '
+                param_list.append(f'--{key} {value}')
+            cmd += ' ' + ' '.join(param_list)
         return self.execute(cmd)
 
     def list_server(self):
@@ -167,16 +220,18 @@ class VinfraServerInterface(VinfraServer):
         <interface>
         Network interface ID
         """
-        cmd: str = self.vinfra_root + f' set {iface} '
+        cmd: str = self.vinfra_root + f' set {iface}'
         if vm_name:
             cmd += f' --server {vm_name}'
         if spoofing:
-            cmd += ' --spoofing-protection-enable '
+            cmd += ' --spoofing-protection-enable'
         else:
-            cmd += ' --spoofing-protection-disable '
+            cmd += ' --spoofing-protection-disable'
         if kwargs:
+            param_list = []
             for key, value in kwargs.items():
-                cmd += f'--{key} {value} '
+                param_list.append(f'--{key} {value}')
+            cmd += ' ' + ' '.join(param_list)
         return self.execute(cmd)
 
     def list_server(self, server_name: str, **kwargs):
@@ -186,12 +241,14 @@ class VinfraServerInterface(VinfraServer):
         --server <server>
         Virtual machine ID or name
         """
-        cmd: str = self.vinfra_root + ' list '
+        cmd: str = self.vinfra_root + ' list'
         if server_name:
             cmd += f" --server {server_name}"
         if kwargs:
+            param_list = []
             for key, value in kwargs.items():
-                cmd += f'--{key} {value} '
+                param_list.append(f'--{key} {value}')
+            cmd += ' ' + ' '.join(param_list)
         return self.execute(cmd)
 
 
@@ -231,10 +288,12 @@ class VinfraSecurityGroups(VinfraServiceCompute):
         --project <project>
         List security groups that belong to the specified project ID. Can only be performed by system administrators.
         """
-        cmd = self.vinfra_root + ' list '
+        cmd = self.vinfra_root + ' list'
         if kwargs:
+            param_list = []
             for key, value in kwargs.items():
-                cmd += f'--{key} {value} '
+                param_list.append(f'--{key} {value}')
+            cmd += ' ' + ' '.join(param_list)
         return self.execute(cmd)
 
 
@@ -242,7 +301,7 @@ class VinfraSGRules(VinfraServiceCompute):
 
     def __init__(self, cfg: OnApp2VHIConfig):
         VinfraServiceCompute.__init__(self, cfg)
-        self.vinfra_root += ' security-group rule '
+        self.vinfra_root += ' security-group rule'
 
     def create(self, sg_name: str, **kwargs):
         """
@@ -266,9 +325,12 @@ class VinfraSGRules(VinfraServiceCompute):
         <security-group>
         Security group name or ID to create the rule in
         """
-        cmd = self.vinfra_root + f' create {sg_name} '
-        for key, value in kwargs.items():
-            cmd += f'--{key} {value} '
+        cmd = self.vinfra_root + f' create {sg_name}'
+        if kwargs:
+            param_list = []
+            for key, value in kwargs.items():
+                param_list.append(f'--{key} {value}')
+            cmd += ' ' + ' '.join(param_list)
         # onapp supports only incoming traffic, so the default value will be ingress
         return self.execute(f"{cmd} --ingress")
 
@@ -288,11 +350,14 @@ class VinfraSGRules(VinfraServiceCompute):
         """
         cmd: str = ''
         if list_all:
-            cmd = self.vinfra_root + ' list '
+            cmd = self.vinfra_root + ' list'
         if sg_group:
             cmd = self.vinfra_root + f' list {sg_group}'
-        for key, value in kwargs.items():
-            cmd += f'--{key} {value} '
+        if kwargs:
+            param_list = []
+            for key, value in kwargs.items():
+                param_list.append(f'--{key} {value}')
+            cmd += ' ' + ' '.join(param_list)
         return self.execute(cmd)
 
 
@@ -321,12 +386,14 @@ class VinfraProject(VinfraDomain):
         :param project_name: str "New Project"
         :param kwargs: {}
         """
-        cmd = self.vinfra_root + ' list '
+        cmd = self.vinfra_root + ' list'
         if project_name:
             cmd = self.vinfra_root + f' list {project_name}'
         if kwargs:
+            param_list = []
             for key, value in kwargs.items():
-                cmd += f'--{key} {value} '
+                param_list.append(f'--{key} {value}')
+            cmd += ' ' + ' '.join(param_list)
         return self.execute(cmd)
 
     def show(self, project_name: str, domain: str):
@@ -403,19 +470,23 @@ class VinfraUser(VinfraBase):
                                        --enable -f json"
         """
         _cmd_properties = ''
-        for key, value in user_data.items():
-            if type(value) == bool:
-                continue
+        if user_data:
+            param_list = []
+            for key, value in user_data.items():
+                if type(value) == bool:
+                    continue
 
-            if key in ['name', 'assign-domain', 'assign']:
-                continue
+                if key in ['name', 'assign-domain', 'assign']:
+                    continue
 
-            _cmd_properties += f'--{key} "{value}" '
-        cmd: str = f'echo -e "{pwd}" | {self.vinfra_root} create {user_data["name"]} {_cmd_properties}'
+                param_list.append(f'--{key} "{value}"')
+            if param_list:
+                _cmd_properties += ' ' + ' '.join(param_list)
+        cmd: str = f'echo -e "{pwd}" | {self.vinfra_root} create {user_data["name"]}{_cmd_properties}'
         if 'assign-domain' in list(user_data.keys()):
-            cmd += f'--assign-domain {user_data["assign-domain"][0]} {user_data["assign-domain"][1]}'
+            cmd += f' --assign-domain {user_data["assign-domain"][0]} {user_data["assign-domain"][1]}'
         if 'assign' in list(user_data.keys()):
-            cmd += f'--assign {user_data["assign"][0]} {user_data["assign"][1]}'
+            cmd += f' --assign {user_data["assign"][0]} {user_data["assign"][1]}'
         # Handle bool values
         for _bool in ['enable', 'disable']:
             if _bool in list(user_data.keys()):
@@ -471,15 +542,19 @@ class VinfraQuotas(VinfraServiceCompute):
         """
         _cmd_properties = ''
         cmd: str = f'{self.vinfra_root} update {project_id}'
-        for key, value in kwargs.items():
-            if key == "storage-policy":
-                continue
+        if kwargs:
+            param_list = []
+            for key, value in kwargs.items():
+                if key == "storage-policy":
+                    continue
+                param_list.append(f'--{key} "{value}"')
+            if param_list:
+                _cmd_properties += ' ' + ' '.join(param_list)
 
-            _cmd_properties += f'--{key} "{value}" '
         if "storage-policy" in list(kwargs.keys()):
-            _cmd_properties += f'--storage-policy' \
+            _cmd_properties += f' --storage-policy' \
                                f' {kwargs["storage-policy"]["name"]}:{kwargs["storage-policy"]["size"]}G'
-        cmd = f"{cmd} {_cmd_properties}"
+        cmd = f"{cmd}{_cmd_properties}"
         return self.execute(cmd, json=False)
 
 
