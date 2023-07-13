@@ -1,6 +1,6 @@
 import unittest
 import json
-from mock import patch, Mock, mock_open, call
+from mock import patch, Mock, mock_open, call, ANY
 
 from onapp2vhi.inc.onapp_helpers import (
     list_onapp_users,
@@ -14,6 +14,10 @@ from onapp2vhi.inc.onapp_helpers import (
     get_iface_from_specific_vs,
     attach_security_group_to_nic_and_enable_spoofing,
     transfer_firewall_rules_to_sg,
+    prepare_vhi_migration_data,
+)
+from onapp2vhi.inc.vinfra_wrapper import (
+    VinfraServer,
 )
 from onapp2vhi.inc.rest_client import OnAppRequests
 from onapp2vhi.utilities.config import OnApp2VHIConfig
@@ -1131,3 +1135,406 @@ class AttachSecurityGroupToNicAndEnableSpoofing(OnAppHelpersTestCase):
                                                                           '',
                                                                           'security_group_a'))
         self.mock_ssh.execute.assert_not_called()
+
+
+class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.mock_onapprequests = Mock(spec=OnAppRequests)
+        self.mock_vinfraserver = Mock(spec=VinfraServer)
+
+    @patch('onapp2vhi.inc.onapp_helpers.VinfraServer')
+    @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
+    def test_prepare_migration_data_all_users(self, mock_onapprequests, mock_vinfraserver):
+        mock_onapprequests.return_value = self.mock_onapprequests
+        mock_vinfraserver.return_value = self.mock_vinfraserver
+
+        self.mock_vinfraserver.list_server.return_value = json.dumps([
+            {'name': 'vm1', 'domain_id': '58fa18b2cefc4bad8a52f11008dfbf72'},
+        ])
+
+        def mock_onapprequests_get(path: str):
+            if path == 'users':
+                return [
+                    {
+                        'user': {
+                            'login': 'testuser',
+                            'email': 'testuser@unit.onapp2vhi.test',
+                            'id': 13,
+                            'first_name': 'test',
+                            'last_name': 'user',
+                            'roles': ['Admin', 'user'],
+                            'bucket_id': 'abc123',
+                        }
+                    },
+                ]
+            elif path == 'virtual_machines':
+                return [
+                    {
+                        'virtual_machine': {
+                            'identifier': 'abcdef',
+                            'label': 'test-vm1-label',
+                            'hostname': 'test-vm1',
+                            'domain': 'testdomain',
+                            'user_id': 13,
+                            'ip_addresses': [],
+                            'booted': True,
+                            'operating_system': 'centos7',
+                            'built_from_iso': False,
+                            'built_from_ova': False,
+                        },
+                    },
+                ]
+            elif path == 'billing/buckets/abc123/access_controls':
+                return [
+                    {
+                        'access_control': {
+                            'type': 'compute_zone_resource',
+                            'server_type': 'virtual',
+                            'limits': {
+                                'limit_memory': '4096',
+                                'limit_cpu': '4',
+                            },
+                            'target_name': 'sample compute target name',
+                        }
+                    },
+                    {
+                        'access_control': {
+                            'type': 'data_store_zone_resource',
+                            'limits': {
+                                'limit': '40',
+                            },
+                            'target_name': 'sample datastore target name',
+                        }
+                    }
+                ]
+            elif path == 'version':
+                return {'version': '6.4.12345-unittest'}
+
+            raise RuntimeError('unhandled path = {path}'.format(path=path))
+
+        self.mock_onapprequests.get.side_effect = mock_onapprequests_get
+        expected = [{'first_name': 'test',
+                     'id': 13,
+                     'last_name': 'user',
+                     'password': ANY,
+                     'project_name': 'project_testuser@unit.onapp2vhi.test',
+                     'quotas': {'cores': 4, 'ram-size': 4398046511104, 'storage': 40},
+                     'roles': ['Admin', 'user'],
+                     'user_email': 'testuser@unit.onapp2vhi.test',
+                     'user_login': 'testuser',
+                     'virtual_machines': [{'booted': True,
+                                           'built_from_iso': False,
+                                           'built_from_ova': False,
+                                           'domain': 'testdomain',
+                                           'hostname': 'test-vm1',
+                                           'id': 'abcdef',
+                                           'ip_addr': None,
+                                           'label': 'test-vm1-label',
+                                           'operating_system': 'centos7'}]}]
+
+        result = prepare_vhi_migration_data(self.mock_cfg)
+
+        self.assertNotEqual(result, [])
+        self.assertTrue(isinstance(result, list))
+        self.assertEqual(result, expected)
+
+    @patch('onapp2vhi.inc.onapp_helpers.VinfraServer')
+    @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
+    def test_prepare_migration_data_all_users_no_vm(self, mock_onapprequests, mock_vinfraserver):
+        mock_onapprequests.return_value = self.mock_onapprequests
+        mock_vinfraserver.return_value = self.mock_vinfraserver
+
+        self.mock_vinfraserver.list_server.return_value = json.dumps([
+            {'name': 'vm1', 'domain_id': '58fa18b2cefc4bad8a52f11008dfbf72'},
+        ])
+
+        def mock_onapprequests_get(path: str):
+            if path == 'users':
+                return [
+                    {
+                        'user': {
+                            'login': 'testuser',
+                            'email': 'testuser@unit.onapp2vhi.test',
+                            'id': 13,
+                            'first_name': 'test',
+                            'last_name': 'user',
+                            'roles': ['Admin', 'user'],
+                            'bucket_id': 'abc123',
+                        }
+                    },
+                    {
+                        'user': {   # user has no vm
+                            'login': 'dummy',
+                            'email': 'dummy@unit.onapp2vhi.test',
+                            'id': 14,
+                            'first_name': 'dum',
+                            'last_name': 'my',
+                            'roles': ['Admin', 'user'],
+                            'bucket_id': 'abc123',
+                        }
+                    },
+                ]
+            elif path == 'virtual_machines':
+                return [
+                    {
+                        'virtual_machine': {
+                            'identifier': 'abcdef',
+                            'label': 'test-vm1-label',
+                            'hostname': 'test-vm1',
+                            'domain': 'testdomain',
+                            'user_id': 13,
+                            'ip_addresses': [],
+                            'booted': True,
+                            'operating_system': 'centos7',
+                            'built_from_iso': False,
+                            'built_from_ova': False,
+                        },
+                    },
+                ]
+            elif path == 'billing/buckets/abc123/access_controls':
+                return [
+                    {
+                        'access_control': {
+                            'type': 'compute_zone_resource',
+                            'server_type': 'virtual',
+                            'limits': {
+                                'limit_memory': '4096',
+                                'limit_cpu': '4',
+                            },
+                            'target_name': 'sample compute target name',
+                        }
+                    },
+                    {
+                        'access_control': {
+                            'type': 'data_store_zone_resource',
+                            'limits': {
+                                'limit': '40',
+                            },
+                            'target_name': 'sample datastore target name',
+                        }
+                    }
+                ]
+            elif path == 'version':
+                return {'version': '6.4.12345-unittest'}
+
+            raise RuntimeError('unhandled path = {path}'.format(path=path))
+
+        self.mock_onapprequests.get.side_effect = mock_onapprequests_get
+        expected = [{'first_name': 'test',
+                     'id': 13,
+                     'last_name': 'user',
+                     'password': ANY,
+                     'project_name': 'project_testuser@unit.onapp2vhi.test',
+                     'quotas': {'cores': 4, 'ram-size': 4398046511104, 'storage': 40},
+                     'roles': ['Admin', 'user'],
+                     'user_email': 'testuser@unit.onapp2vhi.test',
+                     'user_login': 'testuser',
+                     'virtual_machines': [{'booted': True,
+                                           'built_from_iso': False,
+                                           'built_from_ova': False,
+                                           'domain': 'testdomain',
+                                           'hostname': 'test-vm1',
+                                           'id': 'abcdef',
+                                           'ip_addr': None,
+                                           'label': 'test-vm1-label',
+                                           'operating_system': 'centos7'}]},
+                    {'first_name': 'dum',
+                     'id': 14,
+                     'last_name': 'my',
+                     'password': ANY,
+                     'project_name': 'project_dummy@unit.onapp2vhi.test',
+                     'quotas': {'cores': 4, 'ram-size': 4398046511104, 'storage': 40},
+                     'roles': ['Admin', 'user'],
+                     'user_email': 'dummy@unit.onapp2vhi.test',
+                     'user_login': 'dummy',
+                     'virtual_machines': []}]
+
+        result = prepare_vhi_migration_data(self.mock_cfg)
+
+        self.maxDiff = None
+        self.assertNotEqual(result, [])
+        self.assertTrue(isinstance(result, list))
+        self.assertEqual(result, expected)
+
+    @patch('onapp2vhi.inc.onapp_helpers.VinfraServer')
+    @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
+    def test_prepare_migration_data_for_a_user(self, mock_onapprequests, mock_vinfraserver):
+        mock_onapprequests.return_value = self.mock_onapprequests
+        mock_vinfraserver.return_value = self.mock_vinfraserver
+
+        self.mock_vinfraserver.list_server.return_value = json.dumps([
+            {'name': 'vm1', 'domain_id': '58fa18b2cefc4bad8a52f11008dfbf72'},
+        ])
+
+        def mock_onapprequests_get(path: str, params: str = None):
+            if path == 'users/1':
+                return {
+                    'user': {
+                        'login': 'tester',
+                        'email': 'tester@unit.onapp2vhi.test',
+                        'id': 1,
+                        'first_name': 'test',
+                        'last_name': 'er',
+                        'roles': ['Admin', 'user'],
+                        'bucket_id': 'abc123',
+                    }
+                }
+            elif path == 'virtual_machines':
+                return [
+                    {
+                        'virtual_machine': {
+                            'identifier': 'abcdef',
+                            'label': 'test-vm1-label',
+                            'hostname': 'test-vm1',
+                            'domain': 'testdomain',
+                            'user_id': 1,
+                            'ip_addresses': [
+                                {
+                                    'ip_address': {
+                                        'address': '1.2.3.4',
+                                        'primary': True,
+                                    }
+                                }
+                            ],
+                            'booted': True,
+                            'operating_system': 'centos7',
+                            'built_from_iso': False,
+                            'built_from_ova': False,
+                        },
+                    },
+                ]
+            elif path == 'billing/buckets/abc123/access_controls':
+                return [
+                    {
+                        'access_control': {
+                            'type': 'compute_zone_resource',
+                            'server_type': 'virtual',
+                            'limits': {
+                                'limit_memory': '4096',
+                                'limit_cpu': '4',
+                            },
+                            'target_name': 'sample compute target name',
+                        }
+                    },
+                    {
+                        'access_control': {
+                            'type': 'data_store_zone_resource',
+                            'limits': {
+                                'limit': '40',
+                            },
+                            'target_name': 'sample datastore target name',
+                        }
+                    }
+                ]
+            elif path == 'version':
+                return {'version': '6.4.12345-unittest'}
+
+            raise RuntimeError('unhandled path = {path}'.format(path=path))
+
+        self.mock_onapprequests.get.side_effect = mock_onapprequests_get
+        expected = [{'first_name': 'test',
+                     'id': 1,
+                     'last_name': 'er',
+                     'password': ANY,
+                     'project_name': 'project_tester@unit.onapp2vhi.test',
+                     'quotas': {'cores': 4, 'ram-size': 4398046511104, 'storage': 40},
+                     'roles': ['Admin', 'user'],
+                     'user_email': 'tester@unit.onapp2vhi.test',
+                     'user_login': 'tester',
+                     'virtual_machines': [{'booted': True,
+                                           'built_from_iso': False,
+                                           'built_from_ova': False,
+                                           'domain': 'testdomain',
+                                           'hostname': 'test-vm1',
+                                           'id': 'abcdef',
+                                           'ip_addr': '1.2.3.4',
+                                           'label': 'test-vm1-label',
+                                           'operating_system': 'centos7'}]}]
+
+        result = prepare_vhi_migration_data(self.mock_cfg, 1)
+
+        self.assertNotEqual(result, [])
+        self.assertTrue(isinstance(result, list))
+        self.assertEqual(result, expected)
+
+    @patch('onapp2vhi.inc.onapp_helpers.VinfraServer')
+    @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
+    def test_prepare_migration_data_user_not_found(self, mock_onapprequests, mock_vinfraserver):
+        mock_onapprequests.return_value = self.mock_onapprequests
+        mock_vinfraserver.return_value = self.mock_vinfraserver
+
+        self.mock_vinfraserver.list_server.return_value = json.dumps([
+            {'name': 'vm1', 'domain_id': '58fa18b2cefc4bad8a52f11008dfbf72'},
+        ])
+
+        def mock_onapprequests_get(path: str, params: str = None):
+            if path == 'users/1':
+                return None
+            elif path == 'virtual_machines':
+                return [
+                    {
+                        'virtual_machine': {
+                            'identifier': 'abcdef',
+                            'label': 'test-vm1-label',
+                            'hostname': 'test-vm1',
+                            'domain': 'testdomain',
+                            'user_id': 13,
+                            'ip_addresses': [
+                                {
+                                    'ip_address': {
+                                        'address': '1.2.3.4',
+                                        'primary': True,
+                                    }
+                                }
+                            ],
+                            'booted': True,
+                            'operating_system': 'centos7',
+                            'built_from_iso': False,
+                            'built_from_ova': False,
+                        },
+                    },
+                ]
+            elif path == 'version':
+                return {'version': '6.4.12345-unittest'}
+
+            raise RuntimeError('unhandled path = {path}'.format(path=path))
+
+        self.mock_onapprequests.get.side_effect = mock_onapprequests_get
+
+        result = prepare_vhi_migration_data(self.mock_cfg, 1)
+        self.assertFalse(result)
+
+    @patch('onapp2vhi.inc.onapp_helpers.VinfraServer')
+    @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
+    def test_prepare_migration_data_user_has_no_vm(self, mock_onapprequests, mock_vinfraserver):
+        mock_onapprequests.return_value = self.mock_onapprequests
+        mock_vinfraserver.return_value = self.mock_vinfraserver
+
+        self.mock_vinfraserver.list_server.return_value = json.dumps([
+            {'name': 'vm1', 'domain_id': '58fa18b2cefc4bad8a52f11008dfbf72'},
+        ])
+
+        def mock_onapprequests_get(path: str, params: str = None):
+            if path == 'users/1':
+                return {
+                    'user': {
+                        'login': 'tester',
+                        'email': 'tester@unit.onapp2vhi.test',
+                        'id': 1,
+                        'first_name': 'test',
+                        'last_name': 'er',
+                        'roles': ['Admin', 'user'],
+                        'bucket_id': 'abc123',
+                    }
+                }
+            elif path == 'virtual_machines':
+                return []
+
+            raise RuntimeError('unhandled path = {path}'.format(path=path))
+
+        self.mock_onapprequests.get.side_effect = mock_onapprequests_get
+
+        result = prepare_vhi_migration_data(self.mock_cfg, 1)
+        self.assertFalse(result)
