@@ -4,6 +4,11 @@
 
 - O2V-156: Hide сredentials in log files
 
+### Fixes
+
+- O2V-113: fix migration results in json decode error
+- O2V-171: adding option to migrate with just `--vm` parameter
+
 ## v1.0.1 (30/06/2023)
 
 ### Feature
