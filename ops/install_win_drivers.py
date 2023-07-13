@@ -127,7 +127,12 @@ def vm_install_win_drivers(vm_handler, idn: str, vm_properties: dict):
     _vm_ssh.connect_timeout = 20
     _vm_ssh.channel_timeout = 20
     if _cloud_init:
-        exit_status, output = _vm_ssh.execute('cd C:; msiexec /i CloudbaseInitSetup_Stable_x64.msi /qn /l*v log.txt')
+        exit_status, output = _vm_ssh.execute(
+            "cd C:; msiexec /i CloudbaseInitSetup_Stable_x64.msi /qn /l*v log.txt; "
+            "cp 'C:/Program Files/Cloudbase Solutions/Cloudbase-Init/conf/cloudbase-init.conf' 'C:/Program Files/Cloudbase Solutions/Cloudbase-Init/conf/cloudbase-init.conf.bak'; "
+            'echo "metadata_services=cloudbaseinit.metadata.services.configdrive.ConfigDriveService,cloudbaseinit.metadata.services.httpservice.HttpService" >> "C:/Program Files/Cloudbase Solutions/Cloudbase-Init/conf/cloudbase-init.conf"; '
+            'echo "plugins=cloudbaseinit.plugins.common.mtu.MTUPlugin,cloudbaseinit.plugins.windows.ntpclient.NTPClientPlugin,cloudbaseinit.plugins.windows.createuser.CreateUserPlugin,cloudbaseinit.plugins.common.networkconfig.NetworkConfigPlugin,cloudbaseinit.plugins.windows.licensing.WindowsLicensingPlugin,cloudbaseinit.plugins.common.sshpublickeys.SetUserSSHPublicKeysPlugin,cloudbaseinit.plugins.windows.extendvolumes.ExtendVolumesPlugin,cloudbaseinit.plugins.common.setuserpassword.SetUserPasswordPlugin,cloudbaseinit.plugins.common.userdata.UserDataPlugin,cloudbaseinit.plugins.windows.winrmlistener.ConfigWinRMListenerPlugin,cloudbaseinit.plugins.windows.winrmcertificateauth.ConfigWinRMCertificateAuthPlugin,cloudbaseinit.plugins.common.localscripts.LocalScriptsPlugin" >> "C:/Program Files/Cloudbase Solutions/Cloudbase-Init/conf/cloudbase-init.conf" '
+        )
         if not exit_status_code_handler(
                 exit_code=exit_status,
                 message=f"[install_win_drivers.py | STEP 5] installation failed `CloudbaseInitSetup_Stable_x64`\n"
