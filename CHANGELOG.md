@@ -1,3 +1,9 @@
+## Unreleased
+
+### Feature
+
+- O2V-156: Hide сredentials in log files
+
 ## v1.0.1 (30/06/2023)
 
 ### Feature
