@@ -108,6 +108,12 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
             vm_created = True
             break
 
+        if not _vm['networks'] and _vm['status'] == "BUILD":
+            #Rare situation where vm's network is still building and there is another migration instance running
+            logs.error(f"VM with {_vm['name']} name is still in \"build\" status, aborting migration. Please try again.\n"
+                       f"VM: {cfg.vhi_conf['url']}/compute/servers/instances/{_vm_id}/")
+            return False
+
         if onappvm_pri_mac == _vm['networks'][0]['mac_addr'] or onappvm_pri_ip in _vm['networks'][0]['ips']:
             vm_created = True
             break
