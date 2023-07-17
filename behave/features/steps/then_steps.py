@@ -110,7 +110,7 @@ def step_impl(context, state):
                         break
             
     if not match:
-        assert CHECK_FAILED, "error: the virtual machine is not found in VHI portal"
+        assert CHECK_FAILED, "error: the virtual machine is not found in VHI portal or its state is not %s" % state
 
 use_step_matcher('parse')
 @then('the virtual machine ({name}) is deleted successfully')
@@ -161,3 +161,47 @@ def step_impl(context, path):
             assert CHECK_FAILED, "error: logs are not found in the %s" % path
 
     del context.log_path
+
+use_step_matcher('parse')
+@then('its volume is using the correct storage policy ({name})')
+def step_impl(context, name):
+
+    hostname = context.result[0]["virtual_machine"]["hostname"]
+    config = helper.get_config()["vhi"]
+    output = helper.open_vhi_ssh_connection(config, "service compute server list -f json")
+    vm_list = json.loads(output.stdout)
+    context.entity_to_delete = {}
+
+    match = False
+    for vm in vm_list:
+
+        if hostname in vm["name"]:
+            hostname = vm["name"]
+            match = True
+            break
+
+    if not match:
+        assert CHECK_FAILED, "error: VM is not found in VHI portal"
+
+    output = helper.open_vhi_ssh_connection(config, "service compute server volume list --server %s -f json" % hostname)
+    arr_volume = json.loads(output.stdout)
+    arr_device = []
+
+    for device in arr_volume:
+        arr_device.append(device["id"])
+
+    storage_policy_name = helper.get_fixture("storage_policy")[name]["name"]
+    arr_volume_to_delete = []
+
+    for id in arr_device:
+
+        output = helper.open_vhi_ssh_connection(config, "service compute volume show %s -c storage_policy_name -f json" % id)
+        output_result = json.loads(output.stdout)["storage_policy_name"]
+        
+        if storage_policy_name != output_result:
+            assert CHECK_FAILED, "error: disk is not using the storage policy, it is using %s" % output_result
+
+        arr_volume_to_delete.append(id)
+
+    context.entity_to_delete["volume"] = arr_volume_to_delete
+    context.entity_to_delete["storage_policy"] = storage_policy_name

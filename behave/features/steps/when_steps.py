@@ -29,6 +29,30 @@ def step_impl(context, entity, name):
         context.response = response[entity_plural]
 
 use_step_matcher('re')
+@when('I create a? (?P<entity>[\w\s]+) \((?P<name>[\w\W\s]+)\) in VHI portal with following details')
+def step_impl(context, entity, name):
+
+    entity = helper.rephrase_key(entity)
+    data = helper.get_fixture(entity)[name]
+
+    headings = helper.vinfra_rephrase_key(context.table.headings)
+    for heading in headings:
+        for row in context.table.rows:
+            row.headings = headings
+            data[heading] = row[heading]
+
+    print(data)
+
+    param = ""
+
+    for key, value in data.items():
+        if key != "name":
+            param += "--" + key + " " + value + " " 
+
+    config = helper.get_config()
+    _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute storage-policy create {param} {name}".format(param=param, name=data["name"]))
+
+use_step_matcher('re')
 @when('I create a? (?P<entity>[\w\s]+) \((?P<name>[\w\W\s]+)\) with following details')
 def step_impl(context, entity, name):
 
@@ -318,6 +342,78 @@ def step_impl(context, type, data):
     context.data["tool"] = dict_data_from_tool
     context.data["onapp_cloud"] = data_from_cloud
 
+def get_config_ini(arr_properties):
+
+    config = helper.get_config()
+    data = {}
+
+    conn_onapp = Connection(host=config["onapp"]["host"], user=config["onapp"]["user"], port=config["onapp"]["port"], forward_agent=True)
+    
+    with conn_onapp.cd(config["onapp"]["migration_tool_dir"]):
+            
+        try:
+            if "exists" in vars(conn_onapp.run("test -f config.ini && echo config.ini exists"))["stdout"]:
+                user_config = "config.ini"
+
+        except:
+            user = vars(conn_onapp.run("whoami", hide=True))["stdout"].replace("\n","")
+            user_config = "/home/{user}/.config/onapp2vhi/config.ini".format(user=user)
+
+            if "exists" in vars(conn_onapp.run("test -f " + user_config + " && echo '{user_config} exists'".format(user_config=user_config)))["stdout"]:
+                user_config = user_config
+
+        for item in arr_properties:
+
+            data[item] = vars(conn_onapp.run("echo $(awk -F \"=\" '/{item} / {{print $2}}' {user_config})"\
+                                             .format(item=item, user_config=user_config), hide=True))["stdout"].replace("\n", "")
+
+    return data
+
+use_step_matcher('parse')
+@when('I migrate the virtual machine ({name}) with following details')
+def step_impl(context, name):
+    
+    user = context.cp.search("users", args=vars(vars(context.cp)["auth"])["username"])
+    
+    if user:
+        user_id = user[0]["user"]["id"]
+    else:
+        assert CHECK_FAILED, "error: no user found"
+    
+    fixture = helper.get_fixture("virtual_machine")
+    vm = context.cp.search("virtual_machines", args=fixture[name]["virtual_machine"]["label"])
+    
+    if vm:
+        vm_identifier = vm[0]["virtual_machine"]["identifier"]
+    else:
+        assert CHECK_FAILED, "error: no machine found"
+
+    config = helper.get_config()
+    basic_command = "migrate --vm {vm_id} --user {user_id} ".format(vm_id=vm_identifier, user_id=user_id)
+
+    data = {}
+    details = ""
+    headings = helper.rephrase_key(context.table.headings)
+    for heading in headings:
+        for row in context.table.rows:
+            row.headings = headings
+
+            if helper.get_actual_name(heading):
+                data[heading] = helper.get_fixture(heading)[row[heading]]["name"]
+            else:
+                data[heading] = row[heading]
+
+    for key, value in data.items():
+        details += "--" + key + " " + value + " "
+
+    if hasattr(context, "log_path"):
+        command = context.log_path + basic_command + details
+    else:
+        command = basic_command + details
+    
+    print(command)
+    _ = helper.open_onapp_ssh_connection(config["onapp"], command)
+
 use_step_matcher('parse')
 @when('I migrate the virtual machine ({name})')
 def step_impl(context, name):
@@ -376,30 +472,12 @@ use_step_matcher('parse')
 def step_impl(context, name):
 
     # read config.ini (O2V-51) in onapp CP server to extract the vinfra_domain
-    config = helper.get_config()
-    vinfra_domain = ""
-
-    conn = Connection(host=config["onapp"]["host"], user=config["onapp"]["user"], port=config["onapp"]["port"], forward_agent=True)
-    
-    with conn.cd(config["onapp"]["migration_tool_dir"]):
-            
-        try:
-            if "exists" in vars(conn.run("test -f config.ini && echo config.ini exists"))["stdout"]:
-                user_config = "config.ini"
-
-        except:
-            user = vars(conn.run("whoami", hide=True))["stdout"].replace("\n","")
-            user_config = "/home/{user}/.config/onapp2vhi/config.ini".format(user=user)
-
-            if "exists" in vars(conn.run("test -f " + user_config + " && echo '{user_config} exists'".format(user_config=user_config)))["stdout"]:
-                user_config = user_config
-
-        vinfra_domain = vars(conn.run("echo $(awk -F \"=\" '/vinfra_domain / {{print $2}}' {user_config})"
-                                        .format(user_config=user_config), hide=True))["stdout"].replace("\n", "")
+    config = helper.get_config()["vhi"]
+    data = get_config_ini(["vinfra_domain"])
     
     # delete the user in VHI portal
     email = helper.get_fixture("user")[name]["email"]
-    users = helper.open_vhi_ssh_connection(config["vhi"], "domain user list --domain {vinfra_domain} -f json".format(vinfra_domain=vinfra_domain))
+    users = helper.open_vhi_ssh_connection(config, "domain user list --domain {vinfra_domain} -f json".format(vinfra_domain=data["vinfra_domain"]))
     arr_user = json.loads(users.stdout)
 
     username = ""
@@ -409,8 +487,8 @@ def step_impl(context, name):
             break
     
     if username:
-        _ = helper.open_vhi_ssh_connection(config["vhi"], "domain user delete --domain {vinfra_domain} {username}"
-                                            .format(vinfra_domain=vinfra_domain, username=username))
+        _ = helper.open_vhi_ssh_connection(config, "domain user delete --domain {vinfra_domain} {username}"
+                                            .format(vinfra_domain=data["vinfra_domain"], username=username))
     else:
         print("user is not found in VHI portal, proceeding with the test...")
     
@@ -433,3 +511,23 @@ def step_impl(context, path):
                 conn.run("rm -rf %s/" % path)
         except:
             print("existing %s/ is not found, proceeding..." % path)
+
+use_step_matcher('re')
+@when('I assign the storage policy \((?P<name>[\w\W\s]+)\) with (?P<size>[\d]+[M|MiB|G|GiB|T|TiB|P|PiB|E|EiB]) to the project')
+def step_impl(context, name, size):
+
+    # size is needed because vinfra does not support unlimited
+    storage_policy = helper.get_fixture("storage_policy")[name]["name"]
+    data = get_config_ini(["vinfra_domain", "vinfra_project"])
+    config = helper.get_config()["vhi"]
+
+    # to get project ID
+    output = helper.open_vhi_ssh_connection(config, "domain project list --domain {domain} -f json".format(domain=data["vinfra_domain"]))
+    project_list = json.loads(output.stdout)
+
+    for project in project_list:
+        if project["name"] == data["vinfra_project"]:
+            output = helper.open_vhi_ssh_connection(config, "service compute quotas update --storage-policy {name}:{size} {project_id}"\
+                                                    .format(name=storage_policy, size=size, project_id=project["id"]))
+            
+            break

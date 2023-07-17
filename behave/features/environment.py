@@ -71,6 +71,25 @@ def after_scenario(context, scenario):
                 print("VM has been deleted successfully")
                 break
         
+        if hasattr(context, "entity_to_delete"):
+
+            for key in context.entity_to_delete:
+
+                if key == "volume":
+                    for volume in context.entity_to_delete["volume"]:
+                        # ignore if the volume does not exist after vm has been deleted
+                        try:
+                            _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute volume delete %s" % volume)
+                            print("volume %s has been removed" % volume)
+                        except:
+                            pass
+
+                elif key == "storage_policy":
+                    _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute storage-policy delete %s" % context.entity_to_delete["storage_policy"])
+                    print("storage policy named %s has been removed" % context.entity_to_delete["storage_policy"])
+
+        
         # we proceed with the rest of the scenario even if the vm is not found
         if not match:
             print("VM is not found in VHI portal, proceed to next scenario")
+        
