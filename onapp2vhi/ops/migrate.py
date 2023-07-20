@@ -109,7 +109,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
     _custom_project = project
     # --Step 1--#
     # --OnApp: Get User, VM's information--#
-    vhi_users_data = prepare_vhi_migration_data(cfg, user_idn=user_idn)
+    vhi_users_data = prepare_vhi_migration_data(cfg, user_idn=user_idn, vm_idn=vm)
     if not vhi_users_data:
         logs.error(msg='Collecting user data failed. Please take a look into logs.')
         return False

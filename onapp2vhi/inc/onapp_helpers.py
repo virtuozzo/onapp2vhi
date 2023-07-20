@@ -3,7 +3,7 @@ import json
 import re
 import xml.etree.ElementTree as KVMxml
 
-from onapp2vhi.inc.rest_client import OnAppRequests
+from onapp2vhi.inc.rest_client import OnAppRequests, OnAppRequestsException
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.ssh_connector import ssh_run, SSH
 from onapp2vhi.utilities.logs.logger import OnAppVHILogger
@@ -333,7 +333,7 @@ def _vhi_virtual_machine_list(cfg: OnApp2VHIConfig):
     return [vm['name'] for vm in server_list if vm['domain_id'] == cfg.vhi_conf['domain_id']]
 
 
-def get_all_virtual_machines(cfg: OnApp2VHIConfig, user_id: int = None):
+def get_all_virtual_machines(cfg: OnApp2VHIConfig, user_id: int = None, vm_id:str = ''):
     """
     Get list of all virtual machines and sort them by user ID
     :param user_id: 4 - get that user VM's
@@ -341,7 +341,10 @@ def get_all_virtual_machines(cfg: OnApp2VHIConfig, user_id: int = None):
     """
     logs.info(f"{_spaces}-- OnApp: Get All Virtual Machines information --  ", separator=True)
     onapp_requests = OnAppRequests(cfg)
-    if user_id:
+    if vm_id:
+        response = onapp_requests.get(f'virtual_machines/{vm_id}')
+        response = [response]
+    elif user_id:
         response = onapp_requests.get('virtual_machines', params=f'search_filter[user_id]={user_id}')
     else:
         response = onapp_requests.get('virtual_machines')
@@ -1006,14 +1009,21 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
 DEFAULT_ONAPP_USER_NAMES = ('system_owner', 'cloud_locations_manager')
 
 
-def prepare_vhi_migration_data(cfg: OnApp2VHIConfig, user_idn=None):
+def prepare_vhi_migration_data(cfg: OnApp2VHIConfig, user_idn=None, vm_idn=None):
     """
     This method prepare user data and vm data for VHI migration
     :param user_idn:
     :return:
     """
     # Get User data and Virtual Servers from OnApp
-    if user_idn and type(user_idn) == int:
+    if vm_idn:
+        try:
+            _vms_dict = get_all_virtual_machines(cfg, vm_id=vm_idn)
+            user_idn = list(_vms_dict.keys())[0]
+            _user_data = get_user_data(cfg, url=f"users/{user_idn}", get_type='ID')
+        except OnAppRequestsException:
+            return False
+    elif user_idn and type(user_idn) == int:
         _user_data = get_user_data(cfg, url=f"users/{user_idn}", get_type='ID')
         _vms_dict = get_all_virtual_machines(cfg, user_id=user_idn)
     else:
