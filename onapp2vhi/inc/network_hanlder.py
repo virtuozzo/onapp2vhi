@@ -109,9 +109,10 @@ def get_network_configuration(cfg: OnApp2VHIConfig, virtual_server_identifier: s
                 return False
 
             vhi_network_id = vhi_network.create()
-            secondary_network_cmd = (f" --network id={vhi_network_id},{ip_addresses}"
-                                     f"mac='{vhi_network.mac_address}',spoofing-protection-disable ")
-            networks_cmd.append(secondary_network_cmd)
+            network_cmd = (f" --network id={vhi_network_id},{ip_addresses}"
+                           f"mac='{vhi_network.mac_address}',"
+                           "spoofing-protection-disable ")
+            networks_cmd.append(network_cmd)
         else:
             network_interface_cmd = f" --network id={vhi_network.id},{ip_addresses}mac='{vhi_network.mac_address}'," \
                                     f"spoofing-protection-disable "

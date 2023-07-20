@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Fixes
+
+- O2V-115: Add ip range check to fix issue with networks with same subnet having different ip range
+
 ### Feature
 
 - O2V-156: Hide сredentials in log files
