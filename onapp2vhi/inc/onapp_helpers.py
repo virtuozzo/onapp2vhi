@@ -395,8 +395,8 @@ def get_vm_source_properties(cfg: OnApp2VHIConfig, vm_idn: str) -> Dict:
     _vm_hv_ip = _hv_props['hypervisor']['ip_address']
     _vm_nics = onapp_requests.get(f'virtual_machines/{vm_idn}/ip_addresses')
     _vm_ip_addr = [nic['ip_address_join']['ip_address']['address'] for nic in _vm_nics
-                   if (nic['ip_address_join']['ip_address'] and
-                       nic['ip_address_join']['ip_address']['primary'])][0]
+                   if (nic['ip_address_join']['ip_address']
+                       and nic['ip_address_join']['ip_address']['primary'])][0]
     logs.info(f"-- Hypervisor ID: {_vm_hv_id} | Hypervisor IP ADDRESS: {_vm_hv_ip} | VM IP ADDRESS {_vm_ip_addr}")
     return {'hv_ip': _vm_hv_ip, 'vm_os': _vm_os, 'vm_ip_addr': _vm_ip_addr, 'network_info': network_info,
             'hot_migrate': _hot_migrate, 'hostname': _vm_hostname, 'domain': _vm_domain}
