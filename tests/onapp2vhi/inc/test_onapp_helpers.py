@@ -11,9 +11,11 @@ from onapp2vhi.inc.onapp_helpers import (
     get_user_data,
     get_user_ssh_keys,
     get_all_virtual_machines,
+    get_vm_source_properties,
     get_iface_from_specific_vs,
     attach_security_group_to_nic_and_enable_spoofing,
     transfer_firewall_rules_to_sg,
+    create_new_vhi_vm,
     prepare_vhi_migration_data,
 )
 from onapp2vhi.inc.vinfra_wrapper import (
@@ -729,7 +731,75 @@ class GetAllVirtualMachinesTestCase(OnAppHelpersTestCase):
         self.assertEquals(results, expected)
 
 
-class TransferFirewallRulesToSecurityGroup(OnAppHelpersTestCase):
+class GetVmSourcePropertiesTestCase(OnAppHelpersTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.mock_onapprequests = Mock(spec=OnAppRequests, name='mock_onapprequests')
+
+    @patch('onapp2vhi.inc.network_onapp.OnAppRequests')
+    @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
+    def test_get_ok(self, mock_onapprequests1, mock_onapprequests2):
+
+        def onapprequestsget(param:str):
+            if param == 'virtual_machines/abcdef':
+                return {
+                    'virtual_machine': {
+                        'hypervisor_id': 'testhv1',
+                        'operating_system': 'centos7',
+                        'allowed_hot_migrate': True,
+                        'hostname': 'test-host',
+                        'domain': 'localdomain',
+                    }
+                }
+            elif param == 'virtual_machines/abcdef/network_interfaces':
+                return [
+                    {
+                        'network_interface': {
+                            'id': 'eth0',
+                        }
+                    },
+                ]
+            elif param == 'virtual_machines/abcdef/ip_addresses':
+                return [
+                    {
+                        'ip_address_join': {
+                            'network_interface_id': 'eth0',
+                            'ip_address': {
+                                'address': '2.3.2.4',
+                                'primary': True,
+                            }
+                        }
+                    },
+                ]
+            elif param == 'settings/hypervisors/testhv1':
+                return {
+                    'hypervisor': {
+                        'ip_address': '1.1.2.2',
+                    }
+                }
+
+            raise RuntimeError(f'unhandled onapprequsets.get({param})')
+
+        self.mock_onapprequests.get.side_effect = onapprequestsget
+        mock_onapprequests1.return_value = self.mock_onapprequests
+        mock_onapprequests2.return_value = self.mock_onapprequests
+        expected = {
+            'domain': 'localdomain',
+            'hostname': 'test-host',
+            'hot_migrate': True,
+            'hv_ip': '1.1.2.2',
+            'network_info': { 'eth0': ['2.3.2.4'] },
+            'vm_ip_addr': '2.3.2.4',
+            'vm_os': 'centos7',
+        }
+
+        result = get_vm_source_properties(self.mock_cfg, 'abcdef')
+
+        self.assertEqual(result, expected)
+
+
+class TransferFirewallRulesToSecurityGroupTestCase(OnAppHelpersTestCase):
 
     def setUp(self):
         super().setUp()
@@ -1135,6 +1205,211 @@ class AttachSecurityGroupToNicAndEnableSpoofing(OnAppHelpersTestCase):
                                                                           '',
                                                                           'security_group_a'))
         self.mock_ssh.execute.assert_not_called()
+
+
+class CreateNewVhiVmTestCase(OnAppHelpersTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.mock_ssh = Mock(spec=SSH)
+
+    def test_create_ok(self):
+        mock_disks = [{ 'size': '5',},]
+        mock_nics = [{ 'ips': ['1.1.1.1',],},]
+
+        def mock_ssh_execute(command:str, real_data=False):
+            if 'service compute server create' in command:
+                return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
+            elif 'for ((i=1;i<=100;i++))' in command:
+                return (0, 'done')
+
+            raise RuntimeError(f'Unhandled command: {command}')
+
+        self.mock_ssh.execute.side_effect = mock_ssh_execute
+        expected = '1111-2222-3333-444444444444'
+
+        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
+                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
+                                   'test-server', 'localdomain', 'default')
+        self.assertEqual(result, expected)
+
+    def test_create_failed(self):
+        mock_disks = [{ 'size': '5',},]
+        mock_nics = [{ 'ips': ['1.1.1.1',],},]
+
+        def mock_ssh_execute(command:str, real_data=False):
+            if 'service compute server create' in command:
+                return (1, 'create failed!')
+
+            raise RuntimeError(f'Unhandled command: {command}')
+
+        self.mock_ssh.execute.side_effect = mock_ssh_execute
+
+        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
+                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
+                                   'test-server', 'localdomain', 'default')
+        self.assertFalse(result)
+
+    def test_create_stop_failed(self):
+        mock_disks = [{ 'size': '5',},]
+        mock_nics = [{ 'ips': ['1.1.1.1',],},]
+
+        def mock_ssh_execute(command:str, real_data=False):
+            if 'service compute server create' in command:
+                return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
+            elif 'for ((i=1;i<=100;i++))' in command:
+                return (1, 'vm wont stop!')
+
+            raise RuntimeError(f'Unhandled command: {command}')
+
+        self.mock_ssh.execute.side_effect = mock_ssh_execute
+
+        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
+                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
+                                   'test-server', 'localdomain', 'default')
+        self.assertFalse(result)
+
+    def test_create_ok_multiple_disk(self):
+        mock_disks = [{ 'size': '5',}, { 'size': '2' }]
+        mock_nics = [{ 'ips': ['1.1.1.1',],},]
+
+        def mock_ssh_execute(command:str, real_data=False):
+            if 'service compute server create' in command:
+                return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
+            elif 'for ((i=1;i<=100;i++))' in command:
+                return (0, 'done')
+            elif 'service compute volume create' in command:
+                return (0, json.dumps({'id': 'wwww-qwerty-asdfghjkl'}))
+            elif 'service compute server volume attach' in command:
+                return (0, json.dumps({'result': 'ok'}))
+
+            raise RuntimeError(f'Unhandled command: {command}')
+
+        self.mock_ssh.execute.side_effect = mock_ssh_execute
+        expected = '1111-2222-3333-444444444444'
+
+        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
+                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
+                                   'test-server', 'localdomain', 'default')
+        self.assertEqual(result, expected)
+
+    def test_create_multiple_disk_volume_create_failed(self):
+        mock_disks = [{ 'size': '5',}, { 'size': '2' }]
+        mock_nics = [{ 'ips': ['1.1.1.1',],},]
+
+        def mock_ssh_execute(command:str, real_data=False):
+            if 'service compute server create' in command:
+                return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
+            elif 'for ((i=1;i<=100;i++))' in command:
+                return (0, 'done')
+            elif 'service compute volume create' in command:
+                return (1, 'volume create failed')
+
+            raise RuntimeError(f'Unhandled command: {command}')
+
+        self.mock_ssh.execute.side_effect = mock_ssh_execute
+
+        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
+                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
+                                   'test-server', 'localdomain', 'default')
+        self.assertFalse(result)
+
+    def test_create_multiple_disk_volume_attach_failed(self):
+        mock_disks = [{ 'size': '5',}, { 'size': '2' }]
+        mock_nics = [{ 'ips': ['1.1.1.1',],},]
+
+        def mock_ssh_execute(command:str, real_data=False):
+            if 'service compute server create' in command:
+                return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
+            elif 'for ((i=1;i<=100;i++))' in command:
+                return (0, 'done')
+            elif 'service compute volume create' in command:
+                return (0, json.dumps({'id': 'wwww-qwerty-asdfghjkl'}))
+            elif 'service compute server volume attach' in command:
+                return (1, 'volume attach failed!')
+
+            raise RuntimeError(f'Unhandled command: {command}')
+
+        self.mock_ssh.execute.side_effect = mock_ssh_execute
+
+        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
+                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
+                                   'test-server', 'localdomain', 'default')
+        self.assertFalse(result)
+
+    def test_create_ok_multi_ips(self):
+        mock_disks = [{ 'size': '5',},]
+        mock_nics = [{ 'ips': ['1.1.1.1', '2.2.2.2'],},]
+
+        def mock_ssh_execute(command:str, real_data=False):
+            if 'service compute server create' in command:
+                return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
+            elif 'for ((i=1;i<=100;i++))' in command:
+                return (0, 'done')
+            elif 'service compute server iface list' in command:
+                return (
+                    0,
+                    json.dumps([ { 'id': 'eth0', }, { 'id': 'eth1', } ])
+                )
+            elif 'service compute server iface set' in command:
+                return (0, 'ok')
+
+            raise RuntimeError(f'Unhandled command: {command}')
+
+        self.mock_ssh.execute.side_effect = mock_ssh_execute
+        expected = '1111-2222-3333-444444444444'
+
+        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
+                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
+                                   'test-server', 'localdomain', 'default')
+        self.assertEqual(result, expected)
+
+    def test_create_multi_ips_list_iface_failed(self):
+        mock_disks = [{ 'size': '5',},]
+        mock_nics = [{ 'ips': ['1.1.1.1', '2.2.2.2'],},]
+
+        def mock_ssh_execute(command:str, real_data=False):
+            if 'service compute server create' in command:
+                return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
+            elif 'for ((i=1;i<=100;i++))' in command:
+                return (0, 'done')
+            elif 'service compute server iface list' in command:
+                return (1, 'list iface failed!')
+
+            raise RuntimeError(f'Unhandled command: {command}')
+
+        self.mock_ssh.execute.side_effect = mock_ssh_execute
+
+        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
+                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
+                                   'test-server', 'localdomain', 'default')
+        self.assertFalse(result)
+
+    def test_create_multi_ips_set_iface_failed(self):
+        mock_disks = [{ 'size': '5',},]
+        mock_nics = [{ 'ips': ['1.1.1.1', '2.2.2.2'],},]
+
+        def mock_ssh_execute(command:str, real_data=False):
+            if 'service compute server create' in command:
+                return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
+            elif 'for ((i=1;i<=100;i++))' in command:
+                return (0, 'done')
+            elif 'service compute server iface list' in command:
+                return (
+                    0,
+                    json.dumps([ { 'id': 'eth0', }, { 'id': 'eth1', } ])
+                )
+            elif 'service compute server iface set' in command:
+                return (1, 'not ok')
+
+            raise RuntimeError(f'Unhandled command: {command}')
+
+        self.mock_ssh.execute.side_effect = mock_ssh_execute
+
+        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
+                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
+                                   'test-server', 'localdomain', 'default')
+        self.assertFalse(result)
 
 
 class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):

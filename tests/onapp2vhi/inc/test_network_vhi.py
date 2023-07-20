@@ -97,6 +97,10 @@ class TestNetwork(unittest.TestCase):
         network._ssh.execute.return_value = (1, json.dumps({"id": test_uuid}))
         self.assertFalse(network.create())
 
+        network = Network(self.cfg, name="test_network", cidr="10.0.0.0/24")
+        network._ssh.execute.return_value = (0, json.dumps({"idx": test_uuid}))
+        self.assertFalse(network.create())
+
     @patch("onapp2vhi.inc.network_vhi.SSH", autospec=True)
     def test_get_detail(self, mock_ssh):
         network = Network(self.cfg)
