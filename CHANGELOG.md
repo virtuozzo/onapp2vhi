@@ -4,6 +4,10 @@
 
 - O2V-156: Hide сredentials in log files
 
+### Fixes
+
+- O2V-174: Fix linux cold migration grub install send-expect sequence
+
 ## v1.0.1 (30/06/2023)
 
 ### Feature
