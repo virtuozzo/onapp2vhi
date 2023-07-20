@@ -1,5 +1,6 @@
 import re
 import json
+from json.decoder import JSONDecodeError
 
 from onapp2vhi.inc.ssh_connector import SSH
 from onapp2vhi.utilities.config import OnApp2VHIConfig
@@ -70,14 +71,18 @@ class Network:
     def create(self):
         cmd = (f"{self._vinfra_options} service compute network create {self.name} --cidr {self.cidr}"
                f" --dns-nameserver {self.dns_nameservers} --allocation-pool {self.start_address}-{self.end_address}"
-               f" --no-dhcp --no-gateway -f json | jq -r \".id\"")
+               f" --no-dhcp --no-gateway -f json")
         exit_status, output = self._ssh.execute(cmd)
         if not exit_status:
-            network_uuid = re.findall('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', output)
-            if not network_uuid:
-                print(f"Network has not been created\n {output}")
+            try:
+                output = json.loads(output)
+                network_uuid = re.findall('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', output["id"])
+                if not network_uuid:
+                    print(f"Network has not been created\n {output}")
+                    return False
+                return network_uuid[0]
+            except (JSONDecodeError, KeyError):
                 return False
-            return network_uuid[0]
         return False
 
     def attach_to_virtual_server(self, virtual_server, ip_addresses):

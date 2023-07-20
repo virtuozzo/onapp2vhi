@@ -165,7 +165,7 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
     vinfra_command = VinfraCommand(cfg, vinfra_access=vinfra_access, host=_vhi_hv_ip)
     try:
         output = vinfra_command.execute("service compute server volume list"
-                                        f" --server {_vhi_vm_id} -f json | jq -c 2>/dev/null")
+                                        f" --server {_vhi_vm_id} -f json")
     except VinfraError as e:
         exit_status_code_handler(
             exit_code=e.exit_code,
