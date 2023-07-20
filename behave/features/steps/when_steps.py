@@ -50,7 +50,11 @@ def step_impl(context, entity, name):
             param += "--" + key + " " + value + " " 
 
     config = helper.get_config()
-    _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute storage-policy create {param} {name}".format(param=param, name=data["name"]))
+    
+    # add the related entity in future, currently it only supports storage policy
+    if entity == "storage_policy":
+        _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute storage-policy create {param} {name}".format(param=param, name=data["name"]))
+        context.entity_to_delete = {"storage_policy": data["name"]}
 
 use_step_matcher('re')
 @when('I create a? (?P<entity>[\w\s]+) \((?P<name>[\w\W\s]+)\) with following details')

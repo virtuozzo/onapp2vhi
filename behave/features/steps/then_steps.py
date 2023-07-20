@@ -170,7 +170,6 @@ def step_impl(context, name):
     config = helper.get_config()["vhi"]
     output = helper.open_vhi_ssh_connection(config, "service compute server list -f json")
     vm_list = json.loads(output.stdout)
-    context.entity_to_delete = {}
 
     match = False
     for vm in vm_list:
@@ -191,7 +190,6 @@ def step_impl(context, name):
         arr_device.append(device["id"])
 
     storage_policy_name = helper.get_fixture("storage_policy")[name]["name"]
-    arr_volume_to_delete = []
 
     for id in arr_device:
 
@@ -200,8 +198,3 @@ def step_impl(context, name):
         
         if storage_policy_name != output_result:
             assert CHECK_FAILED, "error: disk is not using the storage policy, it is using %s" % output_result
-
-        arr_volume_to_delete.append(id)
-
-    context.entity_to_delete["volume"] = arr_volume_to_delete
-    context.entity_to_delete["storage_policy"] = storage_policy_name

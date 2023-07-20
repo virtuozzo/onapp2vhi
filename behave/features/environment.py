@@ -64,30 +64,43 @@ def after_scenario(context, scenario):
             if hostname in vm["name"]:
                 match = True
 
+                # find the volume from server
+                volume_output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server volume list --server %s -f json" % vm["name"])
+                arr_volume = json.loads(volume_output.stdout)
+
+                arr_device = []
+                for device in arr_volume:
+                    arr_device.append(device["id"])
+                
+                # to delete vm in vhi portal
                 print("VM found in VHI portal, proceed to delete...")
                 _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute server delete {vm_name}".format(vm_name=vm["name"]))
                 sleep(30)
 
                 print("VM has been deleted successfully")
-                break
-        
-        if hasattr(context, "entity_to_delete"):
 
-            for key in context.entity_to_delete:
+                for id in arr_device:
+                    # find the storage policy from volume
+                    storage_policy_output = helper.open_vhi_ssh_connection(config["vhi"], "service compute volume show %s -c storage_policy_name -f json" % id)
+                    storage_policy = json.loads(storage_policy_output.stdout)["storage_policy_name"]
 
-                if key == "volume":
-                    for volume in context.entity_to_delete["volume"]:
-                        # ignore if the volume does not exist after vm has been deleted
+                    # delete volume, ignore if there's none to delete
+                    try:
+                        _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute volume delete %s" % id)
+                        print("volume %s has been removed" % id)
+                    except:
+                        pass
+                        
+                    # only delete the storage policy that we created using behave
+                    if hasattr(context, "entity_to_delete"):
                         try:
-                            _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute volume delete %s" % volume)
-                            print("volume %s has been removed" % volume)
+                            if storage_policy == context.entity_to_delete["storage_policy"]:
+                                _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute storage-policy delete %s" % storage_policy)
+                                print("storage policy named %s has been removed" % storage_policy)
                         except:
                             pass
 
-                elif key == "storage_policy":
-                    _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute storage-policy delete %s" % context.entity_to_delete["storage_policy"])
-                    print("storage policy named %s has been removed" % context.entity_to_delete["storage_policy"])
-
+                break
         
         # we proceed with the rest of the scenario even if the vm is not found
         if not match:
