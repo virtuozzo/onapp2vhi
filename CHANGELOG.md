@@ -6,6 +6,8 @@
 
 ### Fixes
 
+- O2V-113: fix migration results in json decode error
+- O2V-171: adding option to migrate with just `--vm` parameter
 - O2V-174: Fix linux cold migration grub install send-expect sequence
 
 ## v1.0.1 (30/06/2023)
