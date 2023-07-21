@@ -15,7 +15,7 @@ from onapp2vhi.inc.onapp_helpers import (
     suspend_vm,
 )
 from onapp2vhi.inc.helper import Helper
-from onapp2vhi.inc.network_hanlder import get_network_configuration
+from onapp2vhi.inc.network_handler import get_network_configuration
 from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.utils import exit_status_code_handler
 from onapp2vhi.inc.ssh_connector import SSH
