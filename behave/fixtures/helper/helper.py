@@ -4,6 +4,7 @@ import yaml
 
 to_singular = {"virtual_machines": "virtual_machine"}
 to_plural = {"virtual_machine": "virtual_machines"}
+actual_name = ["storage_policy"]
 
 def rephrase_key(data):
     """
@@ -25,6 +26,29 @@ def rephrase_key(data):
     elif isinstance(data, str):
         if " " in data:
             return data.replace(" ", "_")
+        else:
+            return data
+        
+def vinfra_rephrase_key(data):
+    """
+    Rephrase word from white space " " to underscore "_", eg. virtual machine > virtual_machine
+    :param data: String
+    :return: New converted String
+    """
+    data_list = []
+
+    if isinstance(data, list):
+
+        for key in data:
+            key = key.replace(" ", "-")
+
+            data_list.append(key)
+
+        return data_list
+
+    elif isinstance(data, str):
+        if " " in data:
+            return data.replace(" ", "-")
         else:
             return data
 
@@ -75,3 +99,10 @@ def open_vhi_ssh_connection(config, command):
     output = conn.run("vinfra " + command + vinfra_credential, hide=True)
 
     return output
+
+def get_actual_name(entity):
+
+    if entity in actual_name:
+        return True
+    
+    return False
