@@ -62,10 +62,17 @@ class Network:
                 return False
 
             for network in response:
-                for subnet in network['subnets']:
-                    if subnet['cidr'] == self.cidr:
-                        self.id = network['id']
-                        return True
+                for subnet in network["subnets"]:
+                    if subnet["cidr"] == self.cidr:
+                        [pools] = subnet["allocation_pools"]
+                        start = pools["start"]
+                        end = pools["end"]
+
+                        if (start == self.start_address) and (
+                            end == self.end_address
+                        ):
+                            self.id = network["id"]
+                            return True
         return False
 
     def create(self):
