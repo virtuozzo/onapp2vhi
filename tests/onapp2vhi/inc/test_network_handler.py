@@ -117,7 +117,6 @@ class GetNetworkConfigurationTestCase(TestCase):
                     },
                     {
                         'ip_address_join': {
-                            'created_at': '2023-07-17T07:42:19.000Z',
                             'id': 1001,
                             'ip_address': {
                                 'address': '2a01:a240:a240::102',
@@ -131,30 +130,18 @@ class GetNetworkConfigurationTestCase(TestCase):
                     },
                     {
                         'ip_address_join': {
-                            'created_at': '2023-07-17T07:41:58.000Z',
                             'id': 999,
-                            'ip_address': {'address': '192.168.17.2',
-                                           'broadcast': '192.168.17.255',
-                                           'created_at': '2023-07-17T07:41:58.000Z',
-                                           'external_address': None,
-                                           'gateway': '192.168.17.1',
-                                           'hypervisor_id': None,
-                                           'id': 993,
-                                           'ip_net_id': 12,
-                                           'ip_range_id': 15,
-                                           'ipv4': True,
-                                           'lock_version': 0,
-                                           'network_address': '192.168.17.0',
-                                           'network_id': 3,
-                                           'prefix': 24,
-                                           'primary': True,
-                                           'pxe': False,
-                                           'updated_at': '2023-07-17T07:41:58.000Z',
-                                           'user_id': None,
-                                           'vcloud_edge_gateways_sub_allocated_ip_range_id': None},
-                            'ip_address_id': 993,
+                            'ip_address': {
+                                'address': '192.168.17.2',
+                                'ip_net_id': 12,
+                                'ip_range_id': 15,
+                                'ipv4': True,
+                                'primary': True,
+                            },
                             'network_interface_id': 880,
-                            'updated_at': '2023-07-17T07:41:58.000Z'}}]
+                        }
+                    }
+                ]
             elif param == 'settings/hypervisors/6':
                 return {
                     'hypervisor': {
