@@ -104,9 +104,21 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
         _vm_id = _vm['id']
         _error_msg = (f"VM with [IP: {onappvm_pri_ip} | MAC: {onappvm_pri_mac}] ALREADY EXISTS on VHI side.\n"
                       f"VM: {cfg.vhi_conf['url']}/compute/servers/instances/{_vm_id}/")
+
         if not _vm['networks'] and _vm['name'] == f'vm_{_vm_properties["hostname"].lower()}_{vm_idn}':
             vm_created = True
             break
+
+        if not _vm['networks'] and _vm['status'] == "ERROR":
+            logs.error(f"VM with {_vm['name']} name is in \"error\" status, aborting migration. Please remove the vm and try again.\n"
+                       f"VM: {cfg.vhi_conf['url']}/compute/servers/instances/{_vm_id}/")
+            return False
+
+        if not _vm['networks'] and _vm['status'] == "BUILD":
+            #Rare situation where vm's network is still building and there is another migration instance running
+            logs.error(f"VM with {_vm['name']} name is still in \"build\" status, aborting migration. Please try again.\n"
+                       f"VM: {cfg.vhi_conf['url']}/compute/servers/instances/{_vm_id}/")
+            return False
 
         if onappvm_pri_mac == _vm['networks'][0]['mac_addr'] or onappvm_pri_ip in _vm['networks'][0]['ips']:
             vm_created = True
