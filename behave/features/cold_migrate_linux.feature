@@ -15,6 +15,7 @@ Scenario: Cold migration without user's SSH key
   And I migrate the virtual machine (linux-vm-without-startup)
   Then I wait for 10 seconds
   And I should see the virtual machine is SHUTOFF in VHI portal
+  And its CPU, RAM and storage are correct
 
 Scenario: Cold migration with user's SSH key
   Given I am a cloud user (uda)
@@ -27,6 +28,7 @@ Scenario: Cold migration with user's SSH key
   And I migrate the virtual machine (linux-vm-without-startup)
   Then I wait for 10 seconds
   And I should see the virtual machine is SHUTOFF in VHI portal
+  And its CPU, RAM and storage are correct
   And the log is seen in logging path (uda-log)
 
 Scenario: Cold migration with user's SSH key with storage policy specified
@@ -45,4 +47,5 @@ Scenario: Cold migration with user's SSH key with storage policy specified
   | behave-storage-policy |
   Then I wait for 10 seconds
   And I should see the virtual machine is SHUTOFF in VHI portal
+  And its CPU, RAM and storage are correct
   And its volume is using the correct storage policy (behave-storage-policy)
