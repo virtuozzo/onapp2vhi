@@ -113,6 +113,51 @@ def step_impl(context, state):
         assert CHECK_FAILED, "error: the virtual machine is not found in VHI portal or its state is not %s" % state
 
 use_step_matcher('parse')
+@then('its CPU, RAM and storage are correct')
+def step_impl(context):
+
+    hostname = context.result[0]["virtual_machine"]["hostname"]
+    config = helper.get_config()
+    raw_vm_list = helper.open_vhi_ssh_connection(config["vhi"], "service compute server list --long -f json")
+    vm_list = json.loads(raw_vm_list.stdout)
+    dict_server_spec = {}
+
+    match = False
+    for vm in vm_list:
+
+        if hostname in vm["name"]:
+
+            dict_server_spec["hostname"] = vm["name"]
+            dict_server_spec["ram"] = vm["flavor"]["ram"]
+            dict_server_spec["vcpus"] = vm["flavor"]["vcpus"]
+            dict_server_spec["volumes"] = []
+
+            for volume in vm["volumes"]:
+                dict_server_spec["volumes"].append(volume["id"])
+
+    total_disk_size = 0
+    for volume in dict_server_spec["volumes"]:
+        
+        raw_disk_size = helper.open_vhi_ssh_connection(config["vhi"], "service compute volume show %s -c size -f json" % volume)
+        disk_size = json.loads(raw_disk_size.stdout)["size"]
+        total_disk_size += disk_size
+
+    onapp_vms = helper.get_fixture("virtual_machine")
+    # compare vhi vm with onapp fixture
+    for vm in onapp_vms:
+        if onapp_vms[vm]["virtual_machine"]["hostname"] in dict_server_spec["hostname"]:
+
+            if onapp_vms[vm]["virtual_machine"]["memory"] == dict_server_spec["ram"] and \
+                onapp_vms[vm]["virtual_machine"]["cpus"] == dict_server_spec["vcpus"] and \
+                onapp_vms[vm]["virtual_machine"]["primary_disk_size"] + onapp_vms[vm]["virtual_machine"]["swap_disk_size"] == total_disk_size:
+
+                match = True
+                break
+
+    if not match:
+        assert CHECK_FAILED, "error: some specs aren't tally"
+
+use_step_matcher('parse')
 @then('the virtual machine ({name}) is deleted successfully')
 def step_impl(context, name):
 
