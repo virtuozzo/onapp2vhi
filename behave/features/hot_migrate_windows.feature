@@ -14,6 +14,7 @@ Scenario: Hot migration without user's SSH key
   And I migrate the virtual machine (windows-vm-with-startup)
   Then I wait for 10 seconds
   And I should see the virtual machine is ACTIVE in VHI portal
+  And its CPU, RAM and storage are correct
   And the log is seen in logging path (ultron_log/log)
 
 Scenario: Hot migration with user's SSH key
@@ -28,6 +29,7 @@ Scenario: Hot migration with user's SSH key
   And I migrate the virtual machine (windows-vm-with-startup)
   Then I wait for 10 seconds
   And I should see the virtual machine is ACTIVE in VHI portal
+  And its CPU, RAM and storage are correct
 
 Scenario: Hot migration with user's SSH key with storage policy specified
   Given I am a cloud user (uda)
@@ -45,4 +47,5 @@ Scenario: Hot migration with user's SSH key with storage policy specified
   | behave-storage-policy |
   Then I wait for 10 seconds
   And I should see the virtual machine is ACTIVE in VHI portal
+  And its CPU, RAM and storage are correct
   And its volume is using the correct storage policy (behave-storage-policy)
