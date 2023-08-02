@@ -16,7 +16,7 @@ from onapp2vhi.inc.onapp_helpers import (
     find_correct_disk_key
 )
 from onapp2vhi.inc.utils import exit_status_code_handler
-from onapp2vhi.inc.network_hanlder import get_network_configuration
+from onapp2vhi.inc.network_handler import get_network_configuration
 from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.utilities.config import OnApp2VHIConfig
@@ -214,7 +214,7 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
     vinfra_command = VinfraCommand(cfg, vinfra_access=vinfra_access, host=_vhi_hv_ip)
     try:
         output = vinfra_command.execute("service compute server volume list"
-                                        f" --server {_vhi_vm_id} -f json | jq -c 2>/dev/null")
+                                        f" --server {_vhi_vm_id} -f json")
     except VinfraError as e:
         exit_status_code_handler(
             exit_code=e.exit_code,
