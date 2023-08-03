@@ -6,6 +6,7 @@ linux-vm-without-startup:
     cpu_shares: 1
     hostname: linuxvmoff
     primary_disk_size: 5
+    swap_disk_size: 0
     required_virtual_machine_build: 1
     template_id: Debian 10 x64
     required_virtual_machine_startup: 0
@@ -19,6 +20,7 @@ linux-vm-with-startup:
     cpu_shares: 1
     hostname: linuxvmon
     primary_disk_size: 5
+    swap_disk_size: 0
     required_virtual_machine_build: 1
     template_id: Debian 10 x64
     required_virtual_machine_startup: 1

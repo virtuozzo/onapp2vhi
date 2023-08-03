@@ -395,7 +395,8 @@ def get_vm_source_properties(cfg: OnApp2VHIConfig, vm_idn: str) -> Dict:
     _vm_hv_ip = _hv_props['hypervisor']['ip_address']
     _vm_nics = onapp_requests.get(f'virtual_machines/{vm_idn}/ip_addresses')
     _vm_ip_addr = [nic['ip_address_join']['ip_address']['address'] for nic in _vm_nics
-                   if nic['ip_address_join']['ip_address']][0]
+                   if (nic['ip_address_join']['ip_address']
+                       and nic['ip_address_join']['ip_address']['primary'])][0]
     logs.info(f"-- Hypervisor ID: {_vm_hv_id} | Hypervisor IP ADDRESS: {_vm_hv_ip} | VM IP ADDRESS {_vm_ip_addr}")
     return {'hv_ip': _vm_hv_ip, 'vm_os': _vm_os, 'vm_ip_addr': _vm_ip_addr, 'network_info': network_info,
             'hot_migrate': _hot_migrate, 'hostname': _vm_hostname, 'domain': _vm_domain}
@@ -937,30 +938,29 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
     create_cmd = (f"{vinfra_access} service compute server create '{hostname_domain}'"
                   f" --description '{hostname_domain}_{vm_idn}' {network} --volume source=image,id={vhi_image},"
                   f"size={onapp_disks[0]['size']},storage-policy={vhi_storage_policy}"
-                  f" --flavor {flavour} -f json | jq -r \".id\"")
+                  f" --flavor {flavour} -f json")
     exit_status, output = vhi_ssh.execute(command=create_cmd)
-    if 'INTERNAL SERVER ERROR' in output:
+    if exit_status:
         logs.error(f'*** SOMETHING WENT WRONG. MIGRATION FAILED DUE TO ERROR:\n{Bcolors.BOLD}{output}{Bcolors.ENDC}\n'
                    f'Last running command:\n{Bcolors.WARN}{create_cmd}{Bcolors.ENDC}\n\n'
                    f'{Bcolors.FAIL}Please check VHI services.{Bcolors.ENDC}')
         return False
 
-    if not exit_status and output:
-        # ToDo - need to add verification step whether VM created successfully
-        _vhi_vm_id = output.strip("\n")
-        logs.info(f"NEW VHI VM CREATED: {cfg.vhi_conf['url']}/compute/servers/instances/{_vhi_vm_id}", separator=True)
-        logs.info(f"{_spaces}...STOPPING VM BEFORE MIGRATION...")
-        exit_status, output = vhi_ssh.execute(
-            f"for ((i=1;i<=100;i++)); do {vinfra_access} service compute server stop {_vhi_vm_id} --hard --wait"
-            f" --timeout 15 -f json | jq -r -c [.name,.id,.vm_state,.power_state,.status] ;  "
-            f"pwstate=\"`{vinfra_access} service compute server show {_vhi_vm_id} -f json | jq -r .power_state `\" ; "
-            f"echo \"$pwstate\" ; if [[ \"$pwstate\" == \"SHUTDOWN\" ]];"
-            f" then break; fi ; sleep 1; done 2>/dev/null",
-            real_data=True
-        )
-        if not exit_status_code_handler(exit_code=exit_status,
-                                        message=f'VM is not created. Output:\n\t{output}'):
-            return False
+    _vhi_vm_id = json.loads(output)["id"]
+    logs.info(f"NEW VHI VM CREATED: {cfg.vhi_conf['url']}/compute/servers/instances/{_vhi_vm_id}", separator=True)
+
+    logs.info(f"{_spaces}...STOPPING VM BEFORE MIGRATION...")
+    exit_status, output = vhi_ssh.execute(
+        f"for ((i=1;i<=100;i++)); do {vinfra_access} service compute server stop {_vhi_vm_id} --hard --wait"
+        f" --timeout 15 -f json | jq -r -c [.name,.id,.vm_state,.power_state,.status] ;  "
+        f"pwstate=\"`{vinfra_access} service compute server show {_vhi_vm_id} -f json | jq -r .power_state `\" ; "
+        f"echo \"$pwstate\" ; if [[ \"$pwstate\" == \"SHUTDOWN\" ]];"
+        f" then break; fi ; sleep 1; done 2>/dev/null",
+        real_data=True
+    )
+    if not exit_status_code_handler(exit_code=exit_status,
+                                    message=f'VM is not created. Output:\n\t{output}'):
+        return False
 
     if len(onapp_disks) > 1:
         logs.info("-- VHI: Create and Attach extra VHI VM's disks --")
@@ -968,12 +968,16 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
             if idx >= 1:
                 exit_status, output = vhi_ssh.execute(
                     f"{vinfra_access} service compute volume create --size {dsk['size']} "
-                    f"onapp-{_vhi_vm_id} --storage-policy {vhi_storage_policy} -f json | jq -c -r \".id\""
+                    f"onapp-{_vhi_vm_id} --storage-policy {vhi_storage_policy} -f json"
                 )
-                new_disk_id = output.strip()
+                if not exit_status_code_handler(exit_code=exit_status,
+                                                message='Volume creation failed. Output:\n\t{output}'):
+                    return False
+
+                new_disk_id = json.loads(output)["id"]
                 exit_status, output = vhi_ssh.execute(
                     f"{vinfra_access} service compute server volume attach "
-                    f"--server {_vhi_vm_id} {new_disk_id} -f json | jq -c 2>/dev/null"
+                    f"--server {_vhi_vm_id} {new_disk_id} -f json"
                 )
                 if not exit_status_code_handler(exit_code=exit_status,
                                                 message=f'VM volume is not attached. Output:\n\t{output}'):
@@ -985,11 +989,15 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
         for ip in onappvm_pri_ips:
             _ips_params += f"--fixed-ip ip-address={ip} "
         exit_status, output = vhi_ssh.execute(f"{vinfra_access} service compute server iface "
-                                              f"list --server {_vhi_vm_id} -f json | jq -c -r .[0].id 2>/dev/null")
-        _vhi_nic0_id = output.strip()
+                                              f"list --server {_vhi_vm_id} -f json")
+        if not exit_status_code_handler(exit_code=exit_status,
+                                        message=f'Listing network interfaces failed. Output:\n\t{output}'):
+            return False
+
+        _vhi_nic0_id = json.loads(output)[0]["id"]
         exit_status, output = vhi_ssh.execute(
             f"{vinfra_access} service compute server iface set {_ips_params} --server "
-            f"{_vhi_vm_id} {_vhi_nic0_id} -f json | jq -c -r .fixed_ips 2>/dev/null"
+            f"{_vhi_vm_id} {_vhi_nic0_id} -f json"
         )
         if not exit_status_code_handler(exit_code=exit_status,
                                         message=f'VM iface is not set. Output:\n\t{output}'):
