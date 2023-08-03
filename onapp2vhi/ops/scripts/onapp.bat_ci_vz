@@ -2,8 +2,12 @@ c:\cygwin\bin\mkdir -p c:/vz-guest-tools-win
 c:\cygwin\bin\tar --force-local -xf c:/vz-guest-tools-win.tar -C c:/vz-guest-tools-win
 cd /d C:\vz-guest-tools-win
 c:\vz-guest-tools-win\setupMain.exe
+
 cd /d C:\
 msiexec /i CloudbaseInitSetup_Stable_x64.msi /qn /l*v log.txt
+c:\cygwin\bin\echo "metadata_services=cloudbaseinit.metadata.services.configdrive.ConfigDriveService,cloudbaseinit.metadata.services.httpservice.HttpService" >> "C:/Program Files/Cloudbase Solutions/Cloudbase-Init/conf/cloudbase-init.conf"
+c:\cygwin\bin\echo "plugins=cloudbaseinit.plugins.common.mtu.MTUPlugin,cloudbaseinit.plugins.windows.ntpclient.NTPClientPlugin,cloudbaseinit.plugins.windows.createuser.CreateUserPlugin,cloudbaseinit.plugins.common.networkconfig.NetworkConfigPlugin,cloudbaseinit.plugins.windows.licensing.WindowsLicensingPlugin,cloudbaseinit.plugins.common.sshpublickeys.SetUserSSHPublicKeysPlugin,cloudbaseinit.plugins.windows.extendvolumes.ExtendVolumesPlugin,cloudbaseinit.plugins.common.setuserpassword.SetUserPasswordPlugin,cloudbaseinit.plugins.common.userdata.UserDataPlugin,cloudbaseinit.plugins.windows.winrmlistener.ConfigWinRMListenerPlugin,cloudbaseinit.plugins.windows.winrmcertificateauth.ConfigWinRMCertificateAuthPlugin,cloudbaseinit.plugins.common.localscripts.LocalScriptsPlugin" >> "C:/Program Files/Cloudbase Solutions/Cloudbase-Init/conf/cloudbase-init.conf"
+
 c:\cygwin\bin\rm -rf c:/vz-guest-tools-win
+start c:\vhi_rebuild_network.bat
 c:\cygwin\bin\rm -rf c:/onapp.bat
-c:\vhi_rebuild_network.bat
