@@ -1,5 +1,6 @@
 import unittest
 from mock import patch, Mock, mock_open, call
+import os
 
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.ops.install_win_drivers_offline import vm_install_win_drivers_offline
@@ -69,11 +70,14 @@ class TestInstallWinDriverOffline(unittest.TestCase):
                                             mock_activate_disk, mock_get_disk_type,
                                             mock_deactivate_disk, mock_network_reconfig):
 
+        mock_package_path = os.getcwd() + "/onapp2vhi/ops"
         self.mock_ssh.execute.return_value = (1, "")
         mock_ssh.return_value = self.mock_ssh
+
         self.mock_network_reconfig.create_file.return_value = True
         self.mock_network_reconfig.file = "test_file"
         mock_network_reconfig.return_value = self.mock_network_reconfig
+
         mock_ssh_run.return_value = (1, "")
         mock_exit_status.return_value = True
 
@@ -93,9 +97,9 @@ class TestInstallWinDriverOffline(unittest.TestCase):
         self.assertTrue(result)
         mock_ssh_run.assert_has_calls(
             [
-                call("scp -o 'ForwardAgent yes' -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' -r /home/faidhi/VHI/onapp2vhi/onapp2vhi/ops/scripts/vz-guest-tools-win.tar root@10.116.0.32:/mnt/aabbccdd/vz-guest-tools-win.tar"),
-                call("scp -o 'ForwardAgent yes' -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' -r /home/faidhi/VHI/onapp2vhi/onapp2vhi/ops/scripts/CloudbaseInitSetup_Stable_x64.msi  root@10.116.0.32:/mnt/aabbccdd/CloudbaseInitSetup_Stable_x64.msi"),
-                call("scp -o 'ForwardAgent yes' -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' -r /home/faidhi/VHI/onapp2vhi/onapp2vhi/ops/scripts/onapp.bat_ci_vz root@10.116.0.32:/mnt/aabbccdd/onapp.bat"),
+                call(f"scp -o 'ForwardAgent yes' -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' -r {mock_package_path}/scripts/vz-guest-tools-win.tar root@10.116.0.32:/mnt/aabbccdd/vz-guest-tools-win.tar"),
+                call(f"scp -o 'ForwardAgent yes' -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' -r {mock_package_path}/scripts/CloudbaseInitSetup_Stable_x64.msi  root@10.116.0.32:/mnt/aabbccdd/CloudbaseInitSetup_Stable_x64.msi"),
+                call(f"scp -o 'ForwardAgent yes' -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' -r {mock_package_path}/scripts/onapp.bat_ci_vz root@10.116.0.32:/mnt/aabbccdd/onapp.bat"),
                 call("scp -o 'ForwardAgent yes' -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' -r test_file root@10.116.0.32:/mnt/aabbccdd/vhi_rebuild_network.bat")
             ]
         )
