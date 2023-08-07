@@ -12,6 +12,8 @@
 - O2V-146: Fix index error when multiple migrations are running
 - O2V-115: Add ip range check to fix issue with networks with same subnet having different ip range
 - O2V-170: Fix unexpected host key promt
+- O2V-168: Fix error handling in VHI vm creation
+- O2V-159: Preserve Windows VM hostname
 
 ## v1.0.1 (30/06/2023)
 
