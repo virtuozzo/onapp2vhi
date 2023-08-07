@@ -65,10 +65,10 @@ class TestInstallWinDriverOffline(unittest.TestCase):
     @patch("onapp2vhi.ops.install_win_drivers_offline.logs")
     @patch("onapp2vhi.ops.install_win_drivers_offline.download_file")
     def test_vm_install_win_drivers_offline_with_bypass_host_key(self, mock_download, mock_logs, mock_vm_disks,
-                                            mock_ssh, mock_exit_status,
-                                            mock_ssh_run, mock_vm_handler,
-                                            mock_activate_disk, mock_get_disk_type,
-                                            mock_deactivate_disk, mock_network_reconfig):
+                                                                 mock_ssh, mock_exit_status,
+                                                                 mock_ssh_run, mock_vm_handler,
+                                                                 mock_activate_disk, mock_get_disk_type,
+                                                                 mock_deactivate_disk, mock_network_reconfig):
 
         mock_package_path = os.getcwd() + "/onapp2vhi/ops"
         self.mock_ssh.execute.return_value = (1, "")
