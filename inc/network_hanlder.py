@@ -31,9 +31,9 @@ def get_network_configuration(virtual_server_identifier: str, vinfra_project: st
 
         data['network_identifier'] = network_identifier
         data["ipv4"] = next((ip_address['ipv4'] for ip_address in vs_ip_addresses), False)
-        if ONAPP_VERSION <= 6.0 and nic['network_interface']['primary'] is True:
+        if ONAPP_VERSION <= 6.3 and nic['network_interface']['primary'] is True:
             data["primary_ip"] = [vs_ip_addresses[0]['address']]
-        elif ONAPP_VERSION > 6.0:
+        elif ONAPP_VERSION > 6.3:
             data["primary_ip"] = [
                 ip_address['address'] for ip_address in vs_ip_addresses
                 if ip_address["primary"]

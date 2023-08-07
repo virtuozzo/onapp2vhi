@@ -85,6 +85,7 @@ class OnAppVhiCP:
              'windows_image': self._config.get(self.VHI, "vhi_windows_image", raw=True),
              'migration_network_id': self._config.get(self.VHI, "migration_network_id", raw=True),
              'domain_id': self._config.get(self.VHI, "vhi_domain_id", raw=True),
+             'vhi_sgroup_id': self._config.get(self.VHI, "vhi_secondary_security_group", raw=True),
              'vinfra_domain': self._config.get(self.VHI, "vinfra_domain", raw=True),
              'vinfra_project': self._config.get(self.VHI, "vinfra_project", raw=True),
              'vinfra_domain_user': self._config.get(self.VHI, "vinfra_domain_user", raw=True),
