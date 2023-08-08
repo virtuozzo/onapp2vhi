@@ -195,7 +195,7 @@ FOR /F "usebackq tokens=1-13,* delims=.-: " %%a IN (`"route print | C:\Windows\S
             _network['mac_space'] = _nic['mac_address'].replace(':', ' ')
             _ip_addr_values = ["address", "gateway", "primary", "network_id", "ip_net_id", "ipv4", "prefix"]
             version = onapp_version(self.cfg)
-            if version <= 6.0:
+            if version <= 6.3:
                 ip_addr = []
                 for addr in ip_addresses:
                     _ip_properties = {}

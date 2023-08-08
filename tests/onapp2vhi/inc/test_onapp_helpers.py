@@ -1146,7 +1146,7 @@ class GetIfaceFromSpecificVSTestCase(OnAppHelpersTestCase):
             (0, json.dumps([{'id': 'eth0'}])),
         ]
         mock_ssh.return_value = self.mock_ssh
-        expected = 'eth0'
+        expected = [{'id': 'eth0'}]
 
         results = get_iface_from_specific_vs(self.mock_cfg, vm_name='vm1')
 

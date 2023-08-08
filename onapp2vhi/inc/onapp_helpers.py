@@ -310,7 +310,7 @@ def get_user_data(cfg: OnApp2VHIConfig, url: str, get_type, value_to_search=None
 def _get_primary_vm_ip(cfg: OnApp2VHIConfig, vm: dict):
     vm_idn = vm['identifier']
     version = onapp_version(cfg)
-    if version <= 6.0:
+    if version <= 6.3:
         virtual_server_nic = get_virtual_server_interfaces(cfg, virtual_server_id=vm_idn)
         primary_nic_id = [nic["network_interface"]["id"] for nic in virtual_server_nic
                           if nic['network_interface']['primary']][0]
@@ -486,7 +486,7 @@ def get_vm_firewall_rules(cfg: OnApp2VHIConfig, vm_idn: str) -> List[FirewallRul
     firewall_rules = []
     for fr in response:
         comment = ''
-        if version > 6.0:
+        if version > 6.3:
             comment = fr['firewall_rule']['comment']
         firewall_rules.append(FirewallRules(id=fr['firewall_rule']['id'],
                                             position=fr['firewall_rule']['position'],
@@ -535,6 +535,20 @@ def check_user_role(user_data: dict) -> str:
         else:
             admin_role = False
     return admin_role
+
+
+def check_sg_exists_in_project(cfg: OnApp2VHIConfig, vhiproj: str, sg_id: str):
+    sg = VinfraSecurityGroups(cfg)
+    proj = VinfraProject(cfg)
+    _, proj_output = proj.show(domain=cfg.vhi_config['vinfra_domain'], project_name=vhiproj)
+    proj_id = json.loads(proj_output)['id']
+    _, sg_output = sg.list_security_group()
+    sg_list = json.loads(sg_output)
+    sg_groups_ids = [sg['id'] for sg in sg_list if sg['project_id'] == proj_id]
+    if sg_id in sg_groups_ids:
+        return True
+
+    return False
 
 
 def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
@@ -651,7 +665,7 @@ def get_iface_from_specific_vs(cfg: OnApp2VHIConfig, vm_name: str):
     if not ifaces:
         return False
 
-    return ifaces[0]['id']
+    return ifaces
 
 
 def attach_security_group_to_nic_and_enable_spoofing(cfg: OnApp2VHIConfig,

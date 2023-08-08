@@ -13,6 +13,7 @@ from onapp2vhi.inc.onapp_helpers import (
     get_onapp_vm_nics,
     get_onapp_vm_flavor,
     suspend_vm,
+    check_sg_exists_in_project,
 )
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.network_handler import get_network_configuration
@@ -153,9 +154,28 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
 
     # -- Attach Security group to NIC
     # -- Enable Spoofing for NIC
-    iface_id = get_iface_from_specific_vs(cfg, vm_name=_vhi_vm_id)
+    iface_ids = get_iface_from_specific_vs(cfg, vm_name=_vhi_vm_id)
+
+    # Set Up primary SG
+    _primary_iface_id = iface_ids.pop(0)
     security_group_id = transfer_firewall_rules_to_sg(cfg, vm_idn=vm_idn, vhiproj=_vhiproj)
-    attach_security_group_to_nic_and_enable_spoofing(cfg, vm_name=_vhi_vm_id, iface=iface_id, sg_id=security_group_id)
+    attach_security_group_to_nic_and_enable_spoofing(cfg,
+                                                     vm_name=_vhi_vm_id,
+                                                     iface=_primary_iface_id['id'],
+                                                     sg_id=security_group_id)
+
+    # Set Up secondary SG
+    _secondary_sg_id = cfg.vhi_config['vhi_sgroup_id']
+
+    if _secondary_sg_id:
+        if check_sg_exists_in_project(cfg, vhiproj=_vhiproj, sg_id=_secondary_sg_id):
+            for iface_id in iface_ids:
+                attach_security_group_to_nic_and_enable_spoofing(cfg,
+                                                                 vm_name=_vhi_vm_id,
+                                                                 iface=iface_id['id'],
+                                                                 sg_id=_secondary_sg_id)
+        else:
+            logs.warn(f"*** Security Group with ID[{_secondary_sg_id}] does NOT exists in Project [{_vhiproj}] ***")
 
     # -- STEP 6 --
     logs.info(f"{_spaces}{_cm_msg}STEP #6 -- VHI: define VHI VM's hypervisor and disks --", header=True)
