@@ -1020,23 +1020,32 @@ def prepare_vhi_migration_data(cfg: OnApp2VHIConfig, user_idn=None, vm_idn=None)
     :return:
     """
     # Get User data and Virtual Servers from OnApp
-    if vm_idn:
-        try:
+
+    _vms_dict = dict
+    _user_data = list
+
+    try:
+        if vm_idn:
+
             _vms_dict = get_all_virtual_machines(cfg, vm_id=vm_idn)
-            user_idn = list(_vms_dict.keys())[0]
+            if vm_idn:
+                user_idn = list(_vms_dict.keys())[0]
+                _user_data = get_user_data(cfg, url=f"users/{user_idn}", get_type='ID')
+
+        elif user_idn and type(user_idn) == int:
             _user_data = get_user_data(cfg, url=f"users/{user_idn}", get_type='ID')
-        except OnAppRequestsException:
-            return False
-    elif user_idn and type(user_idn) == int:
-        _user_data = get_user_data(cfg, url=f"users/{user_idn}", get_type='ID')
-        _vms_dict = get_all_virtual_machines(cfg, user_id=user_idn)
-    else:
-        _user_data = get_user_data(cfg,
-                                   url='users',
-                                   get_type='',
-                                   value_to_search=None,
-                                   all_users=True)
-        _vms_dict = get_all_virtual_machines(cfg)
+            _vms_dict = get_all_virtual_machines(cfg, user_id=user_idn)
+
+        else:
+            _user_data = get_user_data(cfg,
+                                       url='users',
+                                       get_type='',
+                                       value_to_search=None,
+                                       all_users=True)
+            _vms_dict = get_all_virtual_machines(cfg)
+    except OnAppRequestsException:
+        return False
+
     if not _user_data:
         return False
 
