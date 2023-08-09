@@ -360,7 +360,8 @@ def get_all_virtual_machines(cfg: OnApp2VHIConfig, user_id: int = None, vm_id:st
         _ip_addr = _get_primary_vm_ip(cfg, vm)
 
         if vm["vip"]:
-            logs.warn(f"OnApp vm {vm['hostname']} is marked as VIP, skipping migration")
+            msg = (f'Virtual Machine is marked as VIP, skipping migration \n\n\t\t'
+                   f'VM Info [{vm["identifier"]} | {_ip_addr} | {vm["hostname"]} | {vm["label"]}]\n')
             continue
 
         if f"{vm['hostname']}.{vm['domain']}".lower() in existing_vms:
@@ -1028,7 +1029,7 @@ def prepare_vhi_migration_data(cfg: OnApp2VHIConfig, user_idn=None, vm_idn=None)
         if vm_idn:
 
             _vms_dict = get_all_virtual_machines(cfg, vm_id=vm_idn)
-            if vm_idn:
+            if _vms_dict:
                 user_idn = list(_vms_dict.keys())[0]
                 _user_data = get_user_data(cfg, url=f"users/{user_idn}", get_type='ID')
 
