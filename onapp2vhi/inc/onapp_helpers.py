@@ -1023,8 +1023,8 @@ def prepare_vhi_migration_data(cfg: OnApp2VHIConfig, user_idn=None, vm_idn=None)
     """
     # Get User data and Virtual Servers from OnApp
 
-    _vms_dict = dict
-    _user_data = list
+    _vms_dict = {}
+    _user_data = []
 
     try:
         if vm_idn:
