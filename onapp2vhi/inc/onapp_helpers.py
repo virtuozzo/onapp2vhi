@@ -362,6 +362,7 @@ def get_all_virtual_machines(cfg: OnApp2VHIConfig, user_id: int = None, vm_id:st
         if vm["vip"]:
             msg = (f'Virtual Machine is marked as VIP, skipping migration \n\n\t\t'
                    f'VM Info [{vm["identifier"]} | {_ip_addr} | {vm["hostname"]} | {vm["label"]}]\n')
+            logs.warn(msg=msg)
             continue
 
         if f"{vm['hostname']}.{vm['domain']}".lower() in existing_vms:
