@@ -359,6 +359,10 @@ def get_all_virtual_machines(cfg: OnApp2VHIConfig, user_id: int = None, vm_id:st
         vm = _vm['virtual_machine']
         _ip_addr = _get_primary_vm_ip(cfg, vm)
 
+        if vm["vip"]:
+            logs.warn(f"OnApp vm {vm['hostname']} is marked as VIP, skipping migration")
+            continue
+
         if f"{vm['hostname']}.{vm['domain']}".lower() in existing_vms:
             msg = (f'Virtual Machine already exists on VHI side in `{cfg.vhi_conf["vinfra_domain"]}` domain\n\n\t\t'
                    f'VM Info [{vm["identifier"]} | {_ip_addr} | {vm["hostname"]} | {vm["label"]}]\n')

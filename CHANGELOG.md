@@ -13,6 +13,7 @@
 - O2V-115: Add ip range check to fix issue with networks with same subnet having different ip range
 - O2V-168: Fix error handling in VHI vm creation
 - O2V-159: Preserve Windows VM hostname
+- O2V-175: Skip migration on onapp vm marked as VIP
 
 ## v1.0.1 (30/06/2023)
 
