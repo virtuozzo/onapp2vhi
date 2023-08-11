@@ -14,6 +14,7 @@
 - O2V-170: Fix unexpected host key prompt
 - O2V-168: Fix error handling in VHI vm creation
 - O2V-159: Preserve Windows VM hostname
+- O2V-172: Fix error handling and pre-checks for migration with placement
 
 ## v1.0.1 (30/06/2023)
 
