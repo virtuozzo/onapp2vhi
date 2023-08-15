@@ -3,10 +3,10 @@ Feature: List all VM in Onapp cloud
 
 Scenario: List all VM
   Given I am a cloud user (uda)
-  When I create a virtual machine (linux-vm-without-startup)
+  When I create a virtual machine (linux-vm-without-startup-static)
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
-  And the virtual machine (linux-vm-without-startup) is built successfully
+  And the virtual machine (linux-vm-without-startup-static) is built successfully
   
   When I view the VMs in Onapp cloud using migration tool
   Then I should see the VM listed is tally with the VMs displayed in Onapp cloud
@@ -49,5 +49,5 @@ Scenario: List VM for a specified user with specified header
   | hostname |
 
   # delete the vm after testing
-  When I delete the virtual machine (linux-vm-without-startup) in Onapp cloud
+  When I delete the virtual machine (linux-vm-without-startup-static) in Onapp cloud
   Then CP API (delete) should return status code 204

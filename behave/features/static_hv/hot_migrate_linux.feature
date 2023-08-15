@@ -1,19 +1,20 @@
 @migrate_vm
 @hot_migration
 @linux
+@statichv
 Feature: Hot migration for Linux VM
 
 Scenario: Hot migration without user's SSH key
   Given I am a cloud user (ultron)
-  When I create a virtual machine (linux-vm-with-startup)
+  When I create a virtual machine (linux-vm-with-startup-static)
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
-  And the virtual machine (linux-vm-with-startup) is built successfully
+  And the virtual machine (linux-vm-with-startup-static) is built successfully
 
   # To test for new migrated user, we delete the existing user account
   When I delete the existing user account (ultron) from the VHI portal
   And I set the logging path (ultron_log/log)
-  And I migrate the virtual machine (linux-vm-with-startup)
+  And I migrate the virtual machine (linux-vm-with-startup-static)
   Then I wait for 10 seconds
   And I should see the virtual machine is ACTIVE in VHI portal
   And its CPU, RAM and storage are correct
@@ -21,12 +22,12 @@ Scenario: Hot migration without user's SSH key
 
 Scenario: Hot migration with user's SSH key
   Given I am a cloud user (uda)
-  When I create a virtual machine (linux-vm-with-startup)
+  When I create a virtual machine (linux-vm-with-startup-static)
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
-  And the virtual machine (linux-vm-with-startup) is built successfully
+  And the virtual machine (linux-vm-with-startup-static) is built successfully
 
-  When I migrate the virtual machine (linux-vm-with-startup)
+  When I migrate the virtual machine (linux-vm-with-startup-static)
   Then I wait for 10 seconds
   And I should see the virtual machine is ACTIVE in VHI portal
   And its CPU, RAM and storage are correct
@@ -37,12 +38,12 @@ Scenario: Hot migration with user's SSH key with storage policy specified
   | tier | replicas | failure domain |
   | 0    | 3        | 1              |
   And I assign the storage policy (behave-storage-policy) with 100G to the project
-  And I create a virtual machine (linux-vm-with-startup)
+  And I create a virtual machine (linux-vm-with-startup-static)
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
-  And the virtual machine (linux-vm-with-startup) is built successfully
+  And the virtual machine (linux-vm-with-startup-static) is built successfully
 
-  When I migrate the virtual machine (linux-vm-with-startup) with following details
+  When I migrate the virtual machine (linux-vm-with-startup-static) with following details
   | storage policy        |
   | behave-storage-policy |
   Then I wait for 10 seconds
