@@ -10,17 +10,29 @@ def after_scenario(context, scenario):
         entity_plural = "virtual_machines"
         entity_singular = "virtual_machine"
 
-        if "cold_migration" in context.feature.tags and "linux" in context.feature.tags:
-            name = "linux-vm-without-startup"
+        if "cold_migration" in context.feature.tags and "linux" in context.feature.tags and "statichv" in context.feature.tags:
+            name = "linux-vm-without-startup-static"
 
-        elif "cold_migration" in context.feature.tags and "windows" in context.feature.tags:
-            name = "windows-vm-without-startup"
+        elif "cold_migration" in context.feature.tags and "windows" in context.feature.tags and "statichv" in context.feature.tags:
+            name = "windows-vm-without-startup-static"
 
-        elif "hot_migration" in context.feature.tags and "linux" in context.feature.tags:
-            name = "linux-vm-with-startup"
+        elif "hot_migration" in context.feature.tags and "linux" in context.feature.tags and "statichv" in context.feature.tags:
+            name = "linux-vm-with-startup-static"
 
-        elif "hot_migration" in context.feature.tags and "windows" in context.feature.tags:
-            name = "windows-vm-with-startup"
+        elif "hot_migration" in context.feature.tags and "windows" in context.feature.tags and "statichv" in context.feature.tags:
+            name = "windows-vm-with-startup-static"
+
+        elif "cold_migration" in context.feature.tags and "linux" in context.feature.tags and "cloudboothv" in context.feature.tags:
+            name = "linux-vm-without-startup-cloudboot"
+
+        elif "cold_migration" in context.feature.tags and "windows" in context.feature.tags and "cloudboothv" in context.feature.tags:
+            name = "windows-vm-without-startup-cloudboot"
+
+        elif "hot_migration" in context.feature.tags and "linux" in context.feature.tags and "cloudboothv" in context.feature.tags:
+            name = "linux-vm-with-startup-cloudboot"
+
+        elif "hot_migration" in context.feature.tags and "windows" in context.feature.tags and "cloudboothv" in context.feature.tags:
+            name = "windows-vm-with-startup-cloudboot"
 
         fixture = helper.get_fixture(entity_singular)[name][entity_singular]
         label = fixture["label"]
