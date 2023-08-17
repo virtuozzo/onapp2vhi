@@ -982,6 +982,16 @@ class VinfraQuotasTestCase(VinfraServiceComputeTestCase):
             "service compute quotas update mock_project_id --param1 \"value1\" --param2 \"value2\" "
             "--storage-policy dummy_storage_policy:64G")
 
+    def test_show_quotas(self):
+        self.mock_ssh.execute.return_value = (0, 'list of quota dict')
+
+        results = self.command.show_quotas('mock_project_id')
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='user_login' --vinfra-password='user_pwd' service compute "
+            "quotas show mock_project_id -f json")
+        self.assertEqual(results, 'list of quota dict')
+
 
 class VinfraStoragePoliciesTestCase(VinfraServiceComputeTestCase):
 
@@ -1021,7 +1031,7 @@ class VinfraPlacementTestCase(VinfraServiceComputeTestCase):
     def test_vinfra_root(self):
         self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='admin' "
                                                    "--vinfra-password='ui_admin_password' "
-                                                   "service compute placement assign")
+                                                   "service compute placement")
 
     def test_assign_placement_to_flavor(self):
         mock_ssh_execute_results = (0, 'assign_placement_results')
@@ -1032,4 +1042,14 @@ class VinfraPlacementTestCase(VinfraServiceComputeTestCase):
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
             "service compute placement assign --flavors mock_flavor mock_placement")
-        self.assertEquals(results, 'assign_placement_results')
+        self.assertEqual(results, 'assign_placement_results')
+
+    def test_list_placement(self):
+        self.mock_ssh.execute.return_value = (0, 'placement list')
+
+        results = self.command.list()
+
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute placement list -f json")
+        self.assertEqual(results, 'placement list')

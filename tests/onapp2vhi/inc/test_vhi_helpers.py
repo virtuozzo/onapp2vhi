@@ -127,13 +127,30 @@ class TestVhiHelpers(unittest.TestCase):
             )
         )
 
+    @patch("onapp2vhi.inc.vhi_helpers.VinfraProject", autospec=True)
+    @patch("onapp2vhi.inc.vhi_helpers.VinfraQuotas", autospec=True)
     @patch("onapp2vhi.inc.vhi_helpers.VinfraFlavor", autospec=True)
     @patch("onapp2vhi.inc.vhi_helpers.VinfraPlacement", autospec=True)
-    def test_flavor_handler(self, mock_placement, mock_flavor):
+    def test_flavor_handler(self, mock_placement, mock_flavor, mock_quotas, mock_project):
         flavor = {"vcpus": 2, "ram": 512, "name": "flavor_2_512"}
 
         mock_flavor_instance = mock_flavor.return_value
         mock_placement_instance = mock_placement.return_value
+        mock_quotas_instance = mock_quotas.return_value
+        mock_project_instance = mock_project.return_value
+
+        mock_placement_instance.list.return_value = json.dumps([{
+            'name': 'test_placement',
+            'id': 'abdc-1234-fegh-6789',
+        }])
+        mock_project_instance.show.return_value = json.dumps({'id': '12324-basdf'})
+        mock_quotas_instance.show_quotas.return_value = json.dumps({
+            'placement': {
+                'abdc-1234-fegh-6789': {
+                    'limit': -1,
+                }
+            }
+        })
 
         # No flavor returned
         mock_flavor_instance.flavor_list.side_effect =\
@@ -406,6 +423,7 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
         self.mock_cfg.vhi_conf = {
             'cp_ip': 'dummycp.unittest.test',
             'hv_ip': 'dummyhv.unittest.test',
+            'vinfra_project': 'test_proj',
             'vinfra_domain': 'behave',
             'domain_id': '58fa18b2cefc4bad8a52f11008dfbf72',
             'cloud_ssh_port': 22,
@@ -470,8 +488,8 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
 
         # No flavor returned
         mock_ssh_ctor.side_effect = [
-            self.mock_flavor_ssh,
             self.mock_placement_ssh,
+            self.mock_flavor_ssh,
         ]
         self.mock_flavor_ssh.execute.side_effect = [
             (2, {"name": "flavorless"}),
@@ -487,8 +505,8 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
 
         # Flavor returned and exist in vhi
         mock_ssh_ctor.side_effect = [
-            self.mock_flavor_ssh,
             self.mock_placement_ssh,
+            self.mock_flavor_ssh,
         ]
         self.mock_flavor_ssh.execute.side_effect = [
             (0, '[{"name": "flavor_2_512"}]'),
@@ -509,20 +527,33 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
             (0, '[{"name": "flavor_2_512"}]'),
         ]
         self.mock_placement_ssh.execute.side_effect = [
-            (0, "test_placement"),
+            (0, '[{"name": "test_placement", "id": "1234-abcdef"}]'),
+            (0, 'ok'),
+        ]
+        self.mock_project_ssh.execute.side_effect = [
+            (0, json.dumps({'id': '2345-defg'})),
+        ]
+        self.mock_quotas_ssh.execute.side_effect = [
+            (0, json.dumps({'placement': {'1234-abcdef': {'limit': -1}}}) + 'show quotas result'),
         ]
         mock_ssh_ctor.side_effect = [
-            self.mock_flavor_ssh,
             self.mock_placement_ssh,
+            self.mock_project_ssh,
+            self.mock_quotas_ssh,
+            self.mock_flavor_ssh,
         ]
 
         self.assertTrue(self.vhi.flavor_handler(flavor, "test_placement"))
         self.assertEqual(self.vhi.flavor_name, "flavor_2_512")
         self.mock_flavor_ssh.execute.assert_called_once_with(
             "vinfra vinfra_auth service compute flavor list -f json")
-        self.mock_placement_ssh.execute.assert_called_once_with(
-            "vinfra admin_auth service compute placement assign --flavors flavor_2_512 "
-            "test_placement")
+        self.mock_placement_ssh.execute.assert_has_calls([
+            call("vinfra admin_auth service compute placement list -f json"),
+            call("vinfra admin_auth service compute placement assign --flavors flavor_2_512 "
+                 "test_placement")
+        ])
+        self.mock_quotas_ssh.execute.assert_called_once_with(
+            'vinfra admin_auth service compute quotas show 2345-defg -f json')
 
     @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
     def test_flavor_handler_vinfra_check_flavor_returned_and_not_in_vhi_with_placemant(
@@ -535,11 +566,20 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
             (0, '{"name": "flavorless"}'),
         ]
         self.mock_placement_ssh.execute.side_effect = [
-            (0, "test_placement"),
+            (0, json.dumps([{"name": "test_placement", "id": "1234-abcdef"}])),
+            (0, 'ok')
+        ]
+        self.mock_project_ssh.execute.side_effect = [
+            (0, json.dumps({'id': '2345-defg'})),
+        ]
+        self.mock_quotas_ssh.execute.side_effect = [
+            (0, json.dumps({'placement': {'1234-abcdef': {'limit': -1}}})),
         ]
         mock_ssh_ctor.side_effect = [
-            self.mock_flavor_ssh,
             self.mock_placement_ssh,
+            self.mock_project_ssh,
+            self.mock_quotas_ssh,
+            self.mock_flavor_ssh,
         ]
 
         self.assertTrue(self.vhi.flavor_handler(flavor, "test_placement"))
@@ -549,8 +589,111 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
             call("vinfra vinfra_auth service compute flavor create flavor_2_512 --vcpus=2 "
                  "--ram=512 -f json")
         ])
-        self.mock_placement_ssh.execute.assert_called_once_with(
-            "vinfra admin_auth service compute placement assign --flavors flavorless test_placement")
+        self.mock_placement_ssh.execute.assert_has_calls([
+            call("vinfra admin_auth service compute placement list -f json"),
+            call("vinfra admin_auth service compute placement assign --flavors flavorless "
+                 "test_placement")
+        ])
+        self.mock_quotas_ssh.execute.assert_called_once_with(
+            'vinfra admin_auth service compute quotas show 2345-defg -f json')
+
+    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
+    def test_flavor_handler_placement_listing_failed(self, mock_ssh_ctor):
+        flavor = {"vcpus": 2, "ram": 512, "name": "flavor_2_512"}
+
+        self.mock_placement_ssh.execute.side_effect = [(1, 'listing failed!')]
+
+        mock_ssh_ctor.side_effect = [
+            self.mock_placement_ssh,
+        ]
+
+        self.assertFalse(self.vhi.flavor_handler(flavor, "test_placement"))
+
+    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
+    def test_flavor_handler_no_placements(self, mock_ssh_ctor):
+        flavor = {"vcpus": 2, "ram": 512, "name": "flavor_2_512"}
+
+        self.mock_placement_ssh.execute.side_effect = [
+            (0, json.dumps([])),
+        ]
+
+        mock_ssh_ctor.side_effect = [
+            self.mock_placement_ssh,
+        ]
+
+        self.assertFalse(self.vhi.flavor_handler(flavor, "test_placement"))
+
+    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
+    def test_flavor_handler_placement_not_found(self, mock_ssh_ctor):
+        flavor = {"vcpus": 2, "ram": 512, "name": "flavor_2_512"}
+
+        self.mock_placement_ssh.execute.side_effect = [
+            (0, json.dumps([{"name": "test_placement!", "id": "1234-abcdef"}])),
+        ]
+
+        mock_ssh_ctor.side_effect = [
+            self.mock_placement_ssh,
+        ]
+
+        self.assertFalse(self.vhi.flavor_handler(flavor, "test_placement"))
+
+    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
+    def test_flavor_handler_project_show_failed(self, mock_ssh_ctor):
+        flavor = {"vcpus": 2, "ram": 512, "name": "flavor_2_512"}
+
+        self.mock_placement_ssh.execute.side_effect = [
+            (0, json.dumps([{"name": "test_placement", "id": "1234-abcdef"}])),
+        ]
+        self.mock_project_ssh.execute.side_effect = [(1, 'show failed!')]
+
+        mock_ssh_ctor.side_effect = [
+            self.mock_placement_ssh,
+            self.mock_project_ssh,
+        ]
+
+        self.assertFalse(self.vhi.flavor_handler(flavor, "test_placement"))
+
+    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
+    def test_flavor_handler_quotas_show_quota_failed(self, mock_ssh_ctor):
+        flavor = {"vcpus": 2, "ram": 512, "name": "flavor_2_512"}
+
+        self.mock_placement_ssh.execute.side_effect = [
+            (0, json.dumps([{"name": "test_placement", "id": "1234-abcdef"}])),
+        ]
+        self.mock_project_ssh.execute.side_effect = [
+            (0, json.dumps({'id': '2345-defg'})),
+        ]
+        self.mock_quotas_ssh.execute.side_effect = [(1, 'show quotas failed!')]
+
+        mock_ssh_ctor.side_effect = [
+            self.mock_placement_ssh,
+            self.mock_project_ssh,
+            self.mock_quotas_ssh,
+        ]
+
+        self.assertFalse(self.vhi.flavor_handler(flavor, "test_placement"))
+
+    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
+    def test_flavor_handler_project_placement_quota_not_set(self, mock_ssh_ctor):
+        flavor = {"vcpus": 2, "ram": 512, "name": "flavor_2_512"}
+
+        self.mock_placement_ssh.execute.side_effect = [
+            (0, json.dumps([{"name": "test_placement", "id": "1234-abcdef"}])),
+        ]
+        self.mock_project_ssh.execute.side_effect = [
+            (0, json.dumps({'id': '2345-defg'})),
+        ]
+        self.mock_quotas_ssh.execute.side_effect = [
+            (0, json.dumps({'placement': {'1234-abcdef': {'limit': 0}}}))
+        ]
+
+        mock_ssh_ctor.side_effect = [
+            self.mock_placement_ssh,
+            self.mock_project_ssh,
+            self.mock_quotas_ssh,
+        ]
+
+        self.assertFalse(self.vhi.flavor_handler(flavor, "test_placement"))
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
     def test_create_user_user_exists(self, mock_ssh_ctor):

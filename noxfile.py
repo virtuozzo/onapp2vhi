@@ -5,7 +5,7 @@ import os
 @nox.session
 def lint(session):
     session.install("pylint==2.13.9", "mock==5.0.1", "requests-mock==1.10.0", ".")
-    session.run("pylint", "-E", "onapp2vhi/", "tests/")
+    session.run("pylint", "--extension-pkg-whitelist=regex", "-E", "onapp2vhi/", "tests/")
 
 
 @nox.session

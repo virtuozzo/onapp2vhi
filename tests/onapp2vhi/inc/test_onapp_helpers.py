@@ -594,6 +594,7 @@ class GetAllVirtualMachinesTestCase(OnAppHelpersTestCase):
                         'operating_system': 'centos7',
                         'built_from_iso': False,
                         'built_from_ova': False,
+                        'vip': False,
                         'label': 'testvm1',}
                       }
                 ]
@@ -645,6 +646,7 @@ class GetAllVirtualMachinesTestCase(OnAppHelpersTestCase):
                         'operating_system': 'centos7',
                         'built_from_iso': False,
                         'built_from_ova': False,
+                        'vip': False,
                         'label': 'testvm1'}
                       }
                 ]
@@ -712,6 +714,7 @@ class GetAllVirtualMachinesTestCase(OnAppHelpersTestCase):
                         'operating_system': 'centos7',
                         'built_from_iso': False,
                         'built_from_ova': False,
+                        'vip': False,
                         'label': 'testvm1'}
                       }
                 ]
@@ -729,6 +732,48 @@ class GetAllVirtualMachinesTestCase(OnAppHelpersTestCase):
         expected = {}
         results = get_all_virtual_machines(self.mock_cfg)
         self.assertEquals(results, expected)
+
+    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    def test_with_marked_vip_onapp_vm(self, mock_onapprequests, mock_ssh):
+
+        def onapprequestsget(param:str):
+            if param == 'version':
+                return {'version': '6.4.3.testbuild(1)'}
+            elif param == 'virtual_machines':
+                return [
+                    { 'virtual_machine': {
+                        'name': 'vm1',
+                        'identifier': 'abcdef',
+                        'ip_addresses': [
+                            { 'ip_address': { 'address': '1.1.1.1', 'primary': False}, },
+                            { 'ip_address': { 'address': '2.2.2.2', 'primary': True}, },
+                            { 'ip_address': { 'address': '3.3.3.3', 'primary': False}, }
+                        ],
+                        'hostname': 'vm1',
+                        'domain': 'localdomain',
+                        'user_id': 11,
+                        'booted': False,
+                        'operating_system': 'centos7',
+                        'built_from_iso': False,
+                        'built_from_ova': False,
+                        'vip': True,
+                        'label': 'testvm1'}
+                      }
+                ]
+            else:
+                raise RuntimeError('unhandled onapprequsets.get()')
+
+        self.mock_onapprequests.get.side_effect = onapprequestsget
+        self.mock_ssh.execute.side_effect = [
+            (0, json.dumps([ { 'name': 'vm1.localdomain',
+                               'domain_id': '58fa18b2cefc4bad8a52f11008dfbf72' } ])),
+        ]
+        mock_onapprequests.return_value = self.mock_onapprequests
+        mock_ssh.return_value = self.mock_ssh
+
+        results = get_all_virtual_machines(self.mock_cfg)
+        self.assertFalse(results)
 
 
 class GetVmSourcePropertiesTestCase(OnAppHelpersTestCase):
@@ -1458,6 +1503,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
                             'operating_system': 'centos7',
                             'built_from_iso': False,
                             'built_from_ova': False,
+                            'vip': False,
                         },
                     },
                 ]
@@ -1565,6 +1611,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
                             'operating_system': 'centos7',
                             'built_from_iso': False,
                             'built_from_ova': False,
+                            'vip': False,
                         },
                     },
                 ]
@@ -1677,6 +1724,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
                             'operating_system': 'centos7',
                             'built_from_iso': False,
                             'built_from_ova': False,
+                            'vip': False,
                         },
                     },
                 ]
@@ -1768,6 +1816,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
                             'operating_system': 'centos7',
                             'built_from_iso': False,
                             'built_from_ova': False,
+                            'vip': False,
                         },
                     },
                 ]
@@ -1845,6 +1894,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
                         'operating_system': 'centos7',
                         'built_from_iso': False,
                         'built_from_ova': False,
+                        'vip': False,
                     },
                 }
             elif path == 'users/13':
