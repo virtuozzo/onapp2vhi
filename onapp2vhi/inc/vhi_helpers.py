@@ -18,6 +18,7 @@ from onapp2vhi.inc.vinfra_wrapper import (
     VinfraError,
 )
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+from onapp2vhi.utilities.regex import JSON_REGEX
 
 logs = OnAppVHILogger()
 
@@ -119,10 +120,65 @@ class Vhi:
         :param placement: placement name or ID
         :return:
         """
+
+        # check placement
+        vinfra_placement = VinfraPlacement(self.cfg)
+        if placement:
+            try:
+                output = vinfra_placement.list()
+                placements = json.loads(output)
+            except VinfraError as e:
+                exit_status_code_handler(exit_code=e.exit_code,
+                                         message=f'Listing placements failed.\n\t{e}')
+                return False
+
+            if not placements:
+                exit_status_code_handler(1, 'no placements found')
+                return False
+
+            placement_id = None
+            for x in placements:
+                if x['name'] == placement:
+                    placement_id = x['id']
+                    break
+            if not placement_id:
+                exit_status_code_handler(1, message=f'{placement} not found')
+                return False
+
+            # check project quota
+            proj_name = self.cfg.vhi_conf['vinfra_project']
+            domain = self.cfg.vhi_conf['vinfra_domain']
+
+            vinfra_project = VinfraProject(self.cfg)
+            try:
+                output = vinfra_project.show(proj_name, domain)
+                proj_id = json.loads(output)['id']
+
+                vinfra_quotas = VinfraQuotas(self.cfg, service_user=False, access_domain=True)
+                try:
+                    output = vinfra_quotas.show_quotas(proj_id)
+                    quotas = json.loads(JSON_REGEX.match(output).group(0))
+
+                    if quotas['placement'][placement_id]['limit'] == 0:
+                        exit_status_code_handler(
+                            1,
+                            message=f'Project {proj_name} is not configured for placement = '
+                                    f'{placement}')
+                        return False
+
+                except VinfraError as e:
+                    exit_status_code_handler(exit_code=e.exit_code,
+                                             message=f'Unable to check project quotas {proj_id}.\n\t{e}')
+                    return False
+            except VinfraError as e:
+                exit_status_code_handler(exit_code=e.exit_code,
+                                         message=f'Unable to check project {proj_name}.\n\t{e}')
+                return False
+
+        # check flavor
         _flavor_name = onapp_flavor['name']
         self._vhi_flavor_payload(vm_data=onapp_flavor)
         _vinfra = VinfraFlavor(self.cfg, service_user=True)
-        vinfra_placement = VinfraPlacement(self.cfg)
         try:
             output = _vinfra.flavor_list()
         except VinfraError as e:
@@ -140,7 +196,7 @@ class Vhi:
                     output = vinfra_placement.assign_placement_to_flavor(flavor=self.flavor_name,
                                                                          placement=placement)
                 except VinfraError as e:
-                    # log initial error and continue bye creating flavor and assign
+                    # log initial error and continue by creating flavor and assign
                     exit_status_code_handler(exit_code=e.exit_code,
                                              message=f'Placement Assignment result.\n\t{e}')
             return True

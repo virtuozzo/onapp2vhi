@@ -524,7 +524,9 @@ class VinfraQuotas(VinfraServiceCompute):
 
     def __init__(self,
                  cfg: OnApp2VHIConfig,
+                 access_domain: bool = False,
                  service_user: bool = True,
+                 domain_service_user: bool = False,
                  connect_timeout: int = CONNECT_TIMEOUT,
                  channel_timeout: int = CHANNEL_TIMEOUT):
         super().__init__(cfg,
@@ -556,6 +558,10 @@ class VinfraQuotas(VinfraServiceCompute):
                                f' {kwargs["storage-policy"]["name"]}:{kwargs["storage-policy"]["size"]}G'
         cmd = f"{cmd}{_cmd_properties}"
         return self.execute(cmd, json=False)
+
+    def show_quotas(self, project_id: str):
+        cmd: str = f'{self.vinfra_root} show {project_id}'
+        return self.execute(cmd)
 
 
 class VinfraStoragePolicies(VinfraServiceCompute):
@@ -589,7 +595,7 @@ class VinfraPlacement(VinfraServiceCompute):
         super().__init__(cfg,
                          connect_timeout=connect_timeout,
                          channel_timeout=channel_timeout)
-        self.vinfra_root += ' placement assign'
+        self.vinfra_root += ' placement'
 
     def assign_placement_to_flavor(self, flavor: str, placement: str):
         """
@@ -597,5 +603,9 @@ class VinfraPlacement(VinfraServiceCompute):
         # vinfra {ADMIN_AUTH} service compute placement assign --flavors flavor_2_512 test_placement1
         :return:
         """
-        cmd: str = f'{self.vinfra_root} --flavors {flavor} {placement}'
+        cmd: str = f'{self.vinfra_root} assign --flavors {flavor} {placement}'
         return self.execute(cmd, json=False)
+
+    def list(self):
+        cmd: str = f'{self.vinfra_root} list'
+        return self.execute(cmd)
