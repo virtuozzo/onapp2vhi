@@ -15,6 +15,9 @@ from onapp2vhi.inc.onapp_helpers import (
     suspend_vm,
     check_sg_exists_in_project,
 )
+from onapp2vhi.inc.vhi_helpers import (
+    get_vhi_hv_ip
+)
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.network_handler import get_network_configuration
 from onapp2vhi.utilities.logs.logger import OnAppVHILogger
@@ -105,7 +108,6 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
         _vm_id = _vm['id']
         _error_msg = (f"VM with [IP: {onappvm_pri_ip} | MAC: {onappvm_pri_mac}] ALREADY EXISTS on VHI side.\n"
                       f"VM: {cfg.vhi_conf['url']}/compute/servers/instances/{_vm_id}/")
-
         if not _vm['networks'] and _vm['name'] == f'vm_{_vm_properties["hostname"].lower()}_{vm_idn}':
             vm_created = True
             break
@@ -165,7 +167,7 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
                                                      sg_id=security_group_id)
 
     # Set Up secondary SG
-    _secondary_sg_id = cfg.vhi_config['vhi_sgroup_id']
+    _secondary_sg_id = cfg.vhi_conf['vhi_sgroup_id']
 
     if _secondary_sg_id:
         if check_sg_exists_in_project(cfg, vhiproj=_vhiproj, sg_id=_secondary_sg_id):
@@ -189,7 +191,6 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
             _vhi_hv_ip = output.strip("\n")
             logs.info(f"VMs HV IP: {_vhi_hv_ip}")
     else:
-        from onapp2vhi.inc.vhi_helpers import get_vhi_hv_ip
         _vhi_hv_ip = get_vhi_hv_ip(cfg, vhi_vm_id=_vhi_vm_id, vhi_ssh=_vhi_ssh)
         if not _vhi_hv_ip:
             return False
