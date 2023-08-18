@@ -16,6 +16,9 @@ from onapp2vhi.inc.onapp_helpers import (
     find_correct_disk_key,
     check_sg_exists_in_project
 )
+from onapp2vhi.inc.vhi_helpers import (
+    get_vhi_hv_ip
+)
 from onapp2vhi.inc.utils import exit_status_code_handler
 from onapp2vhi.inc.network_handler import get_network_configuration
 from onapp2vhi.utilities.logs.logger import OnAppVHILogger
@@ -202,7 +205,7 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
                                                      sg_id=security_group_id)
 
     # Set Up secondary SG
-    _secondary_sg_id = cfg.vhi_config['vhi_sgroup_id']
+    _secondary_sg_id = cfg.vhi_conf['vhi_sgroup_id']
 
     if _secondary_sg_id:
         if check_sg_exists_in_project(cfg, vhiproj=_vhiproj, sg_id=_secondary_sg_id):
@@ -226,7 +229,6 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
             _vhi_hv_ip = output.strip("\n")
             logs.info(f"VMs HV IP: {_vhi_hv_ip}")
     else:
-        from onapp2vhi.inc.vhi_helpers import get_vhi_hv_ip
         _vhi_hv_ip = get_vhi_hv_ip(cfg, vhi_vm_id=_vhi_vm_id, vhi_ssh=_vhi_ssh)
         if not _vhi_hv_ip:
             return False
