@@ -167,7 +167,7 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
                                                      sg_id=security_group_id)
 
     # Set Up secondary SG
-    _secondary_sg_id = cfg.vhi_conf['vhi_sgroup_id']
+    _secondary_sg_id = cfg.vhi_conf['vhi_secondary_security_group']
 
     if _secondary_sg_id:
         if check_sg_exists_in_project(cfg, vhiproj=_vhiproj, sg_id=_secondary_sg_id):

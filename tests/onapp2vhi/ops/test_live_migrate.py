@@ -39,7 +39,7 @@ vinfra_domain_pass = ''
  Network ID for migration VM's, you can get it on VHI cloud
 migration_network_id = 5afcb27b-1c92-4561-a81c-fcf4f89bd543
 
-vhi_sgroup_id = 1234-1234fasd-safce0-adsfew
+vhi_secondary_security_group = 1234-1234fasd-safce0-adsfew
 
 [key]
 ssh_key = path/to/your/ssh_key/id_rsa
