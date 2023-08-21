@@ -546,9 +546,9 @@ def check_user_role(user_data: dict) -> str:
 def check_sg_exists_in_project(cfg: OnApp2VHIConfig, vhiproj: str, sg_id: str):
     sg = VinfraSecurityGroups(cfg)
     proj = VinfraProject(cfg)
-    _, proj_output = proj.show(domain=cfg.vhi_conf['vinfra_domain'], project_name=vhiproj)
+    proj_output = proj.show(domain=cfg.vhi_conf['vinfra_domain'], project_name=vhiproj)
     proj_id = json.loads(proj_output)['id']
-    _, sg_output = sg.list_security_group()
+    sg_output = sg.list_security_group()
     sg_list = json.loads(sg_output)
     sg_groups_ids = [sg['id'] for sg in sg_list if sg['project_id'] == proj_id]
     if sg_id in sg_groups_ids:
