@@ -30,6 +30,8 @@ CONFIG_TEMPLATE = """#[onapp]
 #
 # Network ID for migration VM's, you can get it on VHI cloud
 #migration_network_id = 5afcb27b-1c92-4561-a81c-fcf4f89bd543
+# Security Group ID specified to use for 2nd, 3rd, ... NIC's
+#vhi_secondary_security_group = d37b9211-0ce6-4186-b73c-e7aa7325d505
 #
 #[key]
 #ssh_key = path/to/your/ssh_key/id_rsa

@@ -13,6 +13,10 @@ from onapp2vhi.inc.onapp_helpers import (
     get_onapp_vm_nics,
     get_onapp_vm_flavor,
     suspend_vm,
+    check_sg_exists_in_project,
+)
+from onapp2vhi.inc.vhi_helpers import (
+    get_vhi_hv_ip
 )
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.network_handler import get_network_configuration
@@ -104,7 +108,6 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
         _vm_id = _vm['id']
         _error_msg = (f"VM with [IP: {onappvm_pri_ip} | MAC: {onappvm_pri_mac}] ALREADY EXISTS on VHI side.\n"
                       f"VM: {cfg.vhi_conf['url']}/compute/servers/instances/{_vm_id}/")
-
         if not _vm['networks'] and _vm['name'] == f'vm_{_vm_properties["hostname"].lower()}_{vm_idn}':
             vm_created = True
             break
@@ -153,9 +156,28 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
 
     # -- Attach Security group to NIC
     # -- Enable Spoofing for NIC
-    iface_id = get_iface_from_specific_vs(cfg, vm_name=_vhi_vm_id)
+    iface_ids = get_iface_from_specific_vs(cfg, vm_name=_vhi_vm_id)
+
+    # Set Up primary SG
+    _primary_iface_id = iface_ids.pop(0)
     security_group_id = transfer_firewall_rules_to_sg(cfg, vm_idn=vm_idn, vhiproj=_vhiproj)
-    attach_security_group_to_nic_and_enable_spoofing(cfg, vm_name=_vhi_vm_id, iface=iface_id, sg_id=security_group_id)
+    attach_security_group_to_nic_and_enable_spoofing(cfg,
+                                                     vm_name=_vhi_vm_id,
+                                                     iface=_primary_iface_id['id'],
+                                                     sg_id=security_group_id)
+
+    # Set Up secondary SG
+    _secondary_sg_id = cfg.vhi_conf['vhi_secondary_security_group']
+
+    if _secondary_sg_id:
+        if check_sg_exists_in_project(cfg, vhiproj=_vhiproj, sg_id=_secondary_sg_id):
+            for iface_id in iface_ids:
+                attach_security_group_to_nic_and_enable_spoofing(cfg,
+                                                                 vm_name=_vhi_vm_id,
+                                                                 iface=iface_id['id'],
+                                                                 sg_id=_secondary_sg_id)
+        else:
+            logs.warn(f"*** Security Group with ID[{_secondary_sg_id}] does NOT exists in Project [{_vhiproj}] ***")
 
     # -- STEP 6 --
     logs.info(f"{_spaces}{_cm_msg}STEP #6 -- VHI: define VHI VM's hypervisor and disks --", header=True)
@@ -169,7 +191,6 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
             _vhi_hv_ip = output.strip("\n")
             logs.info(f"VMs HV IP: {_vhi_hv_ip}")
     else:
-        from onapp2vhi.inc.vhi_helpers import get_vhi_hv_ip
         _vhi_hv_ip = get_vhi_hv_ip(cfg, vhi_vm_id=_vhi_vm_id, vhi_ssh=_vhi_ssh)
         if not _vhi_hv_ip:
             return False

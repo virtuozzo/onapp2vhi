@@ -14,6 +14,7 @@ from onapp2vhi.inc.onapp_helpers import (
     get_vm_source_properties,
     get_iface_from_specific_vs,
     attach_security_group_to_nic_and_enable_spoofing,
+    check_sg_exists_in_project,
     transfer_firewall_rules_to_sg,
     create_new_vhi_vm,
     prepare_vhi_migration_data,
@@ -844,6 +845,62 @@ class GetVmSourcePropertiesTestCase(OnAppHelpersTestCase):
         self.assertEqual(result, expected)
 
 
+class CheckSecurityGroupExistsInProjectTestCase(OnAppHelpersTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.mock_ssh_vinfra_security_groups = Mock(spec=SSH)
+        self.mock_ssh_vinfra_project = Mock(spec=SSH)
+
+    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    def test_security_group_exists(self, mock_ssh):
+        self.mock_ssh_vinfra_project.execute.side_effect = [
+            (0, json.dumps({'id': 'a-proj-id'})),
+        ]
+        self.mock_ssh_vinfra_security_groups.execute.side_effect = [
+            (0, json.dumps([{'project_id': 'a-proj-id', 'id': 'a-sg-id'}])),
+        ]
+
+        mock_ssh.side_effect = [
+            self.mock_ssh_vinfra_security_groups,
+            self.mock_ssh_vinfra_project,
+        ]
+
+        self.assertTrue(check_sg_exists_in_project(self.mock_cfg, 'testprj', 'a-sg-id'))
+
+    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    def test_security_group_doesnt_exists(self, mock_ssh):
+        self.mock_ssh_vinfra_project.execute.side_effect = [
+            (0, json.dumps({'id': 'a-proj-id'})),
+        ]
+        self.mock_ssh_vinfra_security_groups.execute.side_effect = [
+            (0, json.dumps([{'project_id': 'a-proj-id', 'id': '1-sg-id'}])),
+        ]
+
+        mock_ssh.side_effect = [
+            self.mock_ssh_vinfra_security_groups,
+            self.mock_ssh_vinfra_project,
+        ]
+
+        self.assertFalse(check_sg_exists_in_project(self.mock_cfg, 'testprj', 'a-sg-id'))
+
+    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    def test_diff_project(self, mock_ssh):
+        self.mock_ssh_vinfra_project.execute.side_effect = [
+            (0, json.dumps({'id': '1-proj-id'})),
+        ]
+        self.mock_ssh_vinfra_security_groups.execute.side_effect = [
+            (0, json.dumps([{'project_id': 'a-proj-id', 'id': 'a-sg-id'}])),
+        ]
+
+        mock_ssh.side_effect = [
+            self.mock_ssh_vinfra_security_groups,
+            self.mock_ssh_vinfra_project,
+        ]
+
+        self.assertFalse(check_sg_exists_in_project(self.mock_cfg, 'testprj', 'a-sg-id'))
+
+
 class TransferFirewallRulesToSecurityGroupTestCase(OnAppHelpersTestCase):
 
     def setUp(self):
@@ -1191,7 +1248,7 @@ class GetIfaceFromSpecificVSTestCase(OnAppHelpersTestCase):
             (0, json.dumps([{'id': 'eth0'}])),
         ]
         mock_ssh.return_value = self.mock_ssh
-        expected = 'eth0'
+        expected = [{'id': 'eth0'}]
 
         results = get_iface_from_specific_vs(self.mock_cfg, vm_name='vm1')
 
