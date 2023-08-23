@@ -1,4 +1,5 @@
 import unittest
+import json
 
 from mock import mock_open, patch
 from onapp2vhi.inc.network_vhi import Network
@@ -68,7 +69,7 @@ class TestNetwork(unittest.TestCase):
         network = Network(
             self.cfg, name="test_network", cidr="10.0.0.0/24", **network_data
         )
-        network._ssh.execute.return_value = (0, test_uuid)
+        network._ssh.execute.return_value = (0, json.dumps({"id": test_uuid}))
         self.assertEqual(network.create(), test_uuid)
 
         network._ssh.execute.assert_called_with(
@@ -80,7 +81,7 @@ class TestNetwork(unittest.TestCase):
                 " service compute network create test_network"
                 " --cidr 10.0.0.0/24 --dns-nameserver ['8.8.8.8', '8.8.4.4']"
                 " --allocation-pool 8.8.8.2-8.8.8.254 --no-dhcp --no-gateway"
-                ' -f json | jq -r ".id"'
+                ' -f json'
             )
         )
 
@@ -89,11 +90,15 @@ class TestNetwork(unittest.TestCase):
         test_uuid = ""
 
         network = Network(self.cfg, name="test_network", cidr="10.0.0.0/24")
-        network._ssh.execute.return_value = (0, test_uuid)
+        network._ssh.execute.return_value = (0, json.dumps({"id": test_uuid}))
         self.assertFalse(network.create())
 
         network = Network(self.cfg, name="test_network", cidr="10.0.0.0/24")
-        network._ssh.execute.return_value = (1, test_uuid)
+        network._ssh.execute.return_value = (1, json.dumps({"id": test_uuid}))
+        self.assertFalse(network.create())
+
+        network = Network(self.cfg, name="test_network", cidr="10.0.0.0/24")
+        network._ssh.execute.return_value = (0, json.dumps({"idx": test_uuid}))
         self.assertFalse(network.create())
 
     @patch("onapp2vhi.inc.network_vhi.SSH", autospec=True)
@@ -118,12 +123,15 @@ class TestNetwork(unittest.TestCase):
     def test_is_present(self, mock_ssh):
         network_data = {
             "id": 69,
-            "cidr": "8.8.8.8/8",
+            "cidr": "8.8.8.0/24",
             "vinfra_project": "test_project",
+            "start_address": "8.8.8.2",
+            "end_address": "8.8.8.254",
         }
         test_data = (
-            '[{"subnets": [{"cidr": "8.8.8.8/8"}, {"cidr":'
-            '"4.4.4.4/24"}], "id": 69}]\nuseless\nuseless'
+            '[{"subnets": [{"cidr": "8.8.8.0/24", "allocation_pools": '
+            '[{"start": "8.8.8.2", "end": "8.8.8.254"}]}, {"cidr":'
+            '"4.4.4.0/24"} ], "id": 69}]\nuseless\nuseless'
         )
         network = Network(self.cfg, **network_data)
         network._ssh.execute.return_value = (0, test_data)
@@ -140,15 +148,39 @@ class TestNetwork(unittest.TestCase):
         )
 
     @patch("onapp2vhi.inc.network_vhi.SSH", autospec=True)
-    def test_is_present_fail(self, mock_ssh):
+    def test_is_present_fail_cidr(self, mock_ssh):
         network_data = {
             "id": 69,
-            "cidr": "9.9.9.9/24",
+            "cidr": "9.9.9.0/24",
+            "vinfra_project": "test_project",
+            "start_address": "8.8.8.2",
+            "end_address": "8.8.8.254",
         }
         test_data = (
-            '[{"subnets": [{"cidr": "8.8.8.8/8"}, {"cidr":'
-            '"4.4.4.4/24"}], "id": 69}]\nuseless\nuseless'
+            '[{"subnets": [{"cidr": "8.8.8.0/24", "allocation_pools": '
+            '[{"start": "8.8.8.2", "end": "8.8.8.254"}]}, {"cidr":'
+            '"4.4.4.0/24"} ], "id": 69}]\nuseless\nuseless'
         )
+
+        network = Network(self.cfg, **network_data)
+        network._ssh.execute.return_value = (0, test_data)
+        self.assertFalse(network.is_present())
+
+    @patch("onapp2vhi.inc.network_vhi.SSH", autospec=True)
+    def test_is_present_fail_address_range(self, mock_ssh):
+        network_data = {
+            "id": 69,
+            "cidr": "8.8.8.0/24",
+            "vinfra_project": "test_project",
+            "start_address": "8.8.8.20",
+            "end_address": "8.8.8.40",
+        }
+        test_data = (
+            '[{"subnets": [{"cidr": "8.8.8.0/24", "allocation_pools": '
+            '[{"start": "8.8.8.2", "end": "8.8.8.254"}]}, {"cidr":'
+            '"4.4.4.0/24"} ], "id": 69}]\nuseless\nuseless'
+        )
+
         network = Network(self.cfg, **network_data)
         network._ssh.execute.return_value = (0, test_data)
         self.assertFalse(network.is_present())

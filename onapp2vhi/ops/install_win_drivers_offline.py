@@ -125,7 +125,7 @@ def vm_install_win_drivers_offline(cfg: OnApp2VHIConfig, vm_handler, idn: str, v
                       os.path.join(package_path, "scripts"))
 
     if vm_handler.vz_guest_tools:
-        cmd = f"scp -r {vz_guest_tool_path} root@{_vm_hv_ip}:/mnt/{vm_idn}/vz-guest-tools-win.tar"
+        cmd = f"scp {Helper.SCP_OPTS.value} -r {vz_guest_tool_path} root@{_vm_hv_ip}:/mnt/{vm_idn}/vz-guest-tools-win.tar"
         [exit_status, output] = ssh_run(cmd)
         if not exit_status_code_handler(
                 exit_code=exit_status,
@@ -139,7 +139,7 @@ def vm_install_win_drivers_offline(cfg: OnApp2VHIConfig, vm_handler, idn: str, v
                       os.path.join(package_path, "scripts"))
 
     if _cloud_init:
-        cmd = f"scp -r {cloudbase_init_path}  root@{_vm_hv_ip}:/mnt/{vm_idn}/CloudbaseInitSetup_Stable_x64.msi"
+        cmd = f"scp {Helper.SCP_OPTS.value} -r {cloudbase_init_path}  root@{_vm_hv_ip}:/mnt/{vm_idn}/CloudbaseInitSetup_Stable_x64.msi"
         [exit_status, output] = ssh_run(cmd)
         if not exit_status_code_handler(
                 exit_code=exit_status,
@@ -151,7 +151,7 @@ def vm_install_win_drivers_offline(cfg: OnApp2VHIConfig, vm_handler, idn: str, v
         ):
             return False
 
-    cmd = f"scp -r {install_script} root@{_vm_hv_ip}:/mnt/{vm_idn}/onapp.bat"
+    cmd = f"scp {Helper.SCP_OPTS.value} -r {install_script} root@{_vm_hv_ip}:/mnt/{vm_idn}/onapp.bat"
     [exit_status, output] = ssh_run(cmd)
     if not exit_status_code_handler(
             exit_code=exit_status,
@@ -171,7 +171,7 @@ def vm_install_win_drivers_offline(cfg: OnApp2VHIConfig, vm_handler, idn: str, v
     if not result:
         return False
 
-    cmd = f"scp -r {windows_reconfig.file} root@{_vm_hv_ip}:/mnt/{vm_idn}/vhi_rebuild_network.bat"
+    cmd = f"scp {Helper.SCP_OPTS.value} -r {windows_reconfig.file} root@{_vm_hv_ip}:/mnt/{vm_idn}/vhi_rebuild_network.bat"
     [exit_status, output] = ssh_run(cmd)
     if not exit_status_code_handler(
             exit_code=exit_status,

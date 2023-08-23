@@ -3,7 +3,7 @@ import json
 import re
 import xml.etree.ElementTree as KVMxml
 
-from onapp2vhi.inc.rest_client import OnAppRequests
+from onapp2vhi.inc.rest_client import OnAppRequests, OnAppRequestsException
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.ssh_connector import ssh_run, SSH
 from onapp2vhi.utilities.logs.logger import OnAppVHILogger
@@ -310,7 +310,7 @@ def get_user_data(cfg: OnApp2VHIConfig, url: str, get_type, value_to_search=None
 def _get_primary_vm_ip(cfg: OnApp2VHIConfig, vm: dict):
     vm_idn = vm['identifier']
     version = onapp_version(cfg)
-    if version <= 6.0:
+    if version <= 6.3:
         virtual_server_nic = get_virtual_server_interfaces(cfg, virtual_server_id=vm_idn)
         primary_nic_id = [nic["network_interface"]["id"] for nic in virtual_server_nic
                           if nic['network_interface']['primary']][0]
@@ -328,12 +328,12 @@ def _get_primary_vm_ip(cfg: OnApp2VHIConfig, vm: dict):
 
 def _vhi_virtual_machine_list(cfg: OnApp2VHIConfig):
     _vs = VinfraServer(cfg, service_user=False)
-    exit_code, server_list = _vs.list_server()
+    server_list = _vs.list_server()
     server_list = json.loads(server_list)
     return [vm['name'] for vm in server_list if vm['domain_id'] == cfg.vhi_conf['domain_id']]
 
 
-def get_all_virtual_machines(cfg: OnApp2VHIConfig, user_id: int = None):
+def get_all_virtual_machines(cfg: OnApp2VHIConfig, user_id: int = None, vm_id:str = ''):
     """
     Get list of all virtual machines and sort them by user ID
     :param user_id: 4 - get that user VM's
@@ -341,7 +341,10 @@ def get_all_virtual_machines(cfg: OnApp2VHIConfig, user_id: int = None):
     """
     logs.info(f"{_spaces}-- OnApp: Get All Virtual Machines information --  ", separator=True)
     onapp_requests = OnAppRequests(cfg)
-    if user_id:
+    if vm_id:
+        response = onapp_requests.get(f'virtual_machines/{vm_id}')
+        response = [response]
+    elif user_id:
         response = onapp_requests.get('virtual_machines', params=f'search_filter[user_id]={user_id}')
     else:
         response = onapp_requests.get('virtual_machines')
@@ -355,6 +358,12 @@ def get_all_virtual_machines(cfg: OnApp2VHIConfig, user_id: int = None):
     for _vm in response:
         vm = _vm['virtual_machine']
         _ip_addr = _get_primary_vm_ip(cfg, vm)
+
+        if vm["vip"]:
+            msg = (f'Virtual Machine is marked as VIP, skipping migration \n\n\t\t'
+                   f'VM Info [{vm["identifier"]} | {_ip_addr} | {vm["hostname"]} | {vm["label"]}]\n')
+            logs.warn(msg=msg)
+            continue
 
         if f"{vm['hostname']}.{vm['domain']}".lower() in existing_vms:
             msg = (f'Virtual Machine already exists on VHI side in `{cfg.vhi_conf["vinfra_domain"]}` domain\n\n\t\t'
@@ -392,7 +401,8 @@ def get_vm_source_properties(cfg: OnApp2VHIConfig, vm_idn: str) -> Dict:
     _vm_hv_ip = _hv_props['hypervisor']['ip_address']
     _vm_nics = onapp_requests.get(f'virtual_machines/{vm_idn}/ip_addresses')
     _vm_ip_addr = [nic['ip_address_join']['ip_address']['address'] for nic in _vm_nics
-                   if nic['ip_address_join']['ip_address']][0]
+                   if (nic['ip_address_join']['ip_address']
+                       and nic['ip_address_join']['ip_address']['primary'])][0]
     logs.info(f"-- Hypervisor ID: {_vm_hv_id} | Hypervisor IP ADDRESS: {_vm_hv_ip} | VM IP ADDRESS {_vm_ip_addr}")
     return {'hv_ip': _vm_hv_ip, 'vm_os': _vm_os, 'vm_ip_addr': _vm_ip_addr, 'network_info': network_info,
             'hot_migrate': _hot_migrate, 'hostname': _vm_hostname, 'domain': _vm_domain}
@@ -482,7 +492,7 @@ def get_vm_firewall_rules(cfg: OnApp2VHIConfig, vm_idn: str) -> List[FirewallRul
     firewall_rules = []
     for fr in response:
         comment = ''
-        if version > 6.0:
+        if version > 6.3:
             comment = fr['firewall_rule']['comment']
         firewall_rules.append(FirewallRules(id=fr['firewall_rule']['id'],
                                             position=fr['firewall_rule']['position'],
@@ -533,6 +543,20 @@ def check_user_role(user_data: dict) -> str:
     return admin_role
 
 
+def check_sg_exists_in_project(cfg: OnApp2VHIConfig, vhiproj: str, sg_id: str):
+    sg = VinfraSecurityGroups(cfg)
+    proj = VinfraProject(cfg)
+    proj_output = proj.show(domain=cfg.vhi_conf['vinfra_domain'], project_name=vhiproj)
+    proj_id = json.loads(proj_output)['id']
+    sg_output = sg.list_security_group()
+    sg_list = json.loads(sg_output)
+    sg_groups_ids = [sg['id'] for sg in sg_list if sg['project_id'] == proj_id]
+    if sg_id in sg_groups_ids:
+        return True
+
+    return False
+
+
 def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
                                   vm_idn: str,
                                   vhiproj: str,
@@ -559,9 +583,9 @@ def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
     firewall_rules_for_vm = get_vm_firewall_rules(cfg, vm_idn=vm_idn)
     firewall_rules_for_primary_nic = get_firewall_rules_for_specific_nic(nic=primary_nic, rules=firewall_rules_for_vm)
     security_group_name = f'sg_from_vs_{vm_idn}_and_nic_{primary_nic.nic_idn}'
-    _, output = proj.show(domain=cfg.vhi_conf['vinfra_domain'], project_name=vhiproj)
+    output = proj.show(domain=cfg.vhi_conf['vinfra_domain'], project_name=vhiproj)
     proj_id = json.loads(output)['id']
-    _, sg_list = sg.list_security_group(**{'project': proj_id})
+    sg_list = sg.list_security_group(**{'project': proj_id})
     sg_list = json.loads(sg_list)
     if not firewall_rules_for_primary_nic:
         logs.debug(msg='No rules for transfer!')
@@ -583,10 +607,10 @@ def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
     _description = f'Security group created from the VS: {vm_idn} with primary NIC: {primary_nic.nic_idn}'
     _cmd_create_sg = (f"{cfg.DOMAIN_AUTH} --vinfra-domain='{cfg.vhi_conf['vinfra_domain']}' --vinfra-project='{vhiproj}'"
                       f" service compute security-group create {security_group_name} --description '{_description}'")
-    _, sg_create = sg.execute(_cmd_create_sg)
+    sg_create = sg.execute(_cmd_create_sg)
     sg_create = json.loads(sg_create)
     sg_name = sg_create.get('name', '')
-    _, output = sg.list_security_group(**{'name': f"{sg_name}"})
+    output = sg.list_security_group(**{'name': f"{sg_name}"})
     output = json.loads(output)
     if not output:
         logs.error(msg="Security group hasn't been created")
@@ -608,26 +632,26 @@ def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
                         data["port-range-min"] = port
                         data["port-range-max"] = port
 
-                        _, output = sgr.create(sg_name=sg_name, **data)
+                        output = sgr.create(sg_name=sg_name, **data)
                         output = json.loads(output)
                 else:
                     data["port-range-min"] = rule.port
                     data["port-range-max"] = rule.port
                     # create the rule
-                    _, output = sgr.create(sg_name=sg_name, **data)
+                    output = sgr.create(sg_name=sg_name, **data)
                     output = json.loads(output)
             if not output:
                 logs.warn(msg=f"Firewall rule: {rule} was not transferred correctly")
         if primary_nic.default_firewall_rule == accept:
-            _, output = sgr.create(sg_name=sg_name, **{"ethertype": "IPv4",
-                                                       "port-range-min": 1,
-                                                       "port-range-max": 65535,
-                                                       "remote-ip": '0.0.0.0/0'})
+            output = sgr.create(sg_name=sg_name, **{"ethertype": "IPv4",
+                                                    "port-range-min": 1,
+                                                    "port-range-max": 65535,
+                                                    "remote-ip": '0.0.0.0/0'})
             output = json.loads(output)
             if not output:
                 logs.warn(msg="All Accept rule: '0.0.0.0/0' was not set correctly.")
 
-        _, output = sg.list_security_group(**{'name': f"{sg_name}"})
+        output = sg.list_security_group(**{'name': f"{sg_name}"})
         custom_sg_id = json.loads(output)[0]['id']
         logs.debug(f"Transferred firewall rules list: {custom_sg_id} for newly created Security group")
         return custom_sg_id
@@ -642,12 +666,12 @@ def get_iface_from_specific_vs(cfg: OnApp2VHIConfig, vm_name: str):
     """
     vsi = VinfraServerInterface(cfg)
 
-    _, output = vsi.list_server(server_name=vm_name)
+    output = vsi.list_server(server_name=vm_name)
     ifaces = json.loads(output)
     if not ifaces:
         return False
 
-    return ifaces[0]['id']
+    return ifaces
 
 
 def attach_security_group_to_nic_and_enable_spoofing(cfg: OnApp2VHIConfig,
@@ -667,7 +691,7 @@ def attach_security_group_to_nic_and_enable_spoofing(cfg: OnApp2VHIConfig,
         logs.error('*** Iface has NOT been found. Please check logs. ***')
         return False
 
-    _, output = vsi.set(vm_name=vm_name, iface=iface, spoofing=True, **{'security-group': sg_id})
+    output = vsi.set(vm_name=vm_name, iface=iface, spoofing=True, **{'security-group': sg_id})
     logs.info(iface)
     iface = json.loads(output)
     logs.debug(iface)
@@ -934,30 +958,29 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
     create_cmd = (f"{vinfra_access} service compute server create '{hostname_domain}'"
                   f" --description '{hostname_domain}_{vm_idn}' {network} --volume source=image,id={vhi_image},"
                   f"size={onapp_disks[0]['size']},storage-policy={vhi_storage_policy}"
-                  f" --flavor {flavour} -f json | jq -r \".id\"")
+                  f" --flavor {flavour} -f json")
     exit_status, output = vhi_ssh.execute(command=create_cmd)
-    if 'INTERNAL SERVER ERROR' in output:
+    if exit_status:
         logs.error(f'*** SOMETHING WENT WRONG. MIGRATION FAILED DUE TO ERROR:\n{Bcolors.BOLD}{output}{Bcolors.ENDC}\n'
                    f'Last running command:\n{Bcolors.WARN}{create_cmd}{Bcolors.ENDC}\n\n'
                    f'{Bcolors.FAIL}Please check VHI services.{Bcolors.ENDC}')
         return False
 
-    if not exit_status and output:
-        # ToDo - need to add verification step whether VM created successfully
-        _vhi_vm_id = output.strip("\n")
-        logs.info(f"NEW VHI VM CREATED: {cfg.vhi_conf['url']}/compute/servers/instances/{_vhi_vm_id}", separator=True)
-        logs.info(f"{_spaces}...STOPPING VM BEFORE MIGRATION...")
-        exit_status, output = vhi_ssh.execute(
-            f"for ((i=1;i<=100;i++)); do {vinfra_access} service compute server stop {_vhi_vm_id} --hard --wait"
-            f" --timeout 15 -f json | jq -r -c [.name,.id,.vm_state,.power_state,.status] ;  "
-            f"pwstate=\"`{vinfra_access} service compute server show {_vhi_vm_id} -f json | jq -r .power_state `\" ; "
-            f"echo \"$pwstate\" ; if [[ \"$pwstate\" == \"SHUTDOWN\" ]];"
-            f" then break; fi ; sleep 1; done 2>/dev/null",
-            real_data=True
-        )
-        if not exit_status_code_handler(exit_code=exit_status,
-                                        message=f'VM is not created. Output:\n\t{output}'):
-            return False
+    _vhi_vm_id = json.loads(output)["id"]
+    logs.info(f"NEW VHI VM CREATED: {cfg.vhi_conf['url']}/compute/servers/instances/{_vhi_vm_id}", separator=True)
+
+    logs.info(f"{_spaces}...STOPPING VM BEFORE MIGRATION...")
+    exit_status, output = vhi_ssh.execute(
+        f"for ((i=1;i<=100;i++)); do {vinfra_access} service compute server stop {_vhi_vm_id} --hard --wait"
+        f" --timeout 15 -f json | jq -r -c [.name,.id,.vm_state,.power_state,.status] ;  "
+        f"pwstate=\"`{vinfra_access} service compute server show {_vhi_vm_id} -f json | jq -r .power_state `\" ; "
+        f"echo \"$pwstate\" ; if [[ \"$pwstate\" == \"SHUTDOWN\" ]];"
+        f" then break; fi ; sleep 1; done 2>/dev/null",
+        real_data=True
+    )
+    if not exit_status_code_handler(exit_code=exit_status,
+                                    message=f'VM is not created. Output:\n\t{output}'):
+        return False
 
     if len(onapp_disks) > 1:
         logs.info("-- VHI: Create and Attach extra VHI VM's disks --")
@@ -965,12 +988,16 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
             if idx >= 1:
                 exit_status, output = vhi_ssh.execute(
                     f"{vinfra_access} service compute volume create --size {dsk['size']} "
-                    f"onapp-{_vhi_vm_id} --storage-policy {vhi_storage_policy} -f json | jq -c -r \".id\""
+                    f"onapp-{_vhi_vm_id} --storage-policy {vhi_storage_policy} -f json"
                 )
-                new_disk_id = output.strip()
+                if not exit_status_code_handler(exit_code=exit_status,
+                                                message='Volume creation failed. Output:\n\t{output}'):
+                    return False
+
+                new_disk_id = json.loads(output)["id"]
                 exit_status, output = vhi_ssh.execute(
                     f"{vinfra_access} service compute server volume attach "
-                    f"--server {_vhi_vm_id} {new_disk_id} -f json | jq -c 2>/dev/null"
+                    f"--server {_vhi_vm_id} {new_disk_id} -f json"
                 )
                 if not exit_status_code_handler(exit_code=exit_status,
                                                 message=f'VM volume is not attached. Output:\n\t{output}'):
@@ -982,11 +1009,15 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
         for ip in onappvm_pri_ips:
             _ips_params += f"--fixed-ip ip-address={ip} "
         exit_status, output = vhi_ssh.execute(f"{vinfra_access} service compute server iface "
-                                              f"list --server {_vhi_vm_id} -f json | jq -c -r .[0].id 2>/dev/null")
-        _vhi_nic0_id = output.strip()
+                                              f"list --server {_vhi_vm_id} -f json")
+        if not exit_status_code_handler(exit_code=exit_status,
+                                        message=f'Listing network interfaces failed. Output:\n\t{output}'):
+            return False
+
+        _vhi_nic0_id = json.loads(output)[0]["id"]
         exit_status, output = vhi_ssh.execute(
             f"{vinfra_access} service compute server iface set {_ips_params} --server "
-            f"{_vhi_vm_id} {_vhi_nic0_id} -f json | jq -c -r .fixed_ips 2>/dev/null"
+            f"{_vhi_vm_id} {_vhi_nic0_id} -f json"
         )
         if not exit_status_code_handler(exit_code=exit_status,
                                         message=f'VM iface is not set. Output:\n\t{output}'):
@@ -998,23 +1029,39 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
 DEFAULT_ONAPP_USER_NAMES = ('system_owner', 'cloud_locations_manager')
 
 
-def prepare_vhi_migration_data(cfg: OnApp2VHIConfig, user_idn=None):
+def prepare_vhi_migration_data(cfg: OnApp2VHIConfig, user_idn=None, vm_idn=None):
     """
     This method prepare user data and vm data for VHI migration
     :param user_idn:
     :return:
     """
     # Get User data and Virtual Servers from OnApp
-    if user_idn and type(user_idn) == int:
-        _user_data = get_user_data(cfg, url=f"users/{user_idn}", get_type='ID')
-        _vms_dict = get_all_virtual_machines(cfg, user_id=user_idn)
-    else:
-        _user_data = get_user_data(cfg,
-                                   url='users',
-                                   get_type='',
-                                   value_to_search=None,
-                                   all_users=True)
-        _vms_dict = get_all_virtual_machines(cfg)
+
+    _vms_dict = {}
+    _user_data = []
+
+    try:
+        if vm_idn:
+
+            _vms_dict = get_all_virtual_machines(cfg, vm_id=vm_idn)
+            if _vms_dict:
+                user_idn = list(_vms_dict.keys())[0]
+                _user_data = get_user_data(cfg, url=f"users/{user_idn}", get_type='ID')
+
+        elif user_idn and type(user_idn) == int:
+            _user_data = get_user_data(cfg, url=f"users/{user_idn}", get_type='ID')
+            _vms_dict = get_all_virtual_machines(cfg, user_id=user_idn)
+
+        else:
+            _user_data = get_user_data(cfg,
+                                       url='users',
+                                       get_type='',
+                                       value_to_search=None,
+                                       all_users=True)
+            _vms_dict = get_all_virtual_machines(cfg)
+    except OnAppRequestsException:
+        return False
+
     if not _user_data:
         return False
 

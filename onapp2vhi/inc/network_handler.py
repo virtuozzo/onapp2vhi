@@ -49,9 +49,9 @@ def get_network_configuration(cfg: OnApp2VHIConfig, virtual_server_identifier: s
 
         data['network_identifier'] = network_identifier
         data["ipv4"] = next((ip_address['ipv4'] for ip_address in vs_ip_addresses), False)
-        if version <= 6.0 and nic['network_interface']['primary'] is True:
+        if version <= 6.3 and nic['network_interface']['primary'] is True:
             data["primary_ip"] = [vs_ip_addresses[0]['address']]
-        elif version > 6.0:
+        elif version > 6.3:
             data["primary_ip"] = [
                 ip_address['address'] for ip_address in vs_ip_addresses
                 if ip_address["primary"]
@@ -109,9 +109,10 @@ def get_network_configuration(cfg: OnApp2VHIConfig, virtual_server_identifier: s
                 return False
 
             vhi_network_id = vhi_network.create()
-            secondary_network_cmd = (f" --network id={vhi_network_id},{ip_addresses}"
-                                     f"mac='{vhi_network.mac_address}',spoofing-protection-disable ")
-            networks_cmd.append(secondary_network_cmd)
+            network_cmd = (f" --network id={vhi_network_id},{ip_addresses}"
+                           f"mac='{vhi_network.mac_address}',"
+                           "spoofing-protection-disable ")
+            networks_cmd.append(network_cmd)
         else:
             network_interface_cmd = f" --network id={vhi_network.id},{ip_addresses}mac='{vhi_network.mac_address}'," \
                                     f"spoofing-protection-disable "

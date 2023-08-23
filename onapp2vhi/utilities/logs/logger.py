@@ -1,6 +1,7 @@
 import logging
 import logging.handlers
 import os
+import re
 import sys
 from os.path import join
 import time
@@ -80,6 +81,26 @@ def get_logger():
     return logger
 
 
+def hide_password(msg):
+    """
+    Hide password in logs
+    :param msg: "Password: 123456"
+    :return: "Password is hidden"
+    """
+    pattern1 = r"(?<=password=[\"'])(.*?)(?=[\"'])"
+    pattern2 = r"(?<=password\":[\"'])(.*?)(?=[\"'])"
+    pattern3 = r"(?<=password: [\"'])(.*?)(?=[\"'])"
+
+    pattern_all = re.compile(
+        f"{pattern1}|{pattern2}|{pattern3}", flags=re.IGNORECASE
+    )
+    try:
+        new_msg = re.sub(pattern_all, "*hidden*", msg)
+    except TypeError:
+        new_msg = msg
+    return new_msg
+
+
 class OnAppVHILogger:
 
     """
@@ -107,12 +128,14 @@ class OnAppVHILogger:
         return f'[{self._today_time()} | {self._human_time()}]\n'
 
     def debug(self, msg: str, separator=False):
+        msg = hide_password(msg)
         if separator:
             self._logger.debug('')
             self._logger.debug('- - - '*15)
         self._logger.debug(msg)
 
     def info(self, msg: str, separator=False, header=False):
+        msg = hide_password(msg)
         if separator:
             self._logger.info('')
             self._logger.info('- - - ' * 15)
@@ -128,11 +151,13 @@ class OnAppVHILogger:
         self._logger.info(msg)
 
     def error(self, msg: str):
+        msg = hide_password(msg)
         self._logger.error('#' * 50)
         self._logger.error(msg)
         self._logger.error('#' * 50)
 
     def warn(self, msg: str):
+        msg = hide_password(msg)
         self._logger.warning('#' * 50)
         self._logger.warning(msg)
         self._logger.warning('#' * 50)

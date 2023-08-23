@@ -147,9 +147,14 @@ def step_impl(context):
     for vm in onapp_vms:
         if onapp_vms[vm]["virtual_machine"]["hostname"] in dict_server_spec["hostname"]:
 
+            if  context.result[0]["virtual_machine"]["operating_system"] == "linux":
+                formula = onapp_vms[vm]["virtual_machine"]["primary_disk_size"] + onapp_vms[vm]["virtual_machine"]["swap_disk_size"]
+            else:
+                formula = onapp_vms[vm]["virtual_machine"]["primary_disk_size"]
+
             if onapp_vms[vm]["virtual_machine"]["memory"] == dict_server_spec["ram"] and \
                 onapp_vms[vm]["virtual_machine"]["cpus"] == dict_server_spec["vcpus"] and \
-                onapp_vms[vm]["virtual_machine"]["primary_disk_size"] + onapp_vms[vm]["virtual_machine"]["swap_disk_size"] == total_disk_size:
+                formula == total_disk_size:
 
                 match = True
                 break

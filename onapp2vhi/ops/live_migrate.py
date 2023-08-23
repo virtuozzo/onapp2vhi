@@ -13,13 +13,18 @@ from onapp2vhi.inc.onapp_helpers import (
     attach_security_group_to_nic_and_enable_spoofing,
     deactivate_disk,
     suspend_vm,
-    find_correct_disk_key
+    find_correct_disk_key,
+    check_sg_exists_in_project
+)
+from onapp2vhi.inc.vhi_helpers import (
+    get_vhi_hv_ip
 )
 from onapp2vhi.inc.utils import exit_status_code_handler
-from onapp2vhi.inc.network_hanlder import get_network_configuration
+from onapp2vhi.inc.network_handler import get_network_configuration
 from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+from onapp2vhi.inc.vinfra_wrapper import VinfraCommand, VinfraError
 
 logs = OnAppVHILogger()
 
@@ -119,10 +124,16 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
         vinfra_access = f"{cfg.DOMAIN_AUTH}  --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
     onappvm_pri_ip = _onapp_nics[0]['ips'][0]
     onappvm_pri_mac = _onapp_nics[0]['mac']
-    _vhi_ssh = SSH(**{'host': cfg.vhi_conf['cp_ip'],
-                      'port': cfg.vhi_conf['cloud_ssh_port'],
-                      'ssh_key': cfg.ssh_key})
-    exit_status, output = _vhi_ssh.execute(f"{cfg.ADMIN_AUTH} service compute server list --long -f json")
+
+    vinfra_command = VinfraCommand(cfg, vinfra_access=cfg.ADMIN_AUTH, cp_ip=True)
+    try:
+        output = vinfra_command.execute("service compute server list --long -f json")
+    except VinfraError as e:
+        exit_status_code_handler(
+            exit_code=e.exit_code,
+            message=f"[live_migrate.py | STEP 6] {e}")
+        return False
+
     vhi_vms = json.loads(output)
     _error_msg = ''
     vm_created = False
@@ -130,9 +141,21 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
         _vm_id = _vm['id']
         _error_msg = (f"VM with [IP: {onappvm_pri_ip} | MAC: {onappvm_pri_mac}] ALREADY EXISTS on VHI side.\n"
                       f"VM: {cfg.vhi_conf['url']}/compute/servers/instances/{_vm_id}/")
+
         if not _vm['networks'] and _vm['name'] == f'vm_{_vm_properties["hostname"].lower()}_{vm_idn}':
             vm_created = True
             break
+
+        if not _vm['networks'] and _vm['status'] == "ERROR":
+            logs.error(f"VM with {_vm['name']} name is in \"error\" status, aborting migration. Please remove the vm and try again.\n"
+                       f"VM: {cfg.vhi_conf['url']}/compute/servers/instances/{_vm_id}/")
+            return False
+
+        if not _vm['networks'] and _vm['status'] == "BUILD":
+            #Rare situation where vm's network is still building and there is another migration instance running
+            logs.error(f"VM with {_vm['name']} name is still in \"build\" status, aborting migration. Please try again.\n"
+                       f"VM: {cfg.vhi_conf['url']}/compute/servers/instances/{_vm_id}/")
+            return False
 
         if onappvm_pri_mac == _vm['networks'][0]['mac_addr'] or onappvm_pri_ip in _vm['networks'][0]['ips']:
             vm_created = True
@@ -145,6 +168,9 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
         return False
 
     logs.debug(f'NETWORK PARAMS: {_network}', separator=True)
+    _vhi_ssh = SSH(**{'host': cfg.vhi_conf['cp_ip'],
+                      'port': cfg.vhi_conf['cloud_ssh_port'],
+                      'ssh_key': cfg.ssh_key})
     if not vm_created:
         _vhi_vm_id = create_new_vhi_vm(cfg,
                                        vhi_ssh=_vhi_ssh,
@@ -168,9 +194,28 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
 
     # -- Attach Security group to NIC
     # -- Enable Spoofing for NIC
-    iface_id = get_iface_from_specific_vs(cfg, vm_name=_vhi_vm_id)
+    iface_ids = get_iface_from_specific_vs(cfg, vm_name=_vhi_vm_id)
+
+    # Set Up primary SG
+    _primary_iface_id = iface_ids.pop(0)
     security_group_id = transfer_firewall_rules_to_sg(cfg, vm_idn=vm_idn, vhiproj=_vhiproj)
-    attach_security_group_to_nic_and_enable_spoofing(cfg, vm_name=_vhi_vm_id, iface=iface_id, sg_id=security_group_id)
+    attach_security_group_to_nic_and_enable_spoofing(cfg,
+                                                     vm_name=_vhi_vm_id,
+                                                     iface=_primary_iface_id['id'],
+                                                     sg_id=security_group_id)
+
+    # Set Up secondary SG
+    _secondary_sg_id = cfg.vhi_conf['vhi_secondary_security_group']
+
+    if _secondary_sg_id:
+        if check_sg_exists_in_project(cfg, vhiproj=_vhiproj, sg_id=_secondary_sg_id):
+            for iface_id in iface_ids:
+                attach_security_group_to_nic_and_enable_spoofing(cfg,
+                                                                 vm_name=_vhi_vm_id,
+                                                                 iface=iface_id['id'],
+                                                                 sg_id=_secondary_sg_id)
+        else:
+            logs.warn(f"*** Security Group with ID[{_secondary_sg_id}] does NOT exists in Project [{_vhiproj}] ***")
 
     # -- STEP 7 --
     logs.info(f"{_spaces}{live_migration}STEP #7 -- VHI: define VM's hypervisor and disks --", header=True)
@@ -184,16 +229,24 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
             _vhi_hv_ip = output.strip("\n")
             logs.info(f"VMs HV IP: {_vhi_hv_ip}")
     else:
-        from onapp2vhi.inc.vhi_helpers import get_vhi_hv_ip
         _vhi_hv_ip = get_vhi_hv_ip(cfg, vhi_vm_id=_vhi_vm_id, vhi_ssh=_vhi_ssh)
         if not _vhi_hv_ip:
             return False
 
-    _vhi_hv_ssh = SSH(**{'host': _vhi_hv_ip, 'ssh_key': cfg.ssh_key})
-    exit_status, output = _vhi_hv_ssh.execute(f"{vinfra_access} service compute server volume list"
-                                              f" --server {_vhi_vm_id} -f json | jq -c 2>/dev/null")
+    vinfra_command = VinfraCommand(cfg, vinfra_access=vinfra_access, host=_vhi_hv_ip)
+    try:
+        output = vinfra_command.execute("service compute server volume list"
+                                        f" --server {_vhi_vm_id} -f json")
+    except VinfraError as e:
+        exit_status_code_handler(
+            exit_code=e.exit_code,
+            message=f"[live_migrate.py | STEP 7] {e}")
+        return False
+
     vhivm_disks = json.loads(output)
     _vhi_vm_disks = {str(x['device'].split('/')[2]): str(x['id']) for x in vhivm_disks}
+
+    _vhi_hv_ssh = SSH(**{'host': _vhi_hv_ip, 'ssh_key': cfg.ssh_key})
     for disk_lb, disk_id in _vhi_vm_disks.items():
         exit_status, output = _vhi_hv_ssh.execute(
             f"find /mnt/vstorage/vols/datastores/cinder/ -type f -name \"*volume-{disk_id}\" 2>/dev/null"

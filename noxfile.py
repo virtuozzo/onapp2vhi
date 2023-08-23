@@ -1,10 +1,11 @@
 import nox
+import os
 
 
 @nox.session
 def lint(session):
     session.install("pylint==2.13.9", "mock==5.0.1", "requests-mock==1.10.0", ".")
-    session.run("pylint", "-E", "onapp2vhi/", "tests/")
+    session.run("pylint", "--extension-pkg-whitelist=regex", "-E", "onapp2vhi/", "tests/")
 
 
 @nox.session
@@ -21,6 +22,10 @@ def unittest(session):
 @nox.session
 def code_coverage(session):
     session.install("nox==2022.1.7", "nose==1.3.7", "mock==5.0.1", "requests-mock==1.10.0", "coverage==6.2", ".")
+    try:
+        os.remove(os.path.join(os.getcwd(), '.coverage'))
+    except OSError:
+        pass
     session.run("nosetests", "--with-coverage", "--cover-inclusive", "--cover-branches")
     session.run("coverage", "report")
     session.run("coverage", "html")

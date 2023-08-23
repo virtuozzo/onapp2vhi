@@ -1,16 +1,28 @@
 import unittest
 import json
-from mock import patch, Mock, mock_open, call
+from mock import patch, Mock, mock_open, call, ANY
 
 from onapp2vhi.inc.onapp_helpers import (
     list_onapp_users,
     list_onapp_vms,
+    get_onapp_vm_nics,
+    get_onapp_vm_disks,
+    get_onapp_vm_flavor,
+    get_user_data,
+    get_user_ssh_keys,
     get_all_virtual_machines,
+    get_vm_source_properties,
     get_iface_from_specific_vs,
     attach_security_group_to_nic_and_enable_spoofing,
+    check_sg_exists_in_project,
     transfer_firewall_rules_to_sg,
+    create_new_vhi_vm,
+    prepare_vhi_migration_data,
 )
-from onapp2vhi.inc.rest_client import OnAppRequests
+from onapp2vhi.inc.vinfra_wrapper import (
+    VinfraServer,
+)
+from onapp2vhi.inc.rest_client import OnAppRequests, OnAppRequestsException
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.inc.utils import parse_matrix
 from onapp2vhi.inc.ssh_connector import SSH
@@ -54,7 +66,7 @@ ssh_key = path/to/your/ssh_key/id_rsa
 """
 
 
-class TestOnAppHelper(unittest.TestCase):
+class TestOnAppHelpers(unittest.TestCase):
 
     def setUp(self):
         self.mock_config = Mock(spec=OnApp2VHIConfig)
@@ -62,7 +74,7 @@ class TestOnAppHelper(unittest.TestCase):
         self.mock_parse_matrix = Mock(spec=parse_matrix)
 
 
-class TestListOnAppUsers(TestOnAppHelper):
+class TestListOnAppUsers(TestOnAppHelpers):
 
     @patch("onapp2vhi.inc.onapp_helpers.parse_matrix")
     @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
@@ -156,7 +168,7 @@ class TestListOnAppUsers(TestOnAppHelper):
         mock_parse_matrix.assert_not_called()
 
 
-class TestOnAppVms(TestOnAppHelper):
+class TestOnAppVms(TestOnAppHelpers):
 
     @patch("onapp2vhi.inc.onapp_helpers.parse_matrix")
     @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
@@ -251,11 +263,304 @@ class TestOnAppVms(TestOnAppHelper):
         mock_parse_matrix.assert_not_called()
 
 
-class GetAllVirtualMachinesTestCase(unittest.TestCase):
+class TestOnAppGetVmNics(TestOnAppHelpers):
+
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    @patch("onapp2vhi.inc.onapp_helpers.logs")
+    def test_get_onapp_vm_nics_ok(self, mock_logs, mock_onapp_request):
+
+        mock_nic_res = [
+            {
+                "network_interface": {
+                    "id": "eth0",
+                    "mac_address": "aa:bb:cc:dd",
+                    "primary": ["1.2.3.4"]
+                }
+            }
+        ]
+
+        mock_ip_address = [
+            {
+                "ip_address_join": {
+                    "network_interface_id": "eth0",
+                    "ip_address": {
+                        "address": "1.2.3.4"
+                    }
+                }
+            },
+            {
+                "ip_address_join": {
+                    "network_interface_id": "eth1",
+                    "ip_address": {
+                        "address": "1.2.3.5"
+                    }
+                }
+            }
+        ]
+
+        expected_results = [{'id': "eth0", 'mac': 'aa:bb:cc:dd', 'primary': ["1.2.3.4"], 'ips': ['1.2.3.4']}]
+
+        self.mock_onapprequests.get.side_effect = [mock_nic_res, mock_ip_address]
+        mock_onapp_request.return_value = self.mock_onapprequests
+        results = get_onapp_vm_nics(self.mock_config, "testtest123")
+
+        self.assertEqual(results, expected_results)
+
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    @patch("onapp2vhi.inc.onapp_helpers.logs")
+    def test_get_onapp_vm_nics_none(self, mock_logs, mock_onapp_request):
+
+        mock_nic_res = []
+
+        mock_ip_address = [
+            {
+                "ip_address_join": {
+                    "network_interface_id": "eth0",
+                    "ip_address": {
+                        "address": "1.2.3.5"
+                    }
+                }
+            },
+        ]
+
+        expected_results = []
+
+        self.mock_onapprequests.get.side_effect = [mock_nic_res, mock_ip_address]
+        mock_onapp_request.return_value = self.mock_onapprequests
+        results = get_onapp_vm_nics(self.mock_config, "testtest123")
+
+        self.assertEqual(results, expected_results)
+
+
+class TestOnAppGetDisk(TestOnAppHelpers):
+
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    @patch("onapp2vhi.inc.onapp_helpers.logs")
+    def test_get_onapp_vm_disk_ok(self, mock_logs, mock_onapp_request):
+
+        mock_data_stores = [
+            {
+                "data_store": {
+                    "id": "test123",
+                    "identifier": "test",
+                    "data_store_type": "test"
+                }
+            }
+        ]
+
+        mock_disks = [
+            {
+                "disk": {
+                    "data_store_id": "test123",
+                    "primary": ["1.2.3.4"],
+                    "id": "test123",
+                    "disk_vm_number": "test321",
+                    "is_swap": "true",
+                    "identifier": "vms",
+                    "disk_size": "1024",
+                }
+            }
+        ]
+
+        expected_results = [
+            {
+                'datastore_idn': 'test',
+                'number': 'test321',
+                'is_swap': 'true',
+                'primary': ["1.2.3.4"],
+                'path': '/dev/test/vms',
+                'ds_id': 'test123',
+                'disk_idn': 'vms',
+                'size': '1024',
+                'datastore_type': 'test'
+            }
+        ]
+
+        self.mock_onapprequests.get.side_effect = [mock_data_stores, mock_disks]
+        mock_onapp_request.return_value = self.mock_onapprequests
+        results = get_onapp_vm_disks(self.mock_config, "abcdtest123", False)
+
+        self.assertEqual(results, expected_results)
+
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    @patch("onapp2vhi.inc.onapp_helpers.logs")
+    def test_get_onapp_vm_disk_non_primary(self, mock_logs, mock_onapp_request):
+
+        mock_data_stores = [
+            {
+                "data_store": {
+                    "id": "test123",
+                    "identifier": "test",
+                    "data_store_type": "test"
+                }
+            }
+        ]
+
+        mock_disks = [
+            {
+                "disk": {
+                    "data_store_id": "test123",
+                    "primary": "false",
+                    "identifier": "test",
+                }
+            }
+        ]
+
+        expected_results = "/dev/test/test"
+
+        self.mock_onapprequests.get.side_effect = [mock_data_stores, mock_disks]
+        mock_onapp_request.return_value = self.mock_onapprequests
+        results = get_onapp_vm_disks(self.mock_config, "abcdtest123", True)
+
+        self.assertEqual(results, expected_results)
+
+
+class TestOnAppGetVmFlavor(TestOnAppHelpers):
+
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    @patch("onapp2vhi.inc.onapp_helpers.logs")
+    def test_get_onapp_flavors_ok(self, mock_logs, mock_onapp_request):
+
+        mock_results = {
+            "virtual_machine":
+            {
+                "cpus": "test_cpu",
+                "memory": "10",
+            }
+        }
+
+        expected_results = {'vcpus': 'test_cpu', 'ram': '10', 'name': 'flavor_test_cpu_10'}
+
+        self.mock_onapprequests.get.return_value = mock_results
+        mock_onapp_request.return_value = self.mock_onapprequests
+        results = get_onapp_vm_flavor(self.mock_config, "aabbcctest123")
+
+        self.assertEqual(results, expected_results)
+
+
+class TestGetUserSshKeys(TestOnAppHelpers):
+
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    @patch("onapp2vhi.inc.onapp_helpers.logs")
+    def test_get_user_ssh_keys_ok(self, mock_logs, mock_onapp_request):
+
+        mock_results = [
+            {
+                "ssh_key": {
+                    "key": "aabbccddeeff"
+                }
+            }
+        ]
+
+        expected_results = ['aabbccddeeff']
+
+        self.mock_onapprequests.get.return_value = mock_results
+        mock_onapp_request.return_value = self.mock_onapprequests
+        results = get_user_ssh_keys(self.mock_config, {"id": 3, "first_name": "test1", "last_name": "test2"})
+
+        self.assertEqual(results, expected_results)
+
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    @patch("onapp2vhi.inc.onapp_helpers.logs")
+    def test_get_user_ssh_keys_none(self, mock_logs, mock_onapp_request):
+
+        mock_results = []
+
+        expected_results = []
+
+        self.mock_onapprequests.get.return_value = mock_results
+        mock_onapp_request.return_value = self.mock_onapprequests
+        results = get_user_ssh_keys(self.mock_config, {"id": 3, "first_name": "test1", "last_name": "test2"})
+
+        self.assertEqual(results, expected_results)
+
+
+class TestGetUserData(TestOnAppHelpers):
+
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    @patch("onapp2vhi.inc.onapp_helpers.logs")
+    def test_get_user_data_with_type(self, mock_logs, mock_onapp_request):
+
+        mock_results = {
+            "user": {
+                "id": "1",
+                "first_name": "test1",
+                "last_name": "test2"
+            }
+        }
+        self.mock_onapprequests.get.return_value = mock_results
+        mock_onapp_request.return_value = self.mock_onapprequests
+
+        expected_results = [{ "user": {'id': '1', 'first_name': 'test1', 'last_name': 'test2'}}]
+
+        results = get_user_data(self.mock_config, url="users/1", get_type="ID")
+
+        self.assertEqual(results, expected_results)
+
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    @patch("onapp2vhi.inc.onapp_helpers.logs")
+    def test_get_user_data_with_all_users(self, mock_logs, mock_onapp_request):
+
+        mock_results = [
+            {"user": {"id": "1", "first_name": "test1", "last_name": "test2"}},
+            {"user": {"id": "2", "first_name": "test3", "last_name": "test4"}},
+        ]
+
+        self.mock_onapprequests.get.return_value = mock_results
+        mock_onapp_request.return_value = self.mock_onapprequests
+
+        expected_results = [{"user": {'id': '1', 'first_name': 'test1', 'last_name': 'test2'}},
+                            {"user": {'id': '2', 'first_name': 'test3', 'last_name': 'test4'}}]
+
+        results = get_user_data(self.mock_config, url="users", get_type="", all_users=True)
+
+        self.assertEqual(results, expected_results)
+
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    @patch("onapp2vhi.inc.onapp_helpers.logs")
+    def test_get_user_data_with_value_to_search(self, mock_logs, mock_onapp_request):
+
+        mock_results = [
+            {"user": {"id": "1", "first_name": "test1", "last_name": "test2"}},
+            {"user": {"id": "2", "first_name": "test3", "last_name": "test4"}},
+        ]
+
+        self.mock_onapprequests.get.return_value = mock_results
+        mock_onapp_request.return_value = self.mock_onapprequests
+
+        expected_results = {'id': '1', 'first_name': 'test1', 'last_name': 'test2'}
+
+        results = get_user_data(self.mock_config, url="users", get_type="", value_to_search="test1")
+
+        self.assertEqual(results, expected_results)
+
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    @patch("onapp2vhi.inc.onapp_helpers.logs")
+    def test_get_user_data_return_none(self, mock_logs, mock_onapp_request):
+
+        mock_results = []
+
+        self.mock_onapprequests.get.return_value = mock_results
+        mock_onapp_request.return_value = self.mock_onapprequests
+
+        expected_results = False
+
+        results = get_user_data(self.mock_config, url="users", get_type="",)
+
+        self.assertEqual(results, expected_results)
+
+
+class OnAppHelpersTestCase(unittest.TestCase):
 
     @patch("builtins.open", mock_open(read_data=TEST_CONFIG))
     def setUp(self):
         self.mock_cfg = OnApp2VHIConfig('test.ini')
+
+
+class GetAllVirtualMachinesTestCase(OnAppHelpersTestCase):
+
+    def setUp(self):
+        super().setUp()
         self.mock_onapprequests = Mock(spec=OnAppRequests)
         self.mock_ssh = Mock(spec=SSH)
 
@@ -290,6 +595,7 @@ class GetAllVirtualMachinesTestCase(unittest.TestCase):
                         'operating_system': 'centos7',
                         'built_from_iso': False,
                         'built_from_ova': False,
+                        'vip': False,
                         'label': 'testvm1',}
                       }
                 ]
@@ -341,6 +647,7 @@ class GetAllVirtualMachinesTestCase(unittest.TestCase):
                         'operating_system': 'centos7',
                         'built_from_iso': False,
                         'built_from_ova': False,
+                        'vip': False,
                         'label': 'testvm1'}
                       }
                 ]
@@ -408,6 +715,7 @@ class GetAllVirtualMachinesTestCase(unittest.TestCase):
                         'operating_system': 'centos7',
                         'built_from_iso': False,
                         'built_from_ova': False,
+                        'vip': False,
                         'label': 'testvm1'}
                       }
                 ]
@@ -426,12 +734,177 @@ class GetAllVirtualMachinesTestCase(unittest.TestCase):
         results = get_all_virtual_machines(self.mock_cfg)
         self.assertEquals(results, expected)
 
+    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    def test_with_marked_vip_onapp_vm(self, mock_onapprequests, mock_ssh):
 
-class TransferFirewallRulesToSecurityGroup(unittest.TestCase):
+        def onapprequestsget(param:str):
+            if param == 'version':
+                return {'version': '6.4.3.testbuild(1)'}
+            elif param == 'virtual_machines':
+                return [
+                    { 'virtual_machine': {
+                        'name': 'vm1',
+                        'identifier': 'abcdef',
+                        'ip_addresses': [
+                            { 'ip_address': { 'address': '1.1.1.1', 'primary': False}, },
+                            { 'ip_address': { 'address': '2.2.2.2', 'primary': True}, },
+                            { 'ip_address': { 'address': '3.3.3.3', 'primary': False}, }
+                        ],
+                        'hostname': 'vm1',
+                        'domain': 'localdomain',
+                        'user_id': 11,
+                        'booted': False,
+                        'operating_system': 'centos7',
+                        'built_from_iso': False,
+                        'built_from_ova': False,
+                        'vip': True,
+                        'label': 'testvm1'}
+                      }
+                ]
+            else:
+                raise RuntimeError('unhandled onapprequsets.get()')
 
-    @patch("builtins.open", mock_open(read_data=TEST_CONFIG))
+        self.mock_onapprequests.get.side_effect = onapprequestsget
+        self.mock_ssh.execute.side_effect = [
+            (0, json.dumps([ { 'name': 'vm1.localdomain',
+                               'domain_id': '58fa18b2cefc4bad8a52f11008dfbf72' } ])),
+        ]
+        mock_onapprequests.return_value = self.mock_onapprequests
+        mock_ssh.return_value = self.mock_ssh
+
+        results = get_all_virtual_machines(self.mock_cfg)
+        self.assertFalse(results)
+
+
+class GetVmSourcePropertiesTestCase(OnAppHelpersTestCase):
+
     def setUp(self):
-        self.mock_cfg = OnApp2VHIConfig('test.ini')
+        super().setUp()
+        self.mock_onapprequests = Mock(spec=OnAppRequests, name='mock_onapprequests')
+
+    @patch('onapp2vhi.inc.network_onapp.OnAppRequests')
+    @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
+    def test_get_ok(self, mock_onapprequests1, mock_onapprequests2):
+
+        def onapprequestsget(param:str):
+            if param == 'virtual_machines/abcdef':
+                return {
+                    'virtual_machine': {
+                        'hypervisor_id': 'testhv1',
+                        'operating_system': 'centos7',
+                        'allowed_hot_migrate': True,
+                        'hostname': 'test-host',
+                        'domain': 'localdomain',
+                    }
+                }
+            elif param == 'virtual_machines/abcdef/network_interfaces':
+                return [
+                    {
+                        'network_interface': {
+                            'id': 'eth0',
+                        }
+                    },
+                ]
+            elif param == 'virtual_machines/abcdef/ip_addresses':
+                return [
+                    {
+                        'ip_address_join': {
+                            'network_interface_id': 'eth0',
+                            'ip_address': {
+                                'address': '2.3.2.4',
+                                'primary': True,
+                            }
+                        }
+                    },
+                ]
+            elif param == 'settings/hypervisors/testhv1':
+                return {
+                    'hypervisor': {
+                        'ip_address': '1.1.2.2',
+                    }
+                }
+
+            raise RuntimeError(f'unhandled onapprequsets.get({param})')
+
+        self.mock_onapprequests.get.side_effect = onapprequestsget
+        mock_onapprequests1.return_value = self.mock_onapprequests
+        mock_onapprequests2.return_value = self.mock_onapprequests
+        expected = {
+            'domain': 'localdomain',
+            'hostname': 'test-host',
+            'hot_migrate': True,
+            'hv_ip': '1.1.2.2',
+            'network_info': { 'eth0': ['2.3.2.4'] },
+            'vm_ip_addr': '2.3.2.4',
+            'vm_os': 'centos7',
+        }
+
+        result = get_vm_source_properties(self.mock_cfg, 'abcdef')
+
+        self.assertEqual(result, expected)
+
+
+class CheckSecurityGroupExistsInProjectTestCase(OnAppHelpersTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.mock_ssh_vinfra_security_groups = Mock(spec=SSH)
+        self.mock_ssh_vinfra_project = Mock(spec=SSH)
+
+    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    def test_security_group_exists(self, mock_ssh):
+        self.mock_ssh_vinfra_project.execute.side_effect = [
+            (0, json.dumps({'id': 'a-proj-id'})),
+        ]
+        self.mock_ssh_vinfra_security_groups.execute.side_effect = [
+            (0, json.dumps([{'project_id': 'a-proj-id', 'id': 'a-sg-id'}])),
+        ]
+
+        mock_ssh.side_effect = [
+            self.mock_ssh_vinfra_security_groups,
+            self.mock_ssh_vinfra_project,
+        ]
+
+        self.assertTrue(check_sg_exists_in_project(self.mock_cfg, 'testprj', 'a-sg-id'))
+
+    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    def test_security_group_doesnt_exists(self, mock_ssh):
+        self.mock_ssh_vinfra_project.execute.side_effect = [
+            (0, json.dumps({'id': 'a-proj-id'})),
+        ]
+        self.mock_ssh_vinfra_security_groups.execute.side_effect = [
+            (0, json.dumps([{'project_id': 'a-proj-id', 'id': '1-sg-id'}])),
+        ]
+
+        mock_ssh.side_effect = [
+            self.mock_ssh_vinfra_security_groups,
+            self.mock_ssh_vinfra_project,
+        ]
+
+        self.assertFalse(check_sg_exists_in_project(self.mock_cfg, 'testprj', 'a-sg-id'))
+
+    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    def test_diff_project(self, mock_ssh):
+        self.mock_ssh_vinfra_project.execute.side_effect = [
+            (0, json.dumps({'id': '1-proj-id'})),
+        ]
+        self.mock_ssh_vinfra_security_groups.execute.side_effect = [
+            (0, json.dumps([{'project_id': 'a-proj-id', 'id': 'a-sg-id'}])),
+        ]
+
+        mock_ssh.side_effect = [
+            self.mock_ssh_vinfra_security_groups,
+            self.mock_ssh_vinfra_project,
+        ]
+
+        self.assertFalse(check_sg_exists_in_project(self.mock_cfg, 'testprj', 'a-sg-id'))
+
+
+class TransferFirewallRulesToSecurityGroupTestCase(OnAppHelpersTestCase):
+
+    def setUp(self):
+        super().setUp()
         self.mock_onapprequests = Mock(spec=OnAppRequests, name='mock_onapprequests')
         self.mock_ssh_vinfra_security_group = Mock(spec=SSH, name='mock_visg')
         self.mock_ssh_vinfra_security_group_rules = Mock(spec=SSH, name='mock_visgr')
@@ -520,7 +993,7 @@ class TransferFirewallRulesToSecurityGroup(unittest.TestCase):
         self.mock_ssh_vinfra_security_group.execute.assert_has_calls([
             # first check purposely return empty
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --project 123  -f json"),
+                 "compute security-group list --project 123 -f json"),
             # security group creation
             call("vinfra --vinfra-username='domain_user' --vinfra-password='domain_pass' "
                  "--vinfra-domain='Migration' --vinfra-project='dummy_vhi_proj' service compute "
@@ -529,18 +1002,18 @@ class TransferFirewallRulesToSecurityGroup(unittest.TestCase):
                  "-f json"),
             # verify creation
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --name test_grp  -f json"),
+                 "compute security-group list --name test_grp -f json"),
             # get security group name
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --name test_grp  -f json")
+                 "compute security-group list --name test_grp -f json")
         ])
         self.mock_ssh_vinfra_security_group_rules.execute.assert_has_calls([
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group rule  create test_grp --ethertype IPv4 --protocol tcp "
-                 "--remote-ip 2.3.4.5 --port-range-min 80 --port-range-max 80  --ingress -f json"),
+                 "compute security-group rule create test_grp --ethertype IPv4 --protocol tcp "
+                 "--remote-ip 2.3.4.5 --port-range-min 80 --port-range-max 80 --ingress -f json"),
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group rule  create test_grp --ethertype IPv4 --port-range-min 1 "
-                 "--port-range-max 65535 --remote-ip 0.0.0.0/0  --ingress -f json"),
+                 "compute security-group rule create test_grp --ethertype IPv4 --port-range-min 1 "
+                 "--port-range-max 65535 --remote-ip 0.0.0.0/0 --ingress -f json"),
         ])
 
     @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
@@ -626,7 +1099,7 @@ class TransferFirewallRulesToSecurityGroup(unittest.TestCase):
         self.mock_ssh_vinfra_security_group.execute.assert_has_calls([
             # first check purposely return empty
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --project 123  -f json"),
+                 "compute security-group list --project 123 -f json"),
             # security group creation
             call("vinfra --vinfra-username='domain_user' --vinfra-password='domain_pass' "
                  "--vinfra-domain='Migration' --vinfra-project='dummy_vhi_proj' service compute "
@@ -635,15 +1108,15 @@ class TransferFirewallRulesToSecurityGroup(unittest.TestCase):
                  "-f json"),
             # verify creation
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --name test_grp  -f json"),
+                 "compute security-group list --name test_grp -f json"),
             # get security group name
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --name test_grp  -f json")
+                 "compute security-group list --name test_grp -f json")
         ])
         self.mock_ssh_vinfra_security_group_rules.execute.assert_has_calls([
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group rule  create test_grp --ethertype IPv4 --protocol tcp "
-                 "--remote-ip 2.3.4.5 --port-range-min 80 --port-range-max 80  --ingress -f json"),
+                 "compute security-group rule create test_grp --ethertype IPv4 --protocol tcp "
+                 "--remote-ip 2.3.4.5 --port-range-min 80 --port-range-max 80 --ingress -f json"),
         ])
 
     @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
@@ -730,7 +1203,7 @@ class TransferFirewallRulesToSecurityGroup(unittest.TestCase):
         self.mock_ssh_vinfra_security_group.execute.assert_has_calls([
             # first check purposely return empty
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --project 123  -f json"),
+                 "compute security-group list --project 123 -f json"),
             # security group creation
             call("vinfra --vinfra-username='domain_user' --vinfra-password='domain_pass' "
                  "--vinfra-domain='Migration' --vinfra-project='dummy_vhi_proj' service compute "
@@ -739,21 +1212,21 @@ class TransferFirewallRulesToSecurityGroup(unittest.TestCase):
                  "-f json"),
             # verify creation
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --name test_grp  -f json"),
+                 "compute security-group list --name test_grp -f json"),
             # get security group name
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --name test_grp  -f json")
+                 "compute security-group list --name test_grp -f json")
         ])
         self.mock_ssh_vinfra_security_group_rules.execute.assert_has_calls([
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group rule  create test_grp --ethertype IPv4 --protocol udp "
-                 "--remote-ip 1.2.3.4 --port-range-min 234 --port-range-max 234  --ingress -f json"),
+                 "compute security-group rule create test_grp --ethertype IPv4 --protocol udp "
+                 "--remote-ip 1.2.3.4 --port-range-min 234 --port-range-max 234 --ingress -f json"),
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group rule  create test_grp --ethertype IPv4 --protocol udp "
-                 "--remote-ip 1.2.3.4 --port-range-min 123 --port-range-max 123  --ingress -f json"),
+                 "compute security-group rule create test_grp --ethertype IPv4 --protocol udp "
+                 "--remote-ip 1.2.3.4 --port-range-min 123 --port-range-max 123 --ingress -f json"),
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group rule  create test_grp --ethertype IPv4 --protocol tcp "
-                 "--remote-ip 2.3.4.5 --port-range-min 80 --port-range-max 80  --ingress -f json"),
+                 "compute security-group rule create test_grp --ethertype IPv4 --protocol tcp "
+                 "--remote-ip 2.3.4.5 --port-range-min 80 --port-range-max 80 --ingress -f json"),
         ], any_order=True)
 
     # TODO! cases not covered:
@@ -763,11 +1236,10 @@ class TransferFirewallRulesToSecurityGroup(unittest.TestCase):
     # - security group already exists in vhi
 
 
-class GetIfaceFromSpecificVSTestCase(unittest.TestCase):
+class GetIfaceFromSpecificVSTestCase(OnAppHelpersTestCase):
 
-    @patch("builtins.open", mock_open(read_data=TEST_CONFIG))
     def setUp(self):
-        self.mock_cfg = OnApp2VHIConfig('test.ini')
+        super().setUp()
         self.mock_ssh = Mock(spec=SSH)
 
     @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
@@ -776,7 +1248,7 @@ class GetIfaceFromSpecificVSTestCase(unittest.TestCase):
             (0, json.dumps([{'id': 'eth0'}])),
         ]
         mock_ssh.return_value = self.mock_ssh
-        expected = 'eth0'
+        expected = [{'id': 'eth0'}]
 
         results = get_iface_from_specific_vs(self.mock_cfg, vm_name='vm1')
 
@@ -795,11 +1267,10 @@ class GetIfaceFromSpecificVSTestCase(unittest.TestCase):
         self.assertEquals(results, expected)
 
 
-class AttachSecurityGroupToNicAndEnableSpoofing(unittest.TestCase):
+class AttachSecurityGroupToNicAndEnableSpoofing(OnAppHelpersTestCase):
 
-    @patch("builtins.open", mock_open(read_data=TEST_CONFIG))
     def setUp(self):
-        self.mock_cfg = OnApp2VHIConfig('test.ini')
+        super().setUp()
         self.mock_ssh = Mock(spec=SSH)
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
@@ -812,11 +1283,10 @@ class AttachSecurityGroupToNicAndEnableSpoofing(unittest.TestCase):
                                                          'vm1',
                                                          'eth0',
                                                          'security_group_a')
-        #TODO! fix extra whitespace
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service compute "
-            "server iface set eth0  --server vm1 --spoofing-protection-enable "
-            "--security-group security_group_a  -f json")
+            "server iface set eth0 --server vm1 --spoofing-protection-enable "
+            "--security-group security_group_a -f json")
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
     def test_attach_no_security_group(self, mock_ssh):
@@ -837,3 +1307,734 @@ class AttachSecurityGroupToNicAndEnableSpoofing(unittest.TestCase):
                                                                           '',
                                                                           'security_group_a'))
         self.mock_ssh.execute.assert_not_called()
+
+
+class CreateNewVhiVmTestCase(OnAppHelpersTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.mock_ssh = Mock(spec=SSH)
+
+    def test_create_ok(self):
+        mock_disks = [{ 'size': '5',},]
+        mock_nics = [{ 'ips': ['1.1.1.1',],},]
+
+        def mock_ssh_execute(command:str, real_data=False):
+            if 'service compute server create' in command:
+                return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
+            elif 'for ((i=1;i<=100;i++))' in command:
+                return (0, 'done')
+
+            raise RuntimeError(f'Unhandled command: {command}')
+
+        self.mock_ssh.execute.side_effect = mock_ssh_execute
+        expected = '1111-2222-3333-444444444444'
+
+        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
+                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
+                                   'test-server', 'localdomain', 'default')
+        self.assertEqual(result, expected)
+
+    def test_create_failed(self):
+        mock_disks = [{ 'size': '5',},]
+        mock_nics = [{ 'ips': ['1.1.1.1',],},]
+
+        def mock_ssh_execute(command:str, real_data=False):
+            if 'service compute server create' in command:
+                return (1, 'create failed!')
+
+            raise RuntimeError(f'Unhandled command: {command}')
+
+        self.mock_ssh.execute.side_effect = mock_ssh_execute
+
+        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
+                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
+                                   'test-server', 'localdomain', 'default')
+        self.assertFalse(result)
+
+    def test_create_stop_failed(self):
+        mock_disks = [{ 'size': '5',},]
+        mock_nics = [{ 'ips': ['1.1.1.1',],},]
+
+        def mock_ssh_execute(command:str, real_data=False):
+            if 'service compute server create' in command:
+                return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
+            elif 'for ((i=1;i<=100;i++))' in command:
+                return (1, 'vm wont stop!')
+
+            raise RuntimeError(f'Unhandled command: {command}')
+
+        self.mock_ssh.execute.side_effect = mock_ssh_execute
+
+        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
+                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
+                                   'test-server', 'localdomain', 'default')
+        self.assertFalse(result)
+
+    def test_create_ok_multiple_disk(self):
+        mock_disks = [{ 'size': '5',}, { 'size': '2' }]
+        mock_nics = [{ 'ips': ['1.1.1.1',],},]
+
+        def mock_ssh_execute(command:str, real_data=False):
+            if 'service compute server create' in command:
+                return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
+            elif 'for ((i=1;i<=100;i++))' in command:
+                return (0, 'done')
+            elif 'service compute volume create' in command:
+                return (0, json.dumps({'id': 'wwww-qwerty-asdfghjkl'}))
+            elif 'service compute server volume attach' in command:
+                return (0, json.dumps({'result': 'ok'}))
+
+            raise RuntimeError(f'Unhandled command: {command}')
+
+        self.mock_ssh.execute.side_effect = mock_ssh_execute
+        expected = '1111-2222-3333-444444444444'
+
+        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
+                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
+                                   'test-server', 'localdomain', 'default')
+        self.assertEqual(result, expected)
+
+    def test_create_multiple_disk_volume_create_failed(self):
+        mock_disks = [{ 'size': '5',}, { 'size': '2' }]
+        mock_nics = [{ 'ips': ['1.1.1.1',],},]
+
+        def mock_ssh_execute(command:str, real_data=False):
+            if 'service compute server create' in command:
+                return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
+            elif 'for ((i=1;i<=100;i++))' in command:
+                return (0, 'done')
+            elif 'service compute volume create' in command:
+                return (1, 'volume create failed')
+
+            raise RuntimeError(f'Unhandled command: {command}')
+
+        self.mock_ssh.execute.side_effect = mock_ssh_execute
+
+        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
+                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
+                                   'test-server', 'localdomain', 'default')
+        self.assertFalse(result)
+
+    def test_create_multiple_disk_volume_attach_failed(self):
+        mock_disks = [{ 'size': '5',}, { 'size': '2' }]
+        mock_nics = [{ 'ips': ['1.1.1.1',],},]
+
+        def mock_ssh_execute(command:str, real_data=False):
+            if 'service compute server create' in command:
+                return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
+            elif 'for ((i=1;i<=100;i++))' in command:
+                return (0, 'done')
+            elif 'service compute volume create' in command:
+                return (0, json.dumps({'id': 'wwww-qwerty-asdfghjkl'}))
+            elif 'service compute server volume attach' in command:
+                return (1, 'volume attach failed!')
+
+            raise RuntimeError(f'Unhandled command: {command}')
+
+        self.mock_ssh.execute.side_effect = mock_ssh_execute
+
+        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
+                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
+                                   'test-server', 'localdomain', 'default')
+        self.assertFalse(result)
+
+    def test_create_ok_multi_ips(self):
+        mock_disks = [{ 'size': '5',},]
+        mock_nics = [{ 'ips': ['1.1.1.1', '2.2.2.2'],},]
+
+        def mock_ssh_execute(command:str, real_data=False):
+            if 'service compute server create' in command:
+                return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
+            elif 'for ((i=1;i<=100;i++))' in command:
+                return (0, 'done')
+            elif 'service compute server iface list' in command:
+                return (
+                    0,
+                    json.dumps([ { 'id': 'eth0', }, { 'id': 'eth1', } ])
+                )
+            elif 'service compute server iface set' in command:
+                return (0, 'ok')
+
+            raise RuntimeError(f'Unhandled command: {command}')
+
+        self.mock_ssh.execute.side_effect = mock_ssh_execute
+        expected = '1111-2222-3333-444444444444'
+
+        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
+                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
+                                   'test-server', 'localdomain', 'default')
+        self.assertEqual(result, expected)
+
+    def test_create_multi_ips_list_iface_failed(self):
+        mock_disks = [{ 'size': '5',},]
+        mock_nics = [{ 'ips': ['1.1.1.1', '2.2.2.2'],},]
+
+        def mock_ssh_execute(command:str, real_data=False):
+            if 'service compute server create' in command:
+                return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
+            elif 'for ((i=1;i<=100;i++))' in command:
+                return (0, 'done')
+            elif 'service compute server iface list' in command:
+                return (1, 'list iface failed!')
+
+            raise RuntimeError(f'Unhandled command: {command}')
+
+        self.mock_ssh.execute.side_effect = mock_ssh_execute
+
+        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
+                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
+                                   'test-server', 'localdomain', 'default')
+        self.assertFalse(result)
+
+    def test_create_multi_ips_set_iface_failed(self):
+        mock_disks = [{ 'size': '5',},]
+        mock_nics = [{ 'ips': ['1.1.1.1', '2.2.2.2'],},]
+
+        def mock_ssh_execute(command:str, real_data=False):
+            if 'service compute server create' in command:
+                return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
+            elif 'for ((i=1;i<=100;i++))' in command:
+                return (0, 'done')
+            elif 'service compute server iface list' in command:
+                return (
+                    0,
+                    json.dumps([ { 'id': 'eth0', }, { 'id': 'eth1', } ])
+                )
+            elif 'service compute server iface set' in command:
+                return (1, 'not ok')
+
+            raise RuntimeError(f'Unhandled command: {command}')
+
+        self.mock_ssh.execute.side_effect = mock_ssh_execute
+
+        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
+                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
+                                   'test-server', 'localdomain', 'default')
+        self.assertFalse(result)
+
+
+class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.mock_onapprequests = Mock(spec=OnAppRequests)
+        self.mock_vinfraserver = Mock(spec=VinfraServer)
+
+    @patch('onapp2vhi.inc.onapp_helpers.VinfraServer')
+    @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
+    def test_prepare_migration_data_all_users(self, mock_onapprequests, mock_vinfraserver):
+        mock_onapprequests.return_value = self.mock_onapprequests
+        mock_vinfraserver.return_value = self.mock_vinfraserver
+
+        self.mock_vinfraserver.list_server.return_value = json.dumps([
+            {'name': 'vm1', 'domain_id': '58fa18b2cefc4bad8a52f11008dfbf72'},
+        ])
+
+        def mock_onapprequests_get(path: str):
+            if path == 'users':
+                return [
+                    {
+                        'user': {
+                            'login': 'testuser',
+                            'email': 'testuser@unit.onapp2vhi.test',
+                            'id': 13,
+                            'first_name': 'test',
+                            'last_name': 'user',
+                            'roles': ['Admin', 'user'],
+                            'bucket_id': 'abc123',
+                        }
+                    },
+                ]
+            elif path == 'virtual_machines':
+                return [
+                    {
+                        'virtual_machine': {
+                            'identifier': 'abcdef',
+                            'label': 'test-vm1-label',
+                            'hostname': 'test-vm1',
+                            'domain': 'testdomain',
+                            'user_id': 13,
+                            'ip_addresses': [],
+                            'booted': True,
+                            'operating_system': 'centos7',
+                            'built_from_iso': False,
+                            'built_from_ova': False,
+                            'vip': False,
+                        },
+                    },
+                ]
+            elif path == 'billing/buckets/abc123/access_controls':
+                return [
+                    {
+                        'access_control': {
+                            'type': 'compute_zone_resource',
+                            'server_type': 'virtual',
+                            'limits': {
+                                'limit_memory': '4096',
+                                'limit_cpu': '4',
+                            },
+                            'target_name': 'sample compute target name',
+                        }
+                    },
+                    {
+                        'access_control': {
+                            'type': 'data_store_zone_resource',
+                            'limits': {
+                                'limit': '40',
+                            },
+                            'target_name': 'sample datastore target name',
+                        }
+                    }
+                ]
+            elif path == 'version':
+                return {'version': '6.4.12345-unittest'}
+
+            raise RuntimeError('unhandled path = {path}'.format(path=path))
+
+        self.mock_onapprequests.get.side_effect = mock_onapprequests_get
+        expected = [{'first_name': 'test',
+                     'id': 13,
+                     'last_name': 'user',
+                     'password': ANY,
+                     'project_name': 'project_testuser@unit.onapp2vhi.test',
+                     'quotas': {'cores': 4, 'ram-size': 4398046511104, 'storage': 40},
+                     'roles': ['Admin', 'user'],
+                     'user_email': 'testuser@unit.onapp2vhi.test',
+                     'user_login': 'testuser',
+                     'virtual_machines': [{'booted': True,
+                                           'built_from_iso': False,
+                                           'built_from_ova': False,
+                                           'domain': 'testdomain',
+                                           'hostname': 'test-vm1',
+                                           'id': 'abcdef',
+                                           'ip_addr': None,
+                                           'label': 'test-vm1-label',
+                                           'operating_system': 'centos7'}]}]
+
+        result = prepare_vhi_migration_data(self.mock_cfg)
+
+        self.assertNotEqual(result, [])
+        self.assertTrue(isinstance(result, list))
+        self.assertEqual(result, expected)
+
+    @patch('onapp2vhi.inc.onapp_helpers.VinfraServer')
+    @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
+    def test_prepare_migration_data_all_users_no_vm(self, mock_onapprequests, mock_vinfraserver):
+        mock_onapprequests.return_value = self.mock_onapprequests
+        mock_vinfraserver.return_value = self.mock_vinfraserver
+
+        self.mock_vinfraserver.list_server.return_value = json.dumps([
+            {'name': 'vm1', 'domain_id': '58fa18b2cefc4bad8a52f11008dfbf72'},
+        ])
+
+        def mock_onapprequests_get(path: str):
+            if path == 'users':
+                return [
+                    {
+                        'user': {
+                            'login': 'testuser',
+                            'email': 'testuser@unit.onapp2vhi.test',
+                            'id': 13,
+                            'first_name': 'test',
+                            'last_name': 'user',
+                            'roles': ['Admin', 'user'],
+                            'bucket_id': 'abc123',
+                        }
+                    },
+                    {
+                        'user': {   # user has no vm
+                            'login': 'dummy',
+                            'email': 'dummy@unit.onapp2vhi.test',
+                            'id': 14,
+                            'first_name': 'dum',
+                            'last_name': 'my',
+                            'roles': ['Admin', 'user'],
+                            'bucket_id': 'abc123',
+                        }
+                    },
+                ]
+            elif path == 'virtual_machines':
+                return [
+                    {
+                        'virtual_machine': {
+                            'identifier': 'abcdef',
+                            'label': 'test-vm1-label',
+                            'hostname': 'test-vm1',
+                            'domain': 'testdomain',
+                            'user_id': 13,
+                            'ip_addresses': [],
+                            'booted': True,
+                            'operating_system': 'centos7',
+                            'built_from_iso': False,
+                            'built_from_ova': False,
+                            'vip': False,
+                        },
+                    },
+                ]
+            elif path == 'billing/buckets/abc123/access_controls':
+                return [
+                    {
+                        'access_control': {
+                            'type': 'compute_zone_resource',
+                            'server_type': 'virtual',
+                            'limits': {
+                                'limit_memory': '4096',
+                                'limit_cpu': '4',
+                            },
+                            'target_name': 'sample compute target name',
+                        }
+                    },
+                    {
+                        'access_control': {
+                            'type': 'data_store_zone_resource',
+                            'limits': {
+                                'limit': '40',
+                            },
+                            'target_name': 'sample datastore target name',
+                        }
+                    }
+                ]
+            elif path == 'version':
+                return {'version': '6.4.12345-unittest'}
+
+            raise RuntimeError('unhandled path = {path}'.format(path=path))
+
+        self.mock_onapprequests.get.side_effect = mock_onapprequests_get
+        expected = [{'first_name': 'test',
+                     'id': 13,
+                     'last_name': 'user',
+                     'password': ANY,
+                     'project_name': 'project_testuser@unit.onapp2vhi.test',
+                     'quotas': {'cores': 4, 'ram-size': 4398046511104, 'storage': 40},
+                     'roles': ['Admin', 'user'],
+                     'user_email': 'testuser@unit.onapp2vhi.test',
+                     'user_login': 'testuser',
+                     'virtual_machines': [{'booted': True,
+                                           'built_from_iso': False,
+                                           'built_from_ova': False,
+                                           'domain': 'testdomain',
+                                           'hostname': 'test-vm1',
+                                           'id': 'abcdef',
+                                           'ip_addr': None,
+                                           'label': 'test-vm1-label',
+                                           'operating_system': 'centos7'}]},
+                    {'first_name': 'dum',
+                     'id': 14,
+                     'last_name': 'my',
+                     'password': ANY,
+                     'project_name': 'project_dummy@unit.onapp2vhi.test',
+                     'quotas': {'cores': 4, 'ram-size': 4398046511104, 'storage': 40},
+                     'roles': ['Admin', 'user'],
+                     'user_email': 'dummy@unit.onapp2vhi.test',
+                     'user_login': 'dummy',
+                     'virtual_machines': []}]
+
+        result = prepare_vhi_migration_data(self.mock_cfg)
+
+        self.maxDiff = None
+        self.assertNotEqual(result, [])
+        self.assertTrue(isinstance(result, list))
+        self.assertEqual(result, expected)
+
+    @patch('onapp2vhi.inc.onapp_helpers.VinfraServer')
+    @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
+    def test_prepare_migration_data_for_a_user(self, mock_onapprequests, mock_vinfraserver):
+        mock_onapprequests.return_value = self.mock_onapprequests
+        mock_vinfraserver.return_value = self.mock_vinfraserver
+
+        self.mock_vinfraserver.list_server.return_value = json.dumps([
+            {'name': 'vm1', 'domain_id': '58fa18b2cefc4bad8a52f11008dfbf72'},
+        ])
+
+        def mock_onapprequests_get(path: str, params: str = None):
+            if path == 'users/1':
+                return {
+                    'user': {
+                        'login': 'tester',
+                        'email': 'tester@unit.onapp2vhi.test',
+                        'id': 1,
+                        'first_name': 'test',
+                        'last_name': 'er',
+                        'roles': ['Admin', 'user'],
+                        'bucket_id': 'abc123',
+                    }
+                }
+            elif path == 'virtual_machines':
+                return [
+                    {
+                        'virtual_machine': {
+                            'identifier': 'abcdef',
+                            'label': 'test-vm1-label',
+                            'hostname': 'test-vm1',
+                            'domain': 'testdomain',
+                            'user_id': 1,
+                            'ip_addresses': [
+                                {
+                                    'ip_address': {
+                                        'address': '1.2.3.4',
+                                        'primary': True,
+                                    }
+                                }
+                            ],
+                            'booted': True,
+                            'operating_system': 'centos7',
+                            'built_from_iso': False,
+                            'built_from_ova': False,
+                            'vip': False,
+                        },
+                    },
+                ]
+            elif path == 'billing/buckets/abc123/access_controls':
+                return [
+                    {
+                        'access_control': {
+                            'type': 'compute_zone_resource',
+                            'server_type': 'virtual',
+                            'limits': {
+                                'limit_memory': '4096',
+                                'limit_cpu': '4',
+                            },
+                            'target_name': 'sample compute target name',
+                        }
+                    },
+                    {
+                        'access_control': {
+                            'type': 'data_store_zone_resource',
+                            'limits': {
+                                'limit': '40',
+                            },
+                            'target_name': 'sample datastore target name',
+                        }
+                    }
+                ]
+            elif path == 'version':
+                return {'version': '6.4.12345-unittest'}
+
+            raise RuntimeError('unhandled path = {path}'.format(path=path))
+
+        self.mock_onapprequests.get.side_effect = mock_onapprequests_get
+        expected = [{'first_name': 'test',
+                     'id': 1,
+                     'last_name': 'er',
+                     'password': ANY,
+                     'project_name': 'project_tester@unit.onapp2vhi.test',
+                     'quotas': {'cores': 4, 'ram-size': 4398046511104, 'storage': 40},
+                     'roles': ['Admin', 'user'],
+                     'user_email': 'tester@unit.onapp2vhi.test',
+                     'user_login': 'tester',
+                     'virtual_machines': [{'booted': True,
+                                           'built_from_iso': False,
+                                           'built_from_ova': False,
+                                           'domain': 'testdomain',
+                                           'hostname': 'test-vm1',
+                                           'id': 'abcdef',
+                                           'ip_addr': '1.2.3.4',
+                                           'label': 'test-vm1-label',
+                                           'operating_system': 'centos7'}]}]
+
+        result = prepare_vhi_migration_data(self.mock_cfg, 1)
+
+        self.assertNotEqual(result, [])
+        self.assertTrue(isinstance(result, list))
+        self.assertEqual(result, expected)
+
+    @patch('onapp2vhi.inc.onapp_helpers.VinfraServer')
+    @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
+    def test_prepare_migration_data_user_not_found(self, mock_onapprequests, mock_vinfraserver):
+        mock_onapprequests.return_value = self.mock_onapprequests
+        mock_vinfraserver.return_value = self.mock_vinfraserver
+
+        self.mock_vinfraserver.list_server.return_value = json.dumps([
+            {'name': 'vm1', 'domain_id': '58fa18b2cefc4bad8a52f11008dfbf72'},
+        ])
+
+        def mock_onapprequests_get(path: str, params: str = None):
+            if path == 'users/1':
+                return None
+            elif path == 'virtual_machines':
+                return [
+                    {
+                        'virtual_machine': {
+                            'identifier': 'abcdef',
+                            'label': 'test-vm1-label',
+                            'hostname': 'test-vm1',
+                            'domain': 'testdomain',
+                            'user_id': 13,
+                            'ip_addresses': [
+                                {
+                                    'ip_address': {
+                                        'address': '1.2.3.4',
+                                        'primary': True,
+                                    }
+                                }
+                            ],
+                            'booted': True,
+                            'operating_system': 'centos7',
+                            'built_from_iso': False,
+                            'built_from_ova': False,
+                            'vip': False,
+                        },
+                    },
+                ]
+            elif path == 'version':
+                return {'version': '6.4.12345-unittest'}
+
+            raise RuntimeError('unhandled path = {path}'.format(path=path))
+
+        self.mock_onapprequests.get.side_effect = mock_onapprequests_get
+
+        result = prepare_vhi_migration_data(self.mock_cfg, 1)
+        self.assertFalse(result)
+
+    @patch('onapp2vhi.inc.onapp_helpers.VinfraServer')
+    @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
+    def test_prepare_migration_data_user_has_no_vm(self, mock_onapprequests, mock_vinfraserver):
+        mock_onapprequests.return_value = self.mock_onapprequests
+        mock_vinfraserver.return_value = self.mock_vinfraserver
+
+        self.mock_vinfraserver.list_server.return_value = json.dumps([
+            {'name': 'vm1', 'domain_id': '58fa18b2cefc4bad8a52f11008dfbf72'},
+        ])
+
+        def mock_onapprequests_get(path: str, params: str = None):
+            if path == 'users/1':
+                return {
+                    'user': {
+                        'login': 'tester',
+                        'email': 'tester@unit.onapp2vhi.test',
+                        'id': 1,
+                        'first_name': 'test',
+                        'last_name': 'er',
+                        'roles': ['Admin', 'user'],
+                        'bucket_id': 'abc123',
+                    }
+                }
+            elif path == 'virtual_machines':
+                return []
+
+            raise RuntimeError('unhandled path = {path}'.format(path=path))
+
+        self.mock_onapprequests.get.side_effect = mock_onapprequests_get
+
+        result = prepare_vhi_migration_data(self.mock_cfg, 1)
+        self.assertFalse(result)
+
+    @patch('onapp2vhi.inc.onapp_helpers.VinfraServer')
+    @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
+    def test_prepare_migration_data_with_vm_id(self, mock_onapprequests, mock_vinfraserver):
+        mock_onapprequests.return_value = self.mock_onapprequests
+        mock_vinfraserver.return_value = self.mock_vinfraserver
+
+        self.mock_vinfraserver.list_server.return_value = json.dumps([
+            {'name': 'vm1', 'domain_id': '58fa18b2cefc4bad8a52f11008dfbf72'},
+        ])
+
+        def mock_onapprequests_get(path: str, params: str = None):
+            if path == 'virtual_machines/abcdef':
+                return {
+                    'virtual_machine': {
+                        'identifier': 'abcdef',
+                        'label': 'test-vm1-label',
+                        'hostname': 'test-vm1',
+                        'domain': 'testdomain',
+                        'user_id': 13,
+                        'ip_addresses': [
+                            {
+                                'ip_address': {
+                                    'address': '1.2.3.4',
+                                    'primary': True,
+                                }
+                            }
+                        ],
+                        'booted': True,
+                        'operating_system': 'centos7',
+                        'built_from_iso': False,
+                        'built_from_ova': False,
+                        'vip': False,
+                    },
+                }
+            elif path == 'users/13':
+                return {
+                    'user': {
+                        'login': 'tester',
+                        'email': 'tester@unit.onapp2vhi.test',
+                        'id': 13,
+                        'first_name': 'test',
+                        'last_name': 'er',
+                        'roles': ['Admin', 'user'],
+                        'bucket_id': 'abc123',
+                    }
+                }
+            elif path == 'billing/buckets/abc123/access_controls':
+                return [
+                    {
+                        'access_control': {
+                            'type': 'compute_zone_resource',
+                            'server_type': 'virtual',
+                            'limits': {
+                                'limit_memory': '4096',
+                                'limit_cpu': '4',
+                            },
+                            'target_name': 'sample compute target name',
+                        }
+                    },
+                    {
+                        'access_control': {
+                            'type': 'data_store_zone_resource',
+                            'limits': {
+                                'limit': '40',
+                            },
+                            'target_name': 'sample datastore target name',
+                        }
+                    }
+                ]
+            elif path == 'version':
+                return {'version': '6.4.12345-unittest'}
+
+            raise RuntimeError('unhandled path = {path}'.format(path=path))
+
+        self.mock_onapprequests.get.side_effect = mock_onapprequests_get
+        expected = [{'first_name': 'test',
+                     'id': 13,
+                     'last_name': 'er',
+                     'password': ANY,
+                     'project_name': 'project_tester@unit.onapp2vhi.test',
+                     'quotas': {'cores': 4, 'ram-size': 4398046511104, 'storage': 40},
+                     'roles': ['Admin', 'user'],
+                     'user_email': 'tester@unit.onapp2vhi.test',
+                     'user_login': 'tester',
+                     'virtual_machines': [{'booted': True,
+                                           'built_from_iso': False,
+                                           'built_from_ova': False,
+                                           'domain': 'testdomain',
+                                           'hostname': 'test-vm1',
+                                           'id': 'abcdef',
+                                           'ip_addr': '1.2.3.4',
+                                           'label': 'test-vm1-label',
+                                           'operating_system': 'centos7'}]}]
+
+        result = prepare_vhi_migration_data(self.mock_cfg, vm_idn='abcdef')
+        self.assertEqual(result, expected)
+
+    @patch('onapp2vhi.inc.onapp_helpers.VinfraServer')
+    @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
+    def test_prepare_migration_data_with_vm_not_found(self, mock_onapprequests, mock_vinfraserver):
+        mock_onapprequests.return_value = self.mock_onapprequests
+        mock_vinfraserver.return_value = self.mock_vinfraserver
+
+        self.mock_vinfraserver.list_server.return_value = json.dumps([
+            {'name': 'vm1', 'domain_id': '58fa18b2cefc4bad8a52f11008dfbf72'},
+        ])
+
+        def mock_onapprequests_get(path: str, params: str = None):
+
+            if path == 'virtual_machines/abcdef':
+                raise OnAppRequestsException('404, vm not found')
+
+            raise RuntimeError('unhandled path = {path}'.format(path=path))
+
+        self.mock_onapprequests.get.side_effect = mock_onapprequests_get
+
+        result = prepare_vhi_migration_data(self.mock_cfg, vm_idn='abcdef')
+        self.assertFalse(result)
