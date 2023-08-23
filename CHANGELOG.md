@@ -1,4 +1,4 @@
-## Unreleased
+## v1.0.2 (23/08/2023)
 
 ### Feature
 
