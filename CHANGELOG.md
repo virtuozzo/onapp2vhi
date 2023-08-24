@@ -1,8 +1,9 @@
-## Unreleased
+## v1.0.2 (23/08/2023)
 
 ### Feature
 
 - O2V-156: Hide сredentials in log files
+- O2V-180: Default VHI security group rules for secondary interface after migration
 
 ### Fixes
 
