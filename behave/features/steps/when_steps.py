@@ -1,5 +1,6 @@
 from fabric import Connection
 from fixtures.helper import helper
+from time import sleep
 import json
 
 CHECK_FAILED = False
@@ -54,7 +55,7 @@ def step_impl(context, entity, name):
     # add the related entity in future, currently it only supports storage policy
     if entity == "storage_policy":
         _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute storage-policy create {param} {name}".format(param=param, name=data["name"]))
-        context.entity_to_delete = {"storage_policy": data["name"]}
+        context.entity_to_delete["storage_policy"] = data["name"]
 
 use_step_matcher('re')
 @when('I create a? (?P<entity>[\w\s]+) \((?P<name>[\w\W\s]+)\) with following details')
@@ -72,7 +73,12 @@ def step_impl(context, entity, name):
 
     print(data)
 
-    context.response = context.cp.create(entity=entity_plural, data=data)
+    if entity == "network":
+        entity = "settings/" + entity_plural
+    else:
+        entity = entity_plural
+
+    context.response = context.cp.create(entity=entity, data=data)
 
 use_step_matcher('re')
 @when('I create a? (?P<entity>[\w\s]+) \((?P<name>[\W\w\s]+)\)')
@@ -101,9 +107,275 @@ def step_impl(context, entity, name):
             if not match:
                 assert CHECK_FAILED, "error: HV is not found"
 
+    if entity == "network":
+        entity = "settings/" + helper.convert_to_plural(entity)
+
+        if data["network"].get("network_group_id"):
+            data["network"]["network_group_id"] = context.cp.search("settings/network_zones", args=data["network"]["network_group_id"])[0]["network_group"]["id"]
+    else:
+        entity = helper.convert_to_plural(entity)
+
     print(data)
 
-    context.response = context.cp.create(entity=helper.convert_to_plural(entity), data=data)
+    if entity == "settings/networks":
+
+        arr_get_network = context.cp.search("settings/networks", args=data["network"]["label"])
+        
+        if not arr_get_network:
+            context.response = context.cp.create(entity=entity, data=data)
+        else:
+            print("network is not created in onapp cloud as it has been created earlier")
+
+        network_identifier = context.cp.search("settings/networks", args=data["network"]["label"])[0]["network"]["identifier"]
+
+        # to create a network that contains ipv4 and ipv6
+        if "ipv4-ipv6" in name:
+            # hardcode on getting ipv6 from yaml
+            # this is used to resolve the issue where ipv6 cannot be created automatically using migration script
+            vhi_network = "behave-network-vhi-ipv6"
+            vhi_config = helper.get_config()["vhi"]
+
+            command = "create network_{network_identifier} --physical-network {physical_network} --cidr {cidr} --gateway {gateway} --allocation-pool {allocation_pool} --vlan {vlan} --no-dhcp" \
+                .format(network_identifier=network_identifier, physical_network=config[vhi_network]["physical-network"], cidr=config[vhi_network]["cidr"], \
+                        gateway=config[vhi_network]["gateway"], allocation_pool=config[vhi_network]["allocation-pool"], vlan=config[vhi_network]["vlan"])
+            
+            print(command)
+            _ = helper.open_vhi_ssh_connection(vhi_config, "service compute network %s" % command)
+            sleep(60)
+
+            vhi_network= "behave-network-vhi-ipv4"
+
+            command = "create --network network_{network_identifier} --cidr {cidr} --gateway {gateway} --allocation-pool {allocation_pool} --no-dhcp" \
+                .format(network_identifier=network_identifier, cidr=config[vhi_network]["cidr"], \
+                        gateway=config[vhi_network]["gateway"], allocation_pool=config[vhi_network]["allocation-pool"])
+            
+            print(command)
+            _ = helper.open_vhi_ssh_connection(vhi_config, "service compute subnet %s" % command)
+            sleep(60)
+
+        # to create a network with ipv6 only
+        elif "ipv6" in name:
+            # hardcode on getting ipv6 from yaml
+            # this is used to resolve the issue where ipv6 cannot be created automatically using migration script
+            vhi_network = "behave-network-vhi-ipv6"
+            vhi_config = helper.get_config()["vhi"]
+
+            command = "create network_{network_identifier} --physical-network {physical_network} --cidr {cidr} --gateway {gateway} --allocation-pool {allocation_pool} --vlan {vlan} --no-dhcp" \
+                .format(network_identifier=network_identifier, physical_network=config[vhi_network]["physical-network"], cidr=config[vhi_network]["cidr"], \
+                        gateway=config[vhi_network]["gateway"], allocation_pool=config[vhi_network]["allocation-pool"], vlan=config[vhi_network]["vlan"])
+            
+            print(command)
+            _ = helper.open_vhi_ssh_connection(vhi_config, "service compute network %s" % command)
+            sleep(60)
+
+        context.arr_network_to_delete.append(network_identifier)
+        context.entity_to_delete["network"] = context.arr_network_to_delete
+        
+    else:
+        context.response = context.cp.create(entity=entity, data=data)
+
+use_step_matcher('parse')
+@when('I add a new ip net ({ip_net}) to network ({network})')
+def step_impl(context, ip_net, network):
+
+    data = helper.get_fixture("ip_net")[ip_net]
+
+    if hasattr(context, "response"):
+        if context.response.json().get("network"):
+            network_id = context.response.json()["network"]["id"]
+        else:
+            assert CHECK_FAILED, "error: network is not found"
+
+    else:
+ 
+        network_label = helper.get_fixture("network")[network]["network"]["label"]
+        network_id = context.cp.search("settings/networks", args=network_label)[0]["network"]["id"]
+
+    arr_get_ip_net = context.cp.get("settings/networks", network_id, action="ip_nets")
+    
+    match = False
+    for _ip_net in arr_get_ip_net:
+        if _ip_net["ip_net"]["label"] == data["ip_net"]["label"]:
+            match = True
+            break
+    
+    if not match:
+        context.response = context.cp.post_action("settings/networks", network_id, "ip_nets", data=data)
+    else:
+        print("ip net is not created as it is found within the network")
+
+use_step_matcher('parse')
+@when('I add the network join ({network_join}) from network ({network}) to the compute zone ({compute_zone})')
+def step_impl(context, network_join, network, compute_zone):
+
+    data = helper.get_fixture("network_join")[network_join]
+    arr_compute_zones = context.cp.search("settings/hypervisor_zones")
+
+    match = False
+    for _compute_zone in arr_compute_zones:
+        if _compute_zone["hypervisor_group"]["label"].lower() == compute_zone.lower():
+            compute_zone_id = _compute_zone["hypervisor_group"]["id"]
+            match = True
+            break
+    
+    if not match:
+        assert CHECK_FAILED, "error: compute zone is not found"
+
+    arr_get_hv_network_join = context.cp.get("settings/hypervisor_zones", compute_zone_id, action="network_joins")
+
+    match = False
+    for _network_join in arr_get_hv_network_join:
+
+        if _network_join["network_join"]["interface"] == data["network_join"]["interface"]:
+            match = True
+            break
+
+    if not match:
+
+        if hasattr(context, "response"):
+
+            network_id = vars(context.response.request)["url"].split("/")[5]
+            data["network_join"]["network_id"] = network_id
+
+        else:
+            
+            network_label = helper.get_fixture("network")[network]["network"]["label"]
+            arr_get_network = context.cp.search("settings/networks", args=network_label)
+    
+            if not arr_get_network:
+                assert CHECK_FAILED, "error: network is not found"
+            else:
+                data["network_join"]["network_id"] = arr_get_network[0]["network"]["id"]
+
+        context.response = context.cp.post_action("settings/hypervisor_zones", compute_zone_id, "network_joins", data=data)
+    else:
+        print("not attaching the network to the compute zone as it has been attached to the compute zone earlier")
+
+use_step_matcher('parse')
+@when('I add a network interface ({network_interface}) with network join ({network_join}) at compute zone ({hv}) to the virtual machine ({vm})')
+def step_impl(context, network_interface, network_join, hv, vm):
+    
+    data = helper.get_fixture("network_interface")[network_interface]
+    arr_compute_zones = context.cp.search("settings/hypervisor_zones")
+
+    match = False
+    for _compute_zone in arr_compute_zones:
+        if _compute_zone["hypervisor_group"]["label"].lower() == hv.lower():
+            compute_zone_id = _compute_zone["hypervisor_group"]["id"]
+            match = True
+            break
+    
+    if not match:
+        assert CHECK_FAILED, "error: compute zone is not found"
+
+    arr_network_join = context.cp.get("settings/hypervisor_zones", compute_zone_id, action="network_joins")
+    fixture_network_join = helper.get_fixture("network_join")[network_join]
+    
+    match = False
+    for _network_join in arr_network_join:
+        if _network_join["network_join"]["interface"] == fixture_network_join["network_join"]["interface"]:
+            network_join_id = _network_join["network_join"]["id"]
+            data["network_interface"]["network_join_id"] = network_join_id
+            match = True
+            break
+
+    if not match:
+        assert CHECK_FAILED, "error: network join is not found"
+
+    vm_label = helper.get_fixture("virtual_machine")[vm]["virtual_machine"]["label"]
+    arr_get_vm = context.cp.get_all("virtual_machines")
+    
+    match = False
+    for _vm in arr_get_vm:
+        if _vm["virtual_machine"]["label"] == vm_label:
+            vm_id = _vm["virtual_machine"]["id"]
+            match = True
+            break
+
+    if not match:
+        assert CHECK_FAILED, "error: virtual machine is not found"
+
+    context.response = context.cp.post_action("virtual_machines", vm_id, "network_interfaces", data=data)
+
+use_step_matcher('parse')
+@when('I add an IP address ({ip_net}) from network ({network}) to the network interface ({network_interface}) on virtual machine ({vm})')
+def step_impl(context, ip_net, network, network_interface, vm):
+
+    if not context.response.json().get("network_interface"):
+        
+        _vm_label = helper.get_fixture("virtual_machine")[vm]["virtual_machine"]["label"]
+        vm_id = context.cp.search("virtual_machines", args=_vm_label)[0]["virtual_machine"]["id"]
+
+        _network_interface_label = helper.get_fixture("network_interface")[network_interface]["network_interface"]["label"]
+        arr_get_network_interface = context.cp.get_all("virtual_machines/%s" % vm_id, action="network_interfaces")
+        
+        match = False
+        for nic in arr_get_network_interface:
+            if nic["network_interface"]["label"] == _network_interface_label:
+                network_interface_id = nic["network_interface"]["id"]
+                match = True
+                break
+
+        if not match:
+            assert CHECK_FAILED, "error: network interface is not found within the vm"
+
+    else:
+
+        vm_id = context.response.json()["network_interface"]["virtual_machine_id"]
+        network_interface_id = context.response.json()["network_interface"]["id"]
+
+    ip_net_label = helper.get_fixture("ip_net")[ip_net]["ip_net"]["label"]
+    network_label = helper.get_fixture("network")[network]["network"]["label"]
+
+    arr_network = context.cp.get_all("settings/networks")
+
+    for network in arr_network:
+        if network["network"]["label"] == network_label:
+            network_id = network["network"]["id"]
+            break
+
+    arr_ip_net = context.cp.get_all("settings/networks/%s/ip_nets" % network_id)
+
+    for _ip_net in arr_ip_net:
+        if _ip_net["ip_net"]["label"] == ip_net_label:
+            ip_net_id = _ip_net["ip_net"]["id"]
+            break
+
+    if not "network_id" in locals() or not "ip_net_id" in locals():
+        assert CHECK_FAILED, "error: network id is not found"
+
+    # in our case, we always assume the first ip range
+    ip_ranges = context.cp.get("settings/networks/%s/ip_nets" % network_id, ip_net_id, action="ip_ranges")
+
+    if not ip_ranges:
+        assert CHECK_FAILED, "error: no ip range is found within the network"
+    else:
+        ip_range_id = ip_ranges[0]["ip_range"]["id"]
+
+    data = {"ip_address": {"network_interface_id": network_interface_id, "ip_net_id": ip_net_id, "ip_range_id": ip_range_id, "ip_version": ip_net[-1]}}
+    
+    print(data)
+    sleep(10)
+    context.response = context.cp.post_action("virtual_machines", vm_id, "ip_addresses", data=data)
+
+use_step_matcher('parse')
+@when('I {action} the virtual machine ({vm}) in Onapp cloud')
+def step_impl(context, action, vm):
+
+    vm_label = helper.get_fixture("virtual_machine")[vm]["virtual_machine"]["label"]
+    arr_get_vm = context.cp.get_all("virtual_machines")
+    
+    match = False
+    for _vm in arr_get_vm:
+        if _vm["virtual_machine"]["label"] == vm_label:
+            vm_id = _vm["virtual_machine"]["id"]
+            match = True
+            break
+
+    if not match:
+        assert CHECK_FAILED, "error: virtual machine is not found"
+
+    context.response = context.cp.post_action("virtual_machines", vm_id, action)
 
 def get_tool_output(output):
     '''
