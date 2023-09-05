@@ -34,7 +34,26 @@ def step_impl(context, name):
         assert CHECK_FAILED, "error: virtual machine is not found"
 
     if not data[0]["virtual_machine"]["built"] or data[0]["virtual_machine"]["state"] == "failed" or data[0]["virtual_machine"]["locked"]:
-        assert CHECK_FAILED, "error: virtual machine is not built successfully"
+        
+        # [20230905] we do retry every 1 minute for 10 times, or we fail it
+        # this is to allocate more times for the vm build in case the environment is busy
+        i = 1
+        while i < 11:
+
+            data = context.cp.search("virtual_machines", args=fixture[name]["virtual_machine"]["label"])
+
+            if data[0]["virtual_machine"]["built"] and data[0]["virtual_machine"]["state"] != "failed" and not data[0]["virtual_machine"]["locked"]:
+                break
+            else:
+                print("Retrying #%s/10: wait for 60s to check for VM state again" % str(i))
+                i += 1
+                sleep(60)
+        
+        else:
+            data = context.cp.search("virtual_machines", args=fixture[name]["virtual_machine"]["label"])
+            
+            if not data[0]["virtual_machine"]["built"] or data[0]["virtual_machine"]["state"] == "failed" or data[0]["virtual_machine"]["locked"]:
+                assert CHECK_FAILED, "error: virtual machine is not built successfully"
     
     # to delete the vm in vhi portal with the vm IP found in onapp cloud
     arr_ip = []
