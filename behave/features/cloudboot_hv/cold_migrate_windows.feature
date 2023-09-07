@@ -8,7 +8,7 @@ Scenario: Cold migration without user's SSH key
   Given I am a cloud user (ultron)
   When I create a virtual machine (windows-vm-without-startup-cloudboot)
   Then CP API (create) should return status code 201
-  And I wait for 16 minutes
+  And I wait for 10 minutes
   And the virtual machine (windows-vm-without-startup-cloudboot) is built successfully
 
   When I migrate the virtual machine (windows-vm-without-startup-cloudboot)
@@ -20,7 +20,7 @@ Scenario: Cold migration with user's SSH key
   Given I am a cloud user (uda)
   When I create a virtual machine (windows-vm-without-startup-cloudboot)
   Then CP API (create) should return status code 201
-  And I wait for 16 minutes
+  And I wait for 10 minutes
   And the virtual machine (windows-vm-without-startup-cloudboot) is built successfully
 
   # To test for new migrated user, we delete the existing user account
@@ -40,7 +40,7 @@ Scenario: Cold migration with user's SSH key with storage policy specified
   And I assign the storage policy (behave-storage-policy) with 100G to the project
   And I create a virtual machine (windows-vm-without-startup-cloudboot)
   Then CP API (create) should return status code 201
-  And I wait for 16 minutes
+  And I wait for 10 minutes
   And the virtual machine (windows-vm-without-startup-cloudboot) is built successfully
 
   When I migrate the virtual machine (windows-vm-without-startup-cloudboot) with following details
