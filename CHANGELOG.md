@@ -18,6 +18,7 @@
 - O2V-175: Skip migration on onapp vm marked as VIP and fix error handling when migrating existing vm in VHI
 - O2V-172: Fix error handling and pre-checks for migration with placement
 - 02V-184: Fix json loads error when creating new network interface
+- O2V-192: Fix domain_id and vinfra_domain in config
 
 ## v1.0.1 (30/06/2023)
 

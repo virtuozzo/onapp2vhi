@@ -91,6 +91,10 @@ class Vhi:
                                         message='Listing project failed. Please take a look manually.'):
             return False
 
+        if self.domain_id != json.loads(output_proj)[0]['domain_id']:
+            logs.warn(f'Domain ID {self.domain_id} in cfg is not the same as vinfra domain {self.vinfra_domain} id. Updating domain_id in cfg')
+            self.cfg.update("vhi", "domain_id", json.loads(output_proj)[0]['domain_id'])
+
         if _default_name not in [proj['name'] for proj in json.loads(output_proj)]:
             # Create new `project` and set name into config file
             logs.warn(f'*** "{_default_name}" project was not found on VHI side. Creating new one.\n')

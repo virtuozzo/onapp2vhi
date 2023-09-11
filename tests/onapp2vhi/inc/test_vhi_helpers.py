@@ -91,14 +91,14 @@ class TestVhiHelpers(unittest.TestCase):
         # Default project is set
         self.vhi._vhi_ssh.execute.return_value = (
             0,
-            '[{"name": "Default_Project"}]',
+            '[{"name": "Default_Project", "domain_id": "test123"}]',
         )
         self.assertTrue(self.vhi.check_default_project())
 
         # Default project is not set
         side_effect = [
-            (0, '[{"name": "XXX_Project"}]'),
-            (0, '{"name": "XXX_Project", "id": "69"}'),
+            (0, '[{"name": "XXX_Project", "domain_id": "test123"}]'),
+            (0, '{"name": "XXX_Project", "id": "69", "domain_id": "test123"}'),
         ]
 
         self.vhi._vhi_ssh.execute.side_effect = side_effect
