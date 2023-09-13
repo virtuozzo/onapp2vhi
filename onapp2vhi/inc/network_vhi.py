@@ -4,6 +4,7 @@ from json.decoder import JSONDecodeError
 
 from onapp2vhi.inc.ssh_connector import SSH
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+from onapp2vhi.utilities.regex import JSON_REGEX
 
 
 class Network:
@@ -82,7 +83,7 @@ class Network:
         exit_status, output = self._ssh.execute(cmd)
         if not exit_status:
             try:
-                output = json.loads(output)
+                output = json.loads(JSON_REGEX.match(output).group(0))
                 network_uuid = re.findall('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', output["id"])
                 if not network_uuid:
                     print(f"Network has not been created\n {output}")
