@@ -27,6 +27,7 @@ CONFIG_TEMPLATE = """#[onapp]
 #vinfra_pass = user_pwd
 #vinfra_domain_user = ''
 #vinfra_domain_pass = ''
+#remove_disk_on_termination = yes
 #
 # Network ID for migration VM's, you can get it on VHI cloud
 #migration_network_id = 5afcb27b-1c92-4561-a81c-fcf4f89bd543

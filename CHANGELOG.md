@@ -1,4 +1,8 @@
-## unreleased (13/09/2023)
+## Unreleased (13/09/2023)
+
+### Feature
+
+- O2V-177: enable disk deletion on vm termination
 
 ### Fixes
 
