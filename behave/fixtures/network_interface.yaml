@@ -1,0 +1,17 @@
+behave-network-interface-ipv4:
+  network_interface:
+    label: behave_network_interface_ipv4
+    rate_limit: 0
+    primary: 0
+
+behave-network-interface-ipv6:
+  network_interface:
+    label: behave_network_interface_ipv6
+    rate_limit: 0
+    primary: 0
+
+behave-network-interface-ipv4-ipv6:
+  network_interface:
+    label: behave_network_interface_ipv4_ipv6
+    rate_limit: 0
+    primary: 0

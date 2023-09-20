@@ -1,0 +1,28 @@
+behave-network-ipv4:
+  network:
+    label: behave_network_ipv4
+    network_group_id: Default Network Zone
+
+behave-network-ipv6:
+  network:
+    label: behave_network_ipv6
+    network_group_id: Default Network Zone
+
+behave-network-ipv4-ipv6:
+  network:
+    label: behave_network_ipv4_ipv6
+    network_group_id: Default Network Zone
+
+# vhi network creation for network that involves ipv6
+behave-network-vhi-ipv6:
+  physical-network: public
+  cidr: 2a01:a240:a240::200/120
+  gateway: 2a01:a240:a240::201
+  allocation-pool: 2a01:a240:a240::202-2a01:a240:a240::2fe
+  vlan: 1777
+
+# vhi network for ipv4 is needed when there is ipv4 in ipv6 network
+behave-network-vhi-ipv4:
+  cidr: 10.0.0.0/16
+  gateway: 10.0.0.1
+  allocation-pool: 10.0.0.2-10.0.255.254

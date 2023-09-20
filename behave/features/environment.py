@@ -2,9 +2,15 @@ from fixtures.helper import helper
 from time import sleep
 import json
 
-def before_scenario(context, scenario):
+def before_all(context):
+
     context.entity_to_delete = {}
 
+def before_scenario(context, scenario):
+
+    if "network" in scenario.tags:
+        context.arr_network_to_delete = []
+        
 def after_scenario(context, scenario):
     
     if "migrate_vm" in context.feature.tags:
@@ -154,4 +160,10 @@ def after_scenario(context, scenario):
         # we proceed with the rest of the scenario even if the vm is not found
         if not match:
             print("VM is not found in VHI portal, proceed to next scenario")
-        
+
+        if "network" in context.scenario.tags:
+            
+            for network in context.entity_to_delete["network"]:
+
+                _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute network delete %s" % "network_" + network)
+                print("network named {network_name} has been removed".format(network_name="network_" + network))
