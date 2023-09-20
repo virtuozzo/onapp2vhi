@@ -32,24 +32,30 @@ Scenario: Cold migration with user's SSH key
   And its CPU, RAM and storage are correct
   And the log is seen in logging path (uda-log)
 
-Scenario: Cold migration with user's SSH key with storage policy specified
+@placement
+Scenario: Cold migration with user's SSH key with storage policy and placement specified
   Given I am a cloud user (uda)
   When I create a storage policy (behave-storage-policy) in VHI portal with following details
   | tier | replicas | failure domain |
   | 0    | 3        | 1              |
   And I assign the storage policy (behave-storage-policy) with 100G to the project
+  And I create a placement (behave-hard-placement) in VHI portal with following details
+  | nodes |
+  | cpvhi |
+  And I assign the placement (behave-hard-placement) with 100 placement to the project
   And I create a virtual machine (linux-vm-without-startup-static)
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
   And the virtual machine (linux-vm-without-startup-static) is built successfully
 
   When I migrate the virtual machine (linux-vm-without-startup-static) with following details
-  | storage policy        |
-  | behave-storage-policy |
+  | storage policy        | placement             |
+  | behave-storage-policy | behave-hard-placement |
   Then I wait for 10 seconds
   And I should see the virtual machine is SHUTOFF in VHI portal
   And its CPU, RAM and storage are correct
   And its volume is using the correct storage policy (behave-storage-policy)
+  And the vm is placed in the corrent placement (behave-hard-placement)
 
 @network
 Scenario: Cold migration with user's SSH key with second network interface (IPv4)

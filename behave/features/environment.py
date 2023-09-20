@@ -112,14 +112,11 @@ def after_scenario(context, scenario):
                     except:
                         pass
                         
-                    # only delete the storage policy that we created using behave
-                    if hasattr(context, "entity_to_delete"):
-                        try:
-                            if storage_policy == context.entity_to_delete["storage_policy"]["name"]:
-                                _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute storage-policy delete %s" % storage_policy)
-                                print("storage policy named %s has been removed" % storage_policy)
-                        except:
-                            pass
+                # only delete the storage policy that we created using behave
+                if context.entity_to_delete.get("storage_policy"):
+                    storage_policy = context.entity_to_delete["storage_policy"]["name"]
+                    _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute storage-policy delete %s" % storage_policy)
+                    print("storage policy named %s has been removed" % storage_policy)
 
                 if context.entity_to_delete.get("placement"):
                     arr_node = context.entity_to_delete["placement"]["nodes"].split(",")
