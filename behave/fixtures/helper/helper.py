@@ -4,7 +4,7 @@ import yaml
 
 to_singular = {"virtual_machines": "virtual_machine"}
 to_plural = {"virtual_machine": "virtual_machines"}
-actual_name = ["storage_policy"]
+actual_name = ["storage_policy", "placement"]
 
 def rephrase_key(data):
     """

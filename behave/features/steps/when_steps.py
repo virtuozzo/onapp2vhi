@@ -46,7 +46,7 @@ def step_impl(context, entity, name):
     param = ""
 
     for key, value in data.items():
-        if key != "name":
+        if key not in ["name", "isolated_type"]:
             param += "--" + key + " " + value + " " 
 
     config = helper.get_config()
@@ -54,7 +54,13 @@ def step_impl(context, entity, name):
     # add the related entity in future, currently it only supports storage policy
     if entity == "storage_policy":
         _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute storage-policy create {param} {name}".format(param=param, name=data["name"]))
-        context.entity_to_delete = {"storage_policy": data["name"]}
+        context.entity_to_delete["storage_policy"] = {"name": data["name"]}
+
+    elif entity == "placement":
+        _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute placement create --{isolated_type} {param} {name}"\
+                                           .format(isolated_type=data["isolated_type"], param=param, name=data["name"]))
+        
+        context.entity_to_delete["placement"] = {"name": data["name"], "nodes": data["nodes"]}
 
 use_step_matcher('re')
 @when('I create a? (?P<entity>[\w\s]+) \((?P<name>[\w\W\s]+)\) with following details')
@@ -533,5 +539,34 @@ def step_impl(context, name, size):
         if project["name"] == data["vinfra_project"]:
             output = helper.open_vhi_ssh_connection(config, "service compute quotas update --storage-policy {name}:{size} {project_id}"\
                                                     .format(name=storage_policy, size=size, project_id=project["id"]))
+            
+            break
+
+use_step_matcher('re')
+@when('I assign the placement \((?P<name>[\w\W\s]+)\) with (?P<size>[\d]+) placement to the project')
+def step_impl(context, name, size):
+
+    # size is needed because vinfra does not support unlimited
+    placement_name = helper.get_fixture("placement")[name]["name"]
+    data = get_config_ini(["vinfra_domain", "vinfra_project"])
+    config = helper.get_config()["vhi"]
+
+    # to get project ID
+    output = helper.open_vhi_ssh_connection(config, "domain project list --domain {domain} -f json".format(domain=data["vinfra_domain"]))
+    project_list = json.loads(output.stdout)
+
+    # to get placement ID
+    placement_output = helper.open_vhi_ssh_connection(config, "service compute placement list -f json")
+    placement_list = json.loads(placement_output.stdout)
+
+    for placement in placement_list:
+        if placement["name"] == placement_name:
+            placement_id = placement["id"]
+            break
+
+    for project in project_list:
+        if project["name"] == data["vinfra_project"]:
+            output = helper.open_vhi_ssh_connection(config, "service compute quotas update --placement {id}:{size} {project_id}"\
+                                                    .format(id=placement_id, size=size, project_id=project["id"]))
             
             break
