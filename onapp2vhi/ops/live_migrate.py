@@ -157,6 +157,11 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
                        f"VM: {cfg.vhi_conf['url']}/compute/servers/instances/{_vm_id}/")
             return False
 
+        if not _vm['networks']:
+            logs.info(f"VM with {_vm['name']} name has no networks\n"
+                      f"VM: {cfg.vhi_conf['url']}/compute/servers/instances/{_vm_id}/")
+            continue
+
         if onappvm_pri_mac == _vm['networks'][0]['mac_addr'] or onappvm_pri_ip in _vm['networks'][0]['ips']:
             vm_created = True
             break

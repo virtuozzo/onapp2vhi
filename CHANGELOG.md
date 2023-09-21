@@ -1,3 +1,13 @@
+## Unreleased
+
+### Feature
+
+- O2V-177: enable disk deletion on vm termination
+
+### Fixes
+
+- O2V-194: Continue migration when vm on vhi side has no IPS
+
 ## v1.0.2 (23/08/2023)
 
 ### Feature

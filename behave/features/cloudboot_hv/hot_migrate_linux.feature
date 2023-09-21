@@ -82,7 +82,7 @@ Scenario: Hot migration with user's SSH key with second network interface (IPv6)
 
   When I reboot the virtual machine (linux-vm-with-startup-cloudboot) in Onapp cloud
   Then CP API (reboot) should return status code 201
-  And I wait for 60 seconds
+  And I wait for 90 seconds
 
   When I migrate the virtual machine (linux-vm-with-startup-cloudboot)
   Then I wait for 10 seconds

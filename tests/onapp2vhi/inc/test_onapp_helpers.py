@@ -1395,17 +1395,15 @@ class CreateNewVhiVmTestCase(OnAppHelpersTestCase):
                                    'test-server', 'localdomain', 'default')
         self.assertEqual(result, expected)
 
-    def test_create_multiple_disk_volume_create_failed(self):
+    def test_create_multiple_disk_volume_with_rm_by_default(self):
         mock_disks = [{ 'size': '5',}, { 'size': '2' }]
         mock_nics = [{ 'ips': ['1.1.1.1',],},]
 
         def mock_ssh_execute(command:str, real_data=False):
-            if 'service compute server create' in command:
+            if 'rm=yes,boot-index=1' in command:
                 return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
             elif 'for ((i=1;i<=100;i++))' in command:
                 return (0, 'done')
-            elif 'service compute volume create' in command:
-                return (1, 'volume create failed')
 
             raise RuntimeError(f'Unhandled command: {command}')
 
@@ -1414,30 +1412,30 @@ class CreateNewVhiVmTestCase(OnAppHelpersTestCase):
         result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
                                    'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
                                    'test-server', 'localdomain', 'default')
-        self.assertFalse(result)
+        self.assertTrue(result)
 
-    def test_create_multiple_disk_volume_attach_failed(self):
+    def test_create_multiple_disk_without_rm(self):
         mock_disks = [{ 'size': '5',}, { 'size': '2' }]
         mock_nics = [{ 'ips': ['1.1.1.1',],},]
 
         def mock_ssh_execute(command:str, real_data=False):
-            if 'service compute server create' in command:
+            if 'rm=no,boot-index=1' in command:
                 return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
             elif 'for ((i=1;i<=100;i++))' in command:
                 return (0, 'done')
-            elif 'service compute volume create' in command:
-                return (0, json.dumps({'id': 'wwww-qwerty-asdfghjkl'}))
-            elif 'service compute server volume attach' in command:
-                return (1, 'volume attach failed!')
 
             raise RuntimeError(f'Unhandled command: {command}')
 
         self.mock_ssh.execute.side_effect = mock_ssh_execute
 
+        write_mock = mock_open()
+        with patch("builtins.open", write_mock):
+            self.mock_cfg.update("vhi", "remove_disk_on_termination", "no")
+
         result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
                                    'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
                                    'test-server', 'localdomain', 'default')
-        self.assertFalse(result)
+        self.assertTrue(result)
 
     def test_create_ok_multi_ips(self):
         mock_disks = [{ 'size': '5',},]
