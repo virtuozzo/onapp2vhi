@@ -1,0 +1,19 @@
+behave-network-join-993:
+  network_join:
+    interface: encap993
+
+behave-network-join-994:
+  network_join:
+    interface: encap994
+
+behave-network-join-995:
+  network_join:
+    interface: encap995
+
+behave-network-join-996:
+  network_join:
+    interface: encap996
+
+behave-network-join-997:
+  network_join:
+    interface: encap997
