@@ -1,4 +1,4 @@
-## Unreleased
+## Unreleased (13/09/2023)
 
 ### Feature
 
@@ -6,6 +6,7 @@
 
 ### Fixes
 
+- O2V-192: Fix domain_id and vinfra_domain in config
 - O2V-194: Continue migration when vm on vhi side has no IPS
 
 ## v1.0.2 (23/08/2023)
