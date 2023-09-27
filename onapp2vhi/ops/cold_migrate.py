@@ -50,9 +50,14 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
     _vm_properties = vm_properties
     _vm_hv_ip = _vm_properties['hv_ip']
     vhi = vhi_obj
-    _on_app_flavor = get_onapp_vm_flavor(cfg, vm_idn=vm_idn)
-    logs.debug(f'OnApp flavor: {_on_app_flavor}')
-    result = vhi.flavor_handler(onapp_flavor=_on_app_flavor, placement=placement)
+
+    if _vm_properties['flavor']:
+        _flavor = _vm_properties['flavor']
+    else:
+        _flavor = get_onapp_vm_flavor(cfg, vm_idn=vm_idn)
+
+    logs.debug(f'OnApp flavor: {_flavor}')
+    result = vhi.flavor_handler(onapp_flavor=_flavor, placement=placement)
     if not result:
         logs.warn('Flavor has NOT been created on VHI side, further process does not make sense.')
         return False

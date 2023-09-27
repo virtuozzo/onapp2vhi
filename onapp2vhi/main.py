@@ -160,6 +160,11 @@ def create_service_user():
     default="",
     help="Boolean flag, set `false` to NOT install vz_guest_tools_install",
 )
+@click.option(
+    "--flavor",
+    default="",
+    help="string flag, set `default`",
+)
 def migrate(
     user="",
     vm="",
@@ -167,7 +172,8 @@ def migrate(
     vz_guest_tools_install="true",
     cloud_init_install="true",
     placement="",
-    storage_policy=""
+    storage_policy="",
+    flavor=""
 ):
     from onapp2vhi.ops.migrate import migrate_impl
 
@@ -180,4 +186,5 @@ def migrate(
         cloud_init_install=cloud_init_install,
         placement=placement,
         storage_policy=storage_policy,
+        flavor=flavor,
     )
