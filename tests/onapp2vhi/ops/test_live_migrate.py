@@ -95,7 +95,8 @@ class TestLiveMigrate(TestCase):
             'hot_migrate': True,
             'hostname': 'faidhi2',
             'domain': 'localdomain',
-            'storage_policy': 'default'
+            'storage_policy': 'default',
+            'flavor': 'flavor_1_1'
         }
 
         mock_ssh.return_value.execute.side_effect = [
@@ -179,7 +180,8 @@ class TestLiveMigrate(TestCase):
             'hot_migrate': True,
             'hostname': 'faidhi2',
             'domain': 'localdomain',
-            'storage_policy': 'default'
+            'storage_policy': 'default',
+            'flavor': 'flavor_1_1'
         }
 
         mock_ssh.return_value.execute.side_effect = [
