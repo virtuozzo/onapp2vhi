@@ -12,6 +12,28 @@ from onapp2vhi.utilities.logs.logger import setup_logger
 cfg = None
 
 
+def validate_flavor(ctx, param, value):
+
+    flavor = value.split("_")
+
+    if len(flavor) < 3:
+        raise click.BadParameter("Format must be \"name_cpus_ram\"")
+
+    if not flavor[1].isnumeric():
+        raise click.BadParameter("Format must be \"name_cpus_ram\", cpus must be in numeric")
+
+    if not flavor[2].isnumeric():
+        raise click.BadParameter("Format must be \"name_cpus_ram\", ram must be in numeric")
+
+    flavor_dict = {
+        "name": flavor[0],
+        "vcpus": flavor[1],
+        "ram": flavor[2]
+    }
+
+    return flavor_dict
+
+
 def search_config():
     if Path("config.ini").is_file():
         return "config.ini"
@@ -164,6 +186,7 @@ def create_service_user():
     "--flavor",
     default="",
     help="string flag, set `default`",
+    callback=validate_flavor
 )
 def migrate(
     user="",
