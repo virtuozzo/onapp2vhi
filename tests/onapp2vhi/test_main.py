@@ -2,8 +2,9 @@ import unittest
 from click import BadParameter
 from onapp2vhi.main import validate_flavor
 
+
 class ClickCallbackTest(unittest.TestCase):
-    
+
     def test_validate_flavor_wrong_ram_format(self):
         mock_flavor = "flavor_test_1"
 
