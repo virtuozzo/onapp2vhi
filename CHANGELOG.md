@@ -9,6 +9,7 @@
 
 - O2V-192: Fix domain_id and vinfra_domain in config
 - O2V-194: Continue migration when vm on vhi side has no IPS
+- O2V-205: Fix image conversion for cold migrate post VHI 6.0.0
 
 ## v1.0.2 (23/08/2023)
 
