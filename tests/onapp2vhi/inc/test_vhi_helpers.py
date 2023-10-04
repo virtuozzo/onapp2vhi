@@ -556,6 +556,34 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
             'vinfra admin_auth service compute quotas show 2345-defg -f json')
 
     @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
+    def test_flavor_handler_vinfra_check_flavor_returned_and_exist_in_vhi_with_placement_no_quotas(
+            self, mock_ssh_ctor):
+        flavor = {"vcpus": 2, "ram": 512, "name": "flavor_2_512"}
+
+        # Flavor returned and exist in vhi with placement
+        self.mock_flavor_ssh.execute.side_effect = [
+            (0, '[{"name": "flavor_2_512"}]'),
+        ]
+        self.mock_placement_ssh.execute.side_effect = [
+            (0, '[{"name": "test_placement", "id": "1234-abcdef"}]'),
+            (0, 'ok'),
+        ]
+        self.mock_project_ssh.execute.side_effect = [
+            (0, json.dumps({'id': '2345-defg'})),
+        ]
+        self.mock_quotas_ssh.execute.side_effect = [
+            (0, 'show quotas result'),
+        ]
+        mock_ssh_ctor.side_effect = [
+            self.mock_placement_ssh,
+            self.mock_project_ssh,
+            self.mock_quotas_ssh,
+            self.mock_flavor_ssh,
+        ]
+
+        self.assertFalse(self.vhi.flavor_handler(flavor, "test_placement"))
+
+    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
     def test_flavor_handler_vinfra_check_flavor_returned_and_not_in_vhi_with_placemant(
             self, mock_ssh_ctor):
         flavor = {"vcpus": 2, "ram": 512, "name": "flavor_2_512"}

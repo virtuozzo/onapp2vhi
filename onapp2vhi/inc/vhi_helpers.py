@@ -161,8 +161,14 @@ class Vhi:
                 vinfra_quotas = VinfraQuotas(self.cfg, service_user=False, access_domain=True)
                 try:
                     output = vinfra_quotas.show_quotas(proj_id)
-                    quotas = json.loads(JSON_REGEX.match(output).group(0))
 
+                    m = JSON_REGEX.match(output)
+                    if not m:
+                        exit_status_code_handler(
+                            1, message=f'unable to parse quota data. data = {output}')
+                        return False
+
+                    quotas = json.loads(m.group(0))
                     if quotas['placement'][placement_id]['limit'] == 0:
                         exit_status_code_handler(
                             1,
