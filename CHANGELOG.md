@@ -10,6 +10,7 @@
 - O2V-194: Continue migration when vm on vhi side has no IPS
 - O2V-205: Fix image conversion for cold migrate post VHI 6.0.0
 - O2V-206: Fix error handling when quota data is not parseable
+- O2V-210: Fix unsafe virsh destroy operation on live migrate
 
 ## v1.0.2 (23/08/2023)
 
