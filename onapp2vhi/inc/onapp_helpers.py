@@ -400,6 +400,9 @@ def get_vm_source_properties(cfg: OnApp2VHIConfig, vm_idn: str) -> Dict:
     _hv_props = onapp_requests.get(f'settings/hypervisors/{_vm_hv_id}')
     _vm_hv_ip = _hv_props['hypervisor']['ip_address']
     _vm_nics = onapp_requests.get(f'virtual_machines/{vm_idn}/ip_addresses')
+    if not _vm_nics:
+        logs.error(msg="Onapp VM has no NICS")
+        exit(1)
     _vm_ip_addr = [nic['ip_address_join']['ip_address']['address'] for nic in _vm_nics
                    if (nic['ip_address_join']['ip_address']
                        and nic['ip_address_join']['ip_address']['primary'])][0]
