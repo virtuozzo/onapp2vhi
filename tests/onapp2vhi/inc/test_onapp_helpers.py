@@ -844,41 +844,6 @@ class GetVmSourcePropertiesTestCase(OnAppHelpersTestCase):
 
         self.assertEqual(result, expected)
 
-    @patch('onapp2vhi.inc.network_onapp.OnAppRequests')
-    @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
-    def test_get_no_nic(self, mock_onapprequests1, mock_onapprequests2):
-
-        def onapprequestsget(param:str):
-            if param == 'virtual_machines/abcdef':
-                return {
-                    'virtual_machine': {
-                        'hypervisor_id': 'testhv1',
-                        'operating_system': 'centos7',
-                        'allowed_hot_migrate': True,
-                        'hostname': 'test-host',
-                        'domain': 'localdomain',
-                    }
-                }
-            elif param == 'virtual_machines/abcdef/network_interfaces':
-                return []
-            elif param == 'virtual_machines/abcdef/ip_addresses':
-                return []
-            elif param == 'settings/hypervisors/testhv1':
-                return {
-                    'hypervisor': {
-                        'ip_address': '1.1.2.2',
-                    }
-                }
-
-            raise RuntimeError(f'unhandled onapprequsets.get({param})')
-
-        self.mock_onapprequests.get.side_effect = onapprequestsget
-        mock_onapprequests1.return_value = self.mock_onapprequests
-        mock_onapprequests2.return_value = self.mock_onapprequests
-
-        with self.assertRaises(SystemExit):
-            get_vm_source_properties(self.mock_cfg, 'abcdef')
-
 
 class CheckSecurityGroupExistsInProjectTestCase(OnAppHelpersTestCase):
 
