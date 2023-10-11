@@ -12,6 +12,7 @@
 - O2V-206: Fix error handling when quota data is not parseable
 - 02V-208: Fix vinfra output parsing to handle json arrays
 - O2V-210: Fix unsafe virsh destroy operation on live migrate
+- O2V-207: Fix error handling when vm has no primary ip
 
 ## v1.0.2 (23/08/2023)
 
