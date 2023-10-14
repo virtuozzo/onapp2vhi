@@ -1,6 +1,5 @@
 import unittest
-import json
-from mock import patch, Mock, mock_open
+from mock import patch, mock_open
 
 from onapp2vhi.ops.migrate import migrate_impl
 from onapp2vhi.utilities.config import OnApp2VHIConfig
@@ -45,12 +44,12 @@ vhi_secondary_security_group = 1234-1234fasd-safce0-adsfew
 ssh_key = path/to/your/ssh_key/id_rsa
 """
 
+
 class TestVmColdMigration(unittest.TestCase):
 
     @patch("builtins.open", mock_open(read_data=TEST_CONFIG))
     def setUp(self):
         self.mock_cfg = OnApp2VHIConfig.load_config("test.ini")
-
 
     @patch("onapp2vhi.ops.migrate.get_user_ssh_keys")
     @patch("onapp2vhi.ops.migrate.VhiSshKeys")
@@ -61,15 +60,15 @@ class TestVmColdMigration(unittest.TestCase):
         mock_vhi.return_value.create_user.return_value = ("test", "tests")
         mock_data = [
             {
-            "first_name": "test",
-            "last_name": "testing",
-            "virtual_machines": [
-                {
-                    "id": "123",
-                    "ip_addr": None,
-                    "label": "label_test"
-                }
-            ]
+                "first_name": "test",
+                "last_name": "testing",
+                "virtual_machines": [
+                    {
+                        "id": "123",
+                        "ip_addr": None,
+                        "label": "label_test"
+                    }
+                ]
             },
         ]
         mock_vhi_data.return_value = mock_data
