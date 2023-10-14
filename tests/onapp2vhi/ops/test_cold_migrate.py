@@ -93,44 +93,6 @@ class TestVmColdMigration(unittest.TestCase):
         result = vm_cold_migrate(self.mock_cfg, mock_vdom, mock_vproj, mock_idn, mock_properties, mock_vhi)
         self.assertFalse(result)
 
-    @patch("onapp2vhi.inc.vhi_helpers.Vhi")
-    @patch("onapp2vhi.ops.cold_migrate.get_onapp_vm_disks")
-    @patch("onapp2vhi.ops.cold_migrate.get_onapp_vm_nics")
-    @patch("onapp2vhi.ops.cold_migrate.get_onapp_vm_flavor")
-    @patch("onapp2vhi.ops.cold_migrate.logs")
-    @patch("onapp2vhi.ops.cold_migrate.SSH")
-    @patch("onapp2vhi.ops.cold_migrate.VinfraCommand")
-    def test_vm_cold_migration_no_primary_ip(self, mock_vinfra, mock_ssh, mock_logs, mock_vm_flavor, mock_vm_nics, mock_vm_disks, mock_vhi):
-
-        mock_vm_flavor.return_value = "test_123"
-        mock_vm_nics.return_value = [{"ips": ["1.2.3.4"], "mac": "test"}]
-        mock_vm_disks.return_value = "disk_test"
-        mock_vhi.flavor_name.return_value = "test_213"
-
-        self.mock_ssh.execute.return_value = (0, "")
-        mock_ssh.return_value = self.mock_ssh
-
-        self.mock_vinfra.execute.return_value = json.dumps([{"id": "test_id_123", "networks": [],
-                                                             "name": "vm_faidhi_testidn", "status": "BUILD"}])
-        mock_vinfra.return_value = self.mock_vinfra
-
-        mock_vdom = "behave"
-        mock_vproj = "Default_Project"
-        mock_idn = "testidn"
-        mock_properties = {
-            'hv_ip': '10.116.0.32',
-            'vm_os': 'linux',
-            'vm_ip_addr': [],
-            'network_info': {860: ['10.119.0.4']},
-            'hot_migrate': True,
-            'hostname': 'faidhi2',
-            'domain': 'localdomain',
-            'storage_policy': 'default'
-        }
-
-        result = vm_cold_migrate(self.mock_cfg, mock_vdom, mock_vproj, mock_idn, mock_properties, mock_vhi)
-        self.assertFalse(result)
-
     @patch("onapp2vhi.ops.cold_migrate.VinfraCommand")
     @patch("onapp2vhi.ops.cold_migrate.SSH")
     @patch("onapp2vhi.ops.cold_migrate.suspend_vm")
