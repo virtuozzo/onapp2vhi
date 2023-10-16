@@ -26,7 +26,7 @@ class ClickCallbackTest(unittest.TestCase):
     def test_validate_flavor_success(self):
         mock_flavor = "flavor_4_1024"
         mock_result = {
-            "name": "flavor",
+            "name": "flavor_4_1024",
             "vcpus": "4",
             "ram": "1024"
         }
