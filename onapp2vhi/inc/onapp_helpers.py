@@ -955,9 +955,26 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
     _vhi_vm_id = ''
     hostname_domain = f'{hostname}.{domain}'.lower()
     onappvm_pri_ips = onapp_nics[0]['ips']
+    extra_disks = ""
+
+    if cfg.vhi_conf.get("remove_disk_on_termination") == "no":
+        disk_rm = "no"
+    else:
+        disk_rm = "yes"
+
+    if len(onapp_disks) > 1:
+        for idx, dsk in enumerate(onapp_disks):
+            if idx >= 1:
+                disk_vol = (
+                    f" --volume source=blank,size={dsk['size']},"
+                    f"rm={disk_rm},boot-index={idx},storage-policy={vhi_storage_policy}"
+                )
+                extra_disks += disk_vol
+
     create_cmd = (f"{vinfra_access} service compute server create '{hostname_domain}'"
                   f" --description '{hostname_domain}_{vm_idn}' {network} --volume source=image,id={vhi_image},"
-                  f"size={onapp_disks[0]['size']},storage-policy={vhi_storage_policy}"
+                  f"size={onapp_disks[0]['size']},rm={disk_rm},boot-index=0,storage-policy={vhi_storage_policy}"
+                  f"{extra_disks}"
                   f" --flavor {flavour} -f json")
     exit_status, output = vhi_ssh.execute(command=create_cmd)
     if exit_status:
@@ -981,27 +998,6 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
     if not exit_status_code_handler(exit_code=exit_status,
                                     message=f'VM is not created. Output:\n\t{output}'):
         return False
-
-    if len(onapp_disks) > 1:
-        logs.info("-- VHI: Create and Attach extra VHI VM's disks --")
-        for idx, dsk in enumerate(onapp_disks):
-            if idx >= 1:
-                exit_status, output = vhi_ssh.execute(
-                    f"{vinfra_access} service compute volume create --size {dsk['size']} "
-                    f"onapp-{_vhi_vm_id} --storage-policy {vhi_storage_policy} -f json"
-                )
-                if not exit_status_code_handler(exit_code=exit_status,
-                                                message='Volume creation failed. Output:\n\t{output}'):
-                    return False
-
-                new_disk_id = json.loads(output)["id"]
-                exit_status, output = vhi_ssh.execute(
-                    f"{vinfra_access} service compute server volume attach "
-                    f"--server {_vhi_vm_id} {new_disk_id} -f json"
-                )
-                if not exit_status_code_handler(exit_code=exit_status,
-                                                message=f'VM volume is not attached. Output:\n\t{output}'):
-                    return False
 
     if len(onappvm_pri_ips) > 1:
         logs.info(f"{_spaces}-- VHI: allocate and assign extra VHI VM's IP addresses to primary NIC--")

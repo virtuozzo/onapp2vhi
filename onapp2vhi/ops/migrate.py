@@ -187,6 +187,9 @@ def migrate_impl(cfg: OnApp2VHIConfig,
             vh.vz_guest_tools = vz_guest_tools
             vh.cloud_init = cloud_init
             _vm_info = f'{_idn}|{_vm["ip_addr"]}|{_vm["label"]}'
+            if not _vm["ip_addr"]:
+                logs.error(msg="Onapp VM has no primary IP, aborting migration")
+                return False
             logs.info(f"{Helper.SPACES.value}-- VHI: Migrate VM #{_vm_number} IDENTIFIER [{_vm_info}]--", header=True)
             bootloader_drivers, vm_migrate = vh.vm_handler()
             if not bootloader_drivers and not vm_migrate:
