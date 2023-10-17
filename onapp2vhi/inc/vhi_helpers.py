@@ -91,6 +91,10 @@ class Vhi:
                                         message='Listing project failed. Please take a look manually.'):
             return False
 
+        if self.domain_id != json.loads(output_proj)[0]['domain_id']:
+            logs.warn(f'Domain ID {self.domain_id} in cfg is not the same as vinfra domain {self.vinfra_domain} id. Updating domain_id in cfg')
+            self.cfg.update("vhi", "domain_id", json.loads(output_proj)[0]['domain_id'])
+
         if _default_name not in [proj['name'] for proj in json.loads(output_proj)]:
             # Create new `project` and set name into config file
             logs.warn(f'*** "{_default_name}" project was not found on VHI side. Creating new one.\n')
@@ -157,8 +161,14 @@ class Vhi:
                 vinfra_quotas = VinfraQuotas(self.cfg, service_user=False, access_domain=True)
                 try:
                     output = vinfra_quotas.show_quotas(proj_id)
-                    quotas = json.loads(JSON_REGEX.match(output).group(0))
 
+                    m = JSON_REGEX.match(output)
+                    if not m:
+                        exit_status_code_handler(
+                            1, message=f'unable to parse quota data. data = {output}')
+                        return False
+
+                    quotas = json.loads(m.group(0))
                     if quotas['placement'][placement_id]['limit'] == 0:
                         exit_status_code_handler(
                             1,

@@ -8,7 +8,7 @@ Scenario: Hot migration without user's SSH key
   Given I am a cloud user (ultron)
   When I create a virtual machine (windows-vm-with-startup-cloudboot)
   Then CP API (create) should return status code 201
-  And I wait for 16 minutes
+  And I wait for 10 minutes
   And the virtual machine (windows-vm-with-startup-cloudboot) is built successfully
 
   When I set the logging path (ultron_log/log)
@@ -22,7 +22,7 @@ Scenario: Hot migration with user's SSH key
   Given I am a cloud user (uda)
   When I create a virtual machine (windows-vm-with-startup-cloudboot)
   Then CP API (create) should return status code 201
-  And I wait for 16 minutes
+  And I wait for 10 minutes
   And the virtual machine (windows-vm-with-startup-cloudboot) is built successfully
 
   # To test for new migrated user, we delete the existing user account
@@ -40,7 +40,7 @@ Scenario: Hot migration with user's SSH key with storage policy specified
   And I assign the storage policy (behave-storage-policy) with 100G to the project
   And I create a virtual machine (windows-vm-with-startup-cloudboot)
   Then CP API (create) should return status code 201
-  And I wait for 16 minutes
+  And I wait for 10 minutes
   And the virtual machine (windows-vm-with-startup-cloudboot) is built successfully
 
   When I migrate the virtual machine (windows-vm-with-startup-cloudboot) with following details
@@ -50,3 +50,41 @@ Scenario: Hot migration with user's SSH key with storage policy specified
   And I should see the virtual machine is ACTIVE in VHI portal
   And its CPU, RAM and storage are correct
   And its volume is using the correct storage policy (behave-storage-policy)
+
+@network
+Scenario: Hot migration with user's SSH key with second network interface (IPv4 and IPv6)
+  Given I am a cloud user (uda)
+  When I create a network (behave-network-ipv4-ipv6)
+  Then CP API (create) should return status code 201
+
+  When I add a new ip net (behave-ip-net-ipv4) to network (behave-network-ipv4-ipv6)
+  Then CP API (create) should return status code 201
+
+  When I add a new ip net (behave-ip-net-ipv6) to network (behave-network-ipv4-ipv6)
+  Then CP API (create) should return status code 201
+
+  When I add the network join (behave-network-join-997) from network (behave-network-ipv4-ipv6) to the compute zone (CloudBoot Compute Zone)
+  Then CP API (create) should return status code 201
+
+  When I create a virtual machine (windows-vm-with-startup-cloudboot)
+  Then CP API (create) should return status code 201
+  And I wait for 10 minutes
+  And the virtual machine (windows-vm-with-startup-cloudboot) is built successfully
+
+  When I add a network interface (behave-network-interface-ipv4-ipv6) with network join (behave-network-join-997) at compute zone (CloudBoot Compute Zone) to the virtual machine (windows-vm-with-startup-cloudboot)
+  Then CP API (create) should return status code 201
+
+  When I add an IP address (behave-ip-net-ipv4) from network (behave-network-ipv4-ipv6) to the network interface (behave-network-interface-ipv4-ipv6) on virtual machine (windows-vm-with-startup-cloudboot)
+  Then CP API (create) should return status code 201
+  
+  When I add an IP address (behave-ip-net-ipv6) from network (behave-network-ipv4-ipv6) to the network interface (behave-network-interface-ipv4-ipv6) on virtual machine (windows-vm-with-startup-cloudboot)
+  Then CP API (create) should return status code 201
+
+  When I reboot the virtual machine (windows-vm-with-startup-cloudboot) in Onapp cloud
+  Then CP API (reboot) should return status code 201
+  And I wait for 90 seconds
+
+  When I migrate the virtual machine (windows-vm-with-startup-cloudboot)
+  Then I wait for 10 seconds
+  And I should see the virtual machine is ACTIVE in VHI portal
+  And its CPU, RAM and storage are correct

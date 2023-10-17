@@ -4,6 +4,22 @@
 
 - O2V-185: Implement progress bar for long running operation
 
+## Unreleased (13/09/2023)
+
+### Feature
+
+- O2V-177: enable disk deletion on vm termination
+
+### Fixes
+
+- O2V-192: Fix domain_id and vinfra_domain in config
+- O2V-194: Continue migration when vm on vhi side has no IPS
+- O2V-205: Fix image conversion for cold migrate post VHI 6.0.0
+- O2V-206: Fix error handling when quota data is not parseable
+- 02V-208: Fix vinfra output parsing to handle json arrays
+- O2V-210: Fix unsafe virsh destroy operation on live migrate
+- O2V-207: Fix error handling when vm has no primary ip
+
 ## v1.0.2 (23/08/2023)
 
 ### Feature
@@ -23,6 +39,7 @@
 - O2V-159: Preserve Windows VM hostname
 - O2V-175: Skip migration on onapp vm marked as VIP and fix error handling when migrating existing vm in VHI
 - O2V-172: Fix error handling and pre-checks for migration with placement
+- 02V-184: Fix json loads error when creating new network interface
 
 ## v1.0.1 (30/06/2023)
 

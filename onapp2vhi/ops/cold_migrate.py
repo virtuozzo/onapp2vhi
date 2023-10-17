@@ -123,6 +123,11 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
                        f"VM: {cfg.vhi_conf['url']}/compute/servers/instances/{_vm_id}/")
             return False
 
+        if not _vm['networks']:
+            logs.info(f"VM with {_vm['name']} name has no networks\n"
+                      f"VM: {cfg.vhi_conf['url']}/compute/servers/instances/{_vm_id}/")
+            continue
+
         if onappvm_pri_mac == _vm['networks'][0]['mac_addr'] or onappvm_pri_ip in _vm['networks'][0]['ips']:
             vm_created = True
             break
@@ -259,7 +264,7 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
 
         nbd_port = output.strip()
         exit_status, output = _vhi_hv_ssh.execute(
-            f"qemu-img convert -p -n -t directsync -o cluster_size=1048576,lazy_refcounts=on"
+            "qemu-img convert -p -n -t directsync"
             f" {sparse_opt} nbd://{_vm_hv_ip}:{nbd_port} -O qcow2 {_xml_vvm_disks[dsk_num]}", real_data=True
         )
         if not exit_status_code_handler(

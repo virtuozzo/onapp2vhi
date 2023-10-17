@@ -91,14 +91,14 @@ class TestVhiHelpers(unittest.TestCase):
         # Default project is set
         self.vhi._vhi_ssh.execute.return_value = (
             0,
-            '[{"name": "Default_Project"}]',
+            '[{"name": "Default_Project", "domain_id": "test123"}]',
         )
         self.assertTrue(self.vhi.check_default_project())
 
         # Default project is not set
         side_effect = [
-            (0, '[{"name": "XXX_Project"}]'),
-            (0, '{"name": "XXX_Project", "id": "69"}'),
+            (0, '[{"name": "XXX_Project", "domain_id": "test123"}]'),
+            (0, '{"name": "XXX_Project", "id": "69", "domain_id": "test123"}'),
         ]
 
         self.vhi._vhi_ssh.execute.side_effect = side_effect
@@ -554,6 +554,34 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
         ])
         self.mock_quotas_ssh.execute.assert_called_once_with(
             'vinfra admin_auth service compute quotas show 2345-defg -f json')
+
+    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
+    def test_flavor_handler_vinfra_check_flavor_returned_and_exist_in_vhi_with_placement_no_quotas(
+            self, mock_ssh_ctor):
+        flavor = {"vcpus": 2, "ram": 512, "name": "flavor_2_512"}
+
+        # Flavor returned and exist in vhi with placement
+        self.mock_flavor_ssh.execute.side_effect = [
+            (0, '[{"name": "flavor_2_512"}]'),
+        ]
+        self.mock_placement_ssh.execute.side_effect = [
+            (0, '[{"name": "test_placement", "id": "1234-abcdef"}]'),
+            (0, 'ok'),
+        ]
+        self.mock_project_ssh.execute.side_effect = [
+            (0, json.dumps({'id': '2345-defg'})),
+        ]
+        self.mock_quotas_ssh.execute.side_effect = [
+            (0, 'show quotas result'),
+        ]
+        mock_ssh_ctor.side_effect = [
+            self.mock_placement_ssh,
+            self.mock_project_ssh,
+            self.mock_quotas_ssh,
+            self.mock_flavor_ssh,
+        ]
+
+        self.assertFalse(self.vhi.flavor_handler(flavor, "test_placement"))
 
     @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
     def test_flavor_handler_vinfra_check_flavor_returned_and_not_in_vhi_with_placemant(

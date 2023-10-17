@@ -69,10 +69,18 @@ class OnAppCP(object):
         data   = {"cdn_resource":{"cdn_hostname":"cdn.test.co","resource_type":"HTTP_PULL",
                   "cdn_ssl_certificate_id":"ssl_cert_id","edge_group_ids":[1],"origin":"test.origin.com"}}
 
+        Example 2:
+        curl -i -X POST -H 'Accept: application/json' -H 'Content-type: application/json'
+            -u user:userpass -d '{"network":{"label":"Network API TEST 2","network_group_id":3,"vlan":43,"type":"Networking::Network"}}'
+            --url http://onapp.test/settings/networks.json
+        entity: settings/networks
+        data: {"network":{"label":"Network API TEST 2","network_group_id":3,"vlan":43,"type":"Networking::Network"}}
+
         :param entity:
         :param data:
         :return: json
         """
+
         return self._cp_api(session.post, entity, data=data)
 
     def delete(self, entity, entity_id):
@@ -170,6 +178,22 @@ class OnAppCP(object):
         action: migrate
         data: {"edge_server":{"destination":"1","cold_migrate_on_rollback":"1"}}
 
+        Example 2:
+        POST /settings/networks/:network_id/ip_nets.json
+        entity: networks
+        _id: 
+        sub: ip_nets
+
+        Example 3:
+        curl -i -X POST -H 'Accept: application/json' -H 'Content-type: application/json'
+            -u user:userpass -d '{"ip_net": {"network_address":"192.168.0.0","network_mask":"24",
+            "label":"AutoTestNetworkIpvNet1","default_gateway":"2.2.2.1","add_default_ip_range":"1","gateway_outside_ip_net":"1"}}'
+            --url http://onapp.test/settings/networks/12/ip_nets.json
+        entity: settings/networks
+        _id: 12
+        action: ip_nets
+        data: {"network":{"label":"Network API TEST 2","network_group_id":3,"vlan":43,"type":"Networking::Network"}}
+
         :param entity:
         :param _id:
         :param action:
@@ -177,7 +201,7 @@ class OnAppCP(object):
         :return:
         """
         return self._cp_api(session.post, entity, entity_id=_id, action=action, data=data)
-
+    
     def _cp_api(self, requests_func, entity, data=None, entity_id=None, action=None, args=None, filter=False, returned_json=None):
         """
         :param requests_func: session.get or session.post

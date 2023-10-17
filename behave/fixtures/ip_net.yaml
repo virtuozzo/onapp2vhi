@@ -1,0 +1,17 @@
+behave-ip-net-ipv4:
+  ip_net:
+    label: behave_ip_net_ipv4
+    network_mask: 16
+    network_address: 10.0.0.0
+    default_gateway: 10.0.0.1
+    add_default_ip_range: 1
+    gateway_outside_ip_net: 0
+
+behave-ip-net-ipv6:
+  ip_net:
+    label: behave_ip_net_ipv6
+    network_mask: 120
+    network_address: 2a01:a240:a240::200
+    default_gateway: 2a01:a240:a240::201
+    add_default_ip_range: 1
+    gateway_outside_ip_net: 0
