@@ -25,6 +25,9 @@ from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.inc.vinfra_wrapper import VinfraCommand, VinfraError
+from time import time, sleep
+
+VHI_VM_CREATION_TIMEOUT = 300
 
 logs = OnAppVHILogger()
 
@@ -363,15 +366,33 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
             message=f'[live_migrate.py | STEP 11] VM migration process from OnApp to VHI failed. Output\n\t{output}'
     ):
         return False
+    else:
+        vm_created = False
+        pattern = re.compile(r'^State:\s*(\w+)$', re.MULTILINE)
+        deadline = time() + VHI_VM_CREATION_TIMEOUT
+
+        while not vm_created and time() < deadline:
+            exit_status, output = _vhi_hv_ssh.execute(f'virsh dominfo {vm_idn}')
+            if not exit_status_code_handler(exit_code=exit_status,
+                                            message='Failed to query VHI vm info.\n\t\{output}'):
+                continue
+            result = pattern.findall(output)
+            if result:
+                if result[0] == 'running':
+                    vm_created = True
+            else:
+                sleep(5)
+
+        if not vm_created:
+            exit_status_code_handler(exit_code=1, message='VHI vm creation timeout.')
+            return False
 
     # -- STEP 12 --
     logs.info(f"{_spaces}{live_migration}STEP #12 -- VHI: Stop just migrated OnApp VM on VHI hypervisor --",
               header=True)
-    # ToDo add validation to check whether VM is created
-    #  "virsh info {VM_IDn}"
-    exit_status, output = _vhi_hv_ssh.execute(f"virsh destroy {vm_idn} 2>/dev/null")
+    exit_status, output = _vhi_hv_ssh.execute(f"virsh shutdown {vm_idn} 2>/dev/null")
     if not exit_status_code_handler(exit_code=exit_status,
-                                    message='[live_migrate.py | STEP 12] VM "virsh destroy" on VHI node failed.'):
+                                    message='[live_migrate.py | STEP 12] VM "virsh shutdown" on VHI node failed.'):
         return False
 
     # -- STEP 13 --
