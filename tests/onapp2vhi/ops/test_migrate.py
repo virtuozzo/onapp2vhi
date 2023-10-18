@@ -1,8 +1,9 @@
 import unittest
-from mock import patch, mock_open
+from mock import patch, mock_open, Mock
 
 from onapp2vhi.ops.migrate import migrate_impl
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+from onapp2vhi.inc.rest_client import OnAppRequests
 
 TEST_CONFIG = """
 [onapp]
@@ -50,13 +51,22 @@ class TestVmColdMigration(unittest.TestCase):
     @patch("builtins.open", mock_open(read_data=TEST_CONFIG))
     def setUp(self):
         self.mock_cfg = OnApp2VHIConfig.load_config("test.ini")
+        self.mock_onapprequests = Mock(spec=OnAppRequests)
 
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
     @patch("onapp2vhi.ops.migrate.get_user_ssh_keys")
     @patch("onapp2vhi.ops.migrate.VhiSshKeys")
     @patch("onapp2vhi.ops.migrate.Vhi")
     @patch("onapp2vhi.ops.migrate.prepare_vhi_migration_data")
     @patch("onapp2vhi.ops.migrate.logs")
-    def test_migrate_with_no_primary_ip(self, mock_logs, mock_vhi_data, mock_vhi, mock_ssh_key, mock_get_ssh):
+    def test_migrate_with_no_primary_ip(self, mock_logs, mock_vhi_data,
+                                        mock_vhi, mock_ssh_key, mock_get_ssh,
+                                        mock_onapprequests):
+
+        mock_onapprequests.return_value = self.mock_onapprequests
+        self.mock_onapprequests.get.side_effect = [
+            {"virtual_machine": {"user_id": 123}}
+        ]
         mock_vhi.return_value.create_user.return_value = ("test", "tests")
         mock_data = [
             {
