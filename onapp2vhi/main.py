@@ -160,6 +160,12 @@ def create_service_user():
     default="",
     help="Boolean flag, set `false` to NOT install vz_guest_tools_install",
 )
+@click.option(
+    "--hotplug",
+    is_flag=True,
+    expose_value=True,
+    help="Enable VM CPU and RAM hot plug",
+)
 def migrate(
     user="",
     vm="",
@@ -167,7 +173,8 @@ def migrate(
     vz_guest_tools_install="true",
     cloud_init_install="true",
     placement="",
-    storage_policy=""
+    storage_policy="",
+    hotplug=False,
 ):
     from onapp2vhi.ops.migrate import migrate_impl
 
@@ -180,4 +187,5 @@ def migrate(
         cloud_init_install=cloud_init_install,
         placement=placement,
         storage_policy=storage_policy,
+        cpu_hotplug=hotplug
     )

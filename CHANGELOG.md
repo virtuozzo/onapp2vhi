@@ -3,6 +3,7 @@
 ### Feature
 
 - O2V-177: enable disk deletion on vm termination
+- O2V-199: add option to enable cpu & ram hot plug on `migrate`
 
 ### Fixes
 

@@ -50,6 +50,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                  cloud_init_install='',
                  placement='',
                  storage_policy='',
+                 cpu_hotplug=False,
                  ):
     """
     Migrate all resources from OnApp to VHI:
@@ -80,6 +81,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
     :param cloud_init_install: project
     :param placement: placement "name" or "id"
     :param storage_policy: storage_policy "name"
+    :param cpu_hotplug: 'True' to enable, 'False' otherwise
     :return:
     """
     # Arrange
@@ -238,7 +240,8 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                                    vdom=cfg.vhi_conf['vinfra_domain'],
                                    vm_properties=_vm_properties,
                                    vhi_obj=vhi,
-                                   placement=placement)
+                                   placement=placement,
+                                   cpu_hotplug=cpu_hotplug)
 
             vm_msg += (f'\t{_vm_number}. Migration Status = {result_vm}\n'
                        f'\t\t- IP "{_vm["ip_addr"]}"\n'

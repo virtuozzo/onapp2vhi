@@ -32,7 +32,14 @@ VHI_VM_CREATION_TIMEOUT = 300
 logs = OnAppVHILogger()
 
 
-def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_properties: dict, vhi_obj, placement=''):
+def vm_live_migrate(cfg: OnApp2VHIConfig,
+                    vdom: str,
+                    vproj: str,
+                    idn: str,
+                    vm_properties: dict,
+                    vhi_obj,
+                    placement='',
+                    cpu_hotplug=False):
     if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -191,7 +198,8 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
                                        onapp_nics=_onapp_nics,
                                        hostname=_vm_properties['hostname'],
                                        domain=_vm_properties['domain'],
-                                       vhi_storage_policy=_vm_properties['storage_policy'])
+                                       vhi_storage_policy=_vm_properties['storage_policy'],
+                                       cpu_hotplug=cpu_hotplug)
         if not _vhi_vm_id:
             return False
 
