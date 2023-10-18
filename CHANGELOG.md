@@ -1,3 +1,9 @@
+## Unreleased (06/10/2023)
+
+### Feature
+
+- O2V-185: Implement progress bar for long running operation
+
 ## Unreleased (13/09/2023)
 
 ### Feature
