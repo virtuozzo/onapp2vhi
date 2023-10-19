@@ -12,6 +12,34 @@ from onapp2vhi.utilities.logs.logger import setup_logger
 cfg = None
 
 
+def validate_flavor(ctx, param, value):
+
+    if not value:
+        return None
+
+    flavor = value.split("_")
+
+    if len(flavor) < 3:
+        raise click.BadParameter("Format must be \"name_cpus_ram\"")
+
+    if not flavor[1].isnumeric():
+        raise click.BadParameter("Format must be \"name_cpus_ram\", cpus must be in numeric")
+
+    if not 1 <= int(flavor[1]) <= 64:
+        raise click.BadParameter("Cpus must be in range between 1-64")
+
+    if not flavor[2].isnumeric():
+        raise click.BadParameter("Format must be \"name_cpus_ram\", ram must be in numeric")
+
+    flavor_dict = {
+        "name": value,
+        "vcpus": flavor[1],
+        "ram": flavor[2]
+    }
+
+    return flavor_dict
+
+
 def search_config():
     if Path("config.ini").is_file():
         return "config.ini"
@@ -148,7 +176,7 @@ def create_service_user():
 @click.option(
     "--placement",
     default="",
-    help="Boolean flag, set `false` to NOT install cloud_init_install"
+    help="String flag, set `default`"
 )
 @click.option(
     '--storage_policy',
@@ -160,6 +188,12 @@ def create_service_user():
     default="",
     help="Boolean flag, set `false` to NOT install vz_guest_tools_install",
 )
+@click.option(
+    "--flavor",
+    required=False,
+    help="string flag, set `default`. Providing empty string will use current onapp spec flavor",
+    callback=validate_flavor
+)
 def migrate(
     user="",
     vm="",
@@ -167,7 +201,8 @@ def migrate(
     vz_guest_tools_install="true",
     cloud_init_install="true",
     placement="",
-    storage_policy=""
+    storage_policy="",
+    flavor=""
 ):
     from onapp2vhi.ops.migrate import migrate_impl
 
@@ -180,4 +215,5 @@ def migrate(
         cloud_init_install=cloud_init_install,
         placement=placement,
         storage_policy=storage_policy,
+        flavor=flavor,
     )
