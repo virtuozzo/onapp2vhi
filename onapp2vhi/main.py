@@ -7,6 +7,7 @@ import os
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.utilities.template import CONFIG_TEMPLATE
 from onapp2vhi.utilities.logs.logger import setup_logger
+from onapp2vhi.utilities.config_cli import ConfigCli
 
 
 cfg = None
@@ -98,6 +99,18 @@ def list_onapp_users(props="", find=""):
 
     list_onapp_users_impl(cfg, props=props, find=find)
 
+@run.group(invoke_without_command=True)
+def config_cli():
+    """
+    Initialize config file by updating a existing file or
+    creating a new config file
+    """
+    config_path = search_config()
+    if not config_path:
+        print("No config file found. Run `onapp2vhi --generate-config`")
+        return
+    cli = ConfigCli(config_path)
+    cli.run()
 
 @run.command()
 @click.option(
