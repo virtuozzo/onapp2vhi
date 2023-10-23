@@ -180,6 +180,7 @@ def vm_install_win_drivers_offline(cfg: OnApp2VHIConfig, vm_handler, idn: str, v
                     f"\t\tOutput: {output}"
     ):
         return False
+    windows_reconfig.delete_file()
 
     # -- STEP 8 --
     logs.info(f"{_spaces}{_dri_msg}STEP #8 -- OnApp: Run unmount and del partition devmappings --", header=True)

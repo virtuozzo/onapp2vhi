@@ -9,11 +9,14 @@
 ### Feature
 
 - O2V-177: enable disk deletion on vm termination
+- O2V-199: add option to enable cpu & ram hot plug on `migrate`
+- O2V-200: Add new custom flavor flag for new vm in vhi
 
 ### Fixes
 
 - O2V-192: Fix domain_id and vinfra_domain in config
 - O2V-194: Continue migration when vm on vhi side has no IPS
+- O2V-176: Remove temp files after it is copied to target vm
 - O2V-205: Fix image conversion for cold migrate post VHI 6.0.0
 - O2V-206: Fix error handling when quota data is not parseable
 - 02V-208: Fix vinfra output parsing to handle json arrays

@@ -32,7 +32,14 @@ VHI_VM_CREATION_TIMEOUT = 300
 logs = OnAppVHILogger()
 
 
-def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_properties: dict, vhi_obj, placement=''):
+def vm_live_migrate(cfg: OnApp2VHIConfig,
+                    vdom: str,
+                    vproj: str,
+                    idn: str,
+                    vm_properties: dict,
+                    vhi_obj,
+                    placement='',
+                    cpu_hotplug=False):
     if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -53,9 +60,14 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
     _vm_ip_addr = _vm_properties['vm_ip_addr']
     _hot_migrate = _vm_properties['hot_migrate']
     vhi = vhi_obj
-    _on_app_flavor = get_onapp_vm_flavor(cfg, vm_idn=vm_idn)
-    logs.debug(f'OnApp flavor: {_on_app_flavor}')
-    result = vhi.flavor_handler(onapp_flavor=_on_app_flavor, placement=placement)
+
+    if _vm_properties['flavor']:
+        _flavor = _vm_properties['flavor']
+    else:
+        _flavor = get_onapp_vm_flavor(cfg, vm_idn=vm_idn)
+
+    logs.debug(f'OnApp flavor: {_flavor}')
+    result = vhi.flavor_handler(onapp_flavor=_flavor, placement=placement)
     if not result:
         logs.warn('Flavor has NOT been created on VHI side, further process does not make sense.')
         return False
@@ -191,7 +203,8 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
                                        onapp_nics=_onapp_nics,
                                        hostname=_vm_properties['hostname'],
                                        domain=_vm_properties['domain'],
-                                       vhi_storage_policy=_vm_properties['storage_policy'])
+                                       vhi_storage_policy=_vm_properties['storage_policy'],
+                                       cpu_hotplug=cpu_hotplug)
         if not _vhi_vm_id:
             return False
 
