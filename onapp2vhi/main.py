@@ -194,6 +194,12 @@ def create_service_user():
     help="string flag, set `default`. Providing empty string will use current onapp spec flavor",
     callback=validate_flavor
 )
+@click.option(
+    "--hotplug",
+    is_flag=True,
+    expose_value=True,
+    help="Enable VM CPU and RAM hot plug",
+)
 def migrate(
     user="",
     vm="",
@@ -202,7 +208,8 @@ def migrate(
     cloud_init_install="true",
     placement="",
     storage_policy="",
-    flavor=""
+    flavor="",
+    hotplug=False
 ):
     from onapp2vhi.ops.migrate import migrate_impl
 
@@ -216,4 +223,5 @@ def migrate(
         placement=placement,
         storage_policy=storage_policy,
         flavor=flavor,
+        cpu_hotplug=hotplug
     )
