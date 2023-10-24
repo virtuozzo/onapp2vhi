@@ -4,7 +4,7 @@
 
 - O2V-185: Implement progress bar for long running operation
 
-## Unreleased (13/09/2023)
+## v1.0.3 (24/10/2023)
 
 ### Feature
 
@@ -22,6 +22,7 @@
 - 02V-208: Fix vinfra output parsing to handle json arrays
 - O2V-210: Fix unsafe virsh destroy operation on live migrate
 - O2V-207: Fix error handling when vm has no primary ip
+- O2V-193: Fix vm gets migrated even user parameter is supplied wrongly
 
 ## v1.0.2 (23/08/2023)
 
