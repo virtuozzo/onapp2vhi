@@ -1,4 +1,5 @@
 import os
+import sys
 
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.vhi_ssh_keys import VhiSshKeys
@@ -9,7 +10,8 @@ from onapp2vhi.inc.onapp_helpers import (
     get_user_ssh_keys,
     check_user_role,
     get_vm_source_properties,
-    VmHandler
+    VmHandler,
+    verify_vm_user
 )
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 
@@ -89,12 +91,18 @@ def migrate_impl(cfg: OnApp2VHIConfig,
     logs.info(f"{Helper.EQUAL.value} VHI: Starting Migration Session {Helper.EQUAL.value}", header=True)
     _pid = os.getpid()
     _file_name = ('migration_logs/{user}/migrated')
+
     user_idn = ''
     if user:
         if not user.isdigit():
             logs.error("Please specify User ID as integer: --user=7")
             exit(1)
         user_idn = int(user)
+
+    if user_idn and vm:
+        if not verify_vm_user(cfg, user_idn, vm):
+            sys.exit(1)
+
     vz_guest_tools = False if vz_guest_tools_install == 'false' else True
     _storage_policy = storage_policy if storage_policy else cfg.vhi_conf['vhi_storage_policy']
     _flavor = flavor
