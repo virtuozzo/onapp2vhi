@@ -1174,3 +1174,19 @@ def find_correct_disk_key(on_app_disks: list, target: str):
             return f"{disk_info['name'][:2]}{_letter}"
 
         return disk_info['name']
+
+
+def verify_vm_user(cfg: OnApp2VHIConfig, user_id: int, vms_id: str) -> bool:
+    """Verify vm actually belong to the user"""
+    onapp_requests = OnAppRequests(cfg)
+    vms_id = vms_id.split(',')
+    for id_ in vms_id:
+        response = onapp_requests.get(f"virtual_machines/{id_}")
+        vm = response["virtual_machine"]
+        if vm["user_id"] != user_id:
+            logs.error(
+                f"Virtual server ({id_}) does not belong to user"
+                f"({user_id})"
+            )
+            return False
+    return True

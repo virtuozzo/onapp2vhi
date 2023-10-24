@@ -18,6 +18,7 @@ from onapp2vhi.inc.onapp_helpers import (
     transfer_firewall_rules_to_sg,
     create_new_vhi_vm,
     prepare_vhi_migration_data,
+    verify_vm_user,
 )
 from onapp2vhi.inc.vinfra_wrapper import (
     VinfraServer,
@@ -2036,3 +2037,37 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
 
         result = prepare_vhi_migration_data(self.mock_cfg, vm_idn='abcdef')
         self.assertFalse(result)
+
+
+class TestVerifyVmUser(OnAppHelpersTestCase):
+    def setUp(self):
+        super().setUp()
+        self.mock_onapprequests = Mock(spec=OnAppRequests)
+
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    def test_vm_correct_user(self, mock_onapprequests):
+        mock_onapprequests.return_value = self.mock_onapprequests
+        self.mock_onapprequests.get.side_effect = [
+            {"virtual_machine": {"user_id": 888}}
+        ]
+
+        self.assertTrue(verify_vm_user(self.mock_cfg, 888, "xxx"))
+
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    def test_vm_incorrect_user(self, mock_onapprequests):
+        mock_onapprequests.return_value = self.mock_onapprequests
+        self.mock_onapprequests.get.side_effect = [
+            {"virtual_machine": {"user_id": 888}}
+        ]
+
+        self.assertFalse(verify_vm_user(self.mock_cfg, 777, "xxx"))
+
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    def test_multiple_vm(self, mock_onapprequests):
+        mock_onapprequests.return_value = self.mock_onapprequests
+        self.mock_onapprequests.get.side_effect = [
+            {"virtual_machine": {"user_id": 777}},
+            {"virtual_machine": {"user_id": 888}},
+        ]
+
+        self.assertFalse(verify_vm_user(self.mock_cfg, 777, "xxx,yyy"))
