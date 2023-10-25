@@ -1,7 +1,9 @@
+import re
 import subprocess
 import socket
 import paramiko
 
+from tqdm import tqdm
 from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from time import sleep
 
@@ -156,21 +158,44 @@ class SSH:
 
         return False
 
+    def _update_progressbar(self, pbar, data, progress):
+        current_progress = re.search(r"\d+", data)
+        if current_progress:
+            current_progress = int(current_progress.group())
+
+            if current_progress > progress:
+                pbar.update(1)
+            elif current_progress == 100:
+                pbar.update(1)
+            return current_progress
+        return progress
+
     def _receive_data(self, real_data=False):
         """
         Receive data from ssh channel
         :return:
         """
-        # ToDo
-        #  Develop Progress bar
-        #  Cold migrate = "(0.00/100%)"./
         output = ""
+        migration_cmd = [
+            "qemu-img convert",
+            "virsh migrate"
+        ]
+
+        migration = any(i in self.command for i in migration_cmd)
+
+        pbar = tqdm(total=100, delay=1, desc="Migration", position=2)
+        progress = 0
         if self.channel.recv_ready():
             logs.debug("GET DATA...")
             data = self.channel.recv(NBYTES).decode("utf-8", "ignore")
             while data:
                 if real_data:
-                    logs.info(msg=data.strip())
+                    if migration:
+                        progress = self._update_progressbar(
+                            pbar, data, progress)
+                    else:
+                        logs.info(msg=data.strip())
+
                 output += data
                 try:
                     data = self.channel.recv(NBYTES).decode("utf-8", "ignore")
@@ -178,12 +203,18 @@ class SSH:
                     logs.error("Channel timeout exceeded...")
                     self.channel.close()
                     break
+
         if self.channel.recv_stderr_ready():
             logs.debug("GET ERROR...")
             data = self.channel.recv_stderr(NBYTES).decode("utf-8", "ignore")
             while data:
                 if real_data:
-                    logs.info(msg=data.strip())
+                    if migration:
+                        progress = self._update_progressbar(
+                            pbar, data, progress)
+                    else:
+                        logs.info(msg=data.strip())
+
                 output += data
                 try:
                     data = self.channel.recv_stderr(NBYTES).decode("utf-8", "ignore")
@@ -192,6 +223,7 @@ class SSH:
                     self.channel.close()
                     break
 
+        pbar.close()
         return output
 
     def execute(self, command: str, real_data=False):
@@ -211,6 +243,7 @@ class SSH:
         logs.debug(f"Default window size - {self.transport.default_window_size}")
         logs.info(f'HOST: {self.host} | PORT: {self.port}')
         logs.info(f'Running command: {command}')
+        self.command = command
         self.channel.exec_command(command)
         while True:
             data = self._receive_data(real_data=real_data)

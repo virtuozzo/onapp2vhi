@@ -55,11 +55,15 @@ class Network:
         cmd = f"{self._vinfra_options} service compute network list --long -f json"
         exit_status, output = self._ssh.execute(cmd)
         if not exit_status:
-            response = output.split('\n')
             try:
-                response = json.loads("\n".join(response[:-2]))
+                m = JSON_REGEX.match(output)
+                if not m:
+                    print(f"Failed to parse json.\n {output}")
+                    return False
+
+                response = json.loads(m.group(0))
             except json.decoder.JSONDecodeError as error:
-                print(f"Failed to parse JSON. \n {error}")
+                print(f"Failed to parse JSON.\n {error}")
                 return False
 
             for network in response:
@@ -83,7 +87,12 @@ class Network:
         exit_status, output = self._ssh.execute(cmd)
         if not exit_status:
             try:
-                output = json.loads(JSON_REGEX.match(output).group(0))
+                m = JSON_REGEX.match(output)
+                if not m:
+                    print(f'Failed to parse JSON.\n {output}')
+                    return False
+
+                output = json.loads(m.group(0))
                 network_uuid = re.findall('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', output["id"])
                 if not network_uuid:
                     print(f"Network has not been created\n {output}")

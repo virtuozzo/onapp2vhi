@@ -87,7 +87,8 @@ class TestVmColdMigration(unittest.TestCase):
             'hot_migrate': True,
             'hostname': 'faidhi2',
             'domain': 'localdomain',
-            'storage_policy': 'default'
+            'storage_policy': 'default',
+            'flavor': "flavor_1_1"
         }
 
         result = vm_cold_migrate(self.mock_cfg, mock_vdom, mock_vproj, mock_idn, mock_properties, mock_vhi)
@@ -134,7 +135,8 @@ class TestVmColdMigration(unittest.TestCase):
             'hot_migrate': True,
             'hostname': 'faidhi2',
             'domain': 'localdomain',
-            'storage_policy': 'default'
+            'storage_policy': 'default',
+            'flavor': 'flavor_1_1'
         }
 
         mock_ssh.return_value.execute.side_effect = [
@@ -222,7 +224,8 @@ class TestVmColdMigration(unittest.TestCase):
             'hot_migrate': True,
             'hostname': 'faidhi2',
             'domain': 'localdomain',
-            'storage_policy': 'default'
+            'storage_policy': 'default',
+            'flavor': "flavor_1_1"
         }
 
         mock_ssh.return_value.execute.side_effect = [
