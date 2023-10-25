@@ -99,6 +99,7 @@ def list_onapp_users(props="", find=""):
 
     list_onapp_users_impl(cfg, props=props, find=find)
 
+
 @run.group(invoke_without_command=True)
 def config_cli():
     """
@@ -111,6 +112,7 @@ def config_cli():
         return
     cli = ConfigCli(config_path)
     cli.run()
+
 
 @run.command()
 @click.option(
