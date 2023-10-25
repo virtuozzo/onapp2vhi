@@ -103,3 +103,46 @@ class TestInstallWinDriverOffline(unittest.TestCase):
                 call("scp -o 'ForwardAgent yes' -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' -r test_file root@10.116.0.32:/mnt/aabbccdd/vhi_rebuild_network.bat")
             ]
         )
+
+    @patch("onapp2vhi.ops.install_win_drivers_offline.WindowsNetworkReconfig")
+    @patch("onapp2vhi.ops.install_win_drivers_offline.deactivate_disk")
+    @patch("onapp2vhi.ops.install_win_drivers_offline.get_disk_type")
+    @patch("onapp2vhi.ops.install_win_drivers_offline.activate_disk")
+    @patch("onapp2vhi.inc.onapp_helpers.VmHandler")
+    @patch("onapp2vhi.ops.install_win_drivers_offline.ssh_run")
+    @patch("onapp2vhi.ops.install_win_drivers_offline.exit_status_code_handler")
+    @patch("onapp2vhi.ops.install_win_drivers_offline.SSH")
+    @patch("onapp2vhi.ops.install_win_drivers_offline.get_onapp_vm_disks")
+    @patch("onapp2vhi.ops.install_win_drivers_offline.logs")
+    @patch("onapp2vhi.ops.install_win_drivers_offline.download_file")
+    def test_vm_install_win_drivers_offline_ensure_temp_files_deleted(self, mock_download, mock_logs, mock_vm_disks,
+                                                                      mock_ssh, mock_exit_status,
+                                                                      mock_ssh_run, mock_vm_handler,
+                                                                      mock_activate_disk, mock_get_disk_type,
+                                                                      mock_deactivate_disk, mock_network_reconfig):
+
+        self.mock_ssh.execute.return_value = (1, "")
+        mock_ssh.return_value = self.mock_ssh
+
+        self.mock_network_reconfig.create_file.return_value = True
+        self.mock_network_reconfig.file = "test_file"
+        mock_network_reconfig.return_value = self.mock_network_reconfig
+
+        mock_ssh_run.return_value = (1, "")
+        mock_exit_status.return_value = True
+
+        mock_properties = {
+            'hv_ip': '10.116.0.32',
+            'vm_os': 'linux',
+            'vm_ip_addr': '10.119.0.4',
+            'network_info': {860: ['10.119.0.4']},
+            'hot_migrate': True,
+            'hostname': 'faidhi2',
+            'domain': 'localdomain',
+            'storage_policy': 'default'
+        }
+
+        result = vm_install_win_drivers_offline(self.mock_cfg, mock_vm_handler, "aabbccdd", mock_properties)
+
+        self.mock_network_reconfig.delete_file.assert_called()
+        self.assertTrue(result)

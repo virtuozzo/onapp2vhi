@@ -25,11 +25,21 @@ from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.inc.vinfra_wrapper import VinfraCommand, VinfraError
+from time import time, sleep
+
+VHI_VM_CREATION_TIMEOUT = 300
 
 logs = OnAppVHILogger()
 
 
-def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_properties: dict, vhi_obj, placement=''):
+def vm_live_migrate(cfg: OnApp2VHIConfig,
+                    vdom: str,
+                    vproj: str,
+                    idn: str,
+                    vm_properties: dict,
+                    vhi_obj,
+                    placement='',
+                    cpu_hotplug=False):
     if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -50,9 +60,14 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
     _vm_ip_addr = _vm_properties['vm_ip_addr']
     _hot_migrate = _vm_properties['hot_migrate']
     vhi = vhi_obj
-    _on_app_flavor = get_onapp_vm_flavor(cfg, vm_idn=vm_idn)
-    logs.debug(f'OnApp flavor: {_on_app_flavor}')
-    result = vhi.flavor_handler(onapp_flavor=_on_app_flavor, placement=placement)
+
+    if _vm_properties['flavor']:
+        _flavor = _vm_properties['flavor']
+    else:
+        _flavor = get_onapp_vm_flavor(cfg, vm_idn=vm_idn)
+
+    logs.debug(f'OnApp flavor: {_flavor}')
+    result = vhi.flavor_handler(onapp_flavor=_flavor, placement=placement)
     if not result:
         logs.warn('Flavor has NOT been created on VHI side, further process does not make sense.')
         return False
@@ -188,7 +203,8 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
                                        onapp_nics=_onapp_nics,
                                        hostname=_vm_properties['hostname'],
                                        domain=_vm_properties['domain'],
-                                       vhi_storage_policy=_vm_properties['storage_policy'])
+                                       vhi_storage_policy=_vm_properties['storage_policy'],
+                                       cpu_hotplug=cpu_hotplug)
         if not _vhi_vm_id:
             return False
 
@@ -358,15 +374,33 @@ def vm_live_migrate(cfg: OnApp2VHIConfig, vdom: str, vproj: str, idn: str, vm_pr
             message=f'[live_migrate.py | STEP 11] VM migration process from OnApp to VHI failed. Output\n\t{output}'
     ):
         return False
+    else:
+        vm_created = False
+        pattern = re.compile(r'^State:\s*(\w+)$', re.MULTILINE)
+        deadline = time() + VHI_VM_CREATION_TIMEOUT
+
+        while not vm_created and time() < deadline:
+            exit_status, output = _vhi_hv_ssh.execute(f'virsh dominfo {vm_idn}')
+            if not exit_status_code_handler(exit_code=exit_status,
+                                            message='Failed to query VHI vm info.\n\t\{output}'):
+                continue
+            result = pattern.findall(output)
+            if result:
+                if result[0] == 'running':
+                    vm_created = True
+            else:
+                sleep(5)
+
+        if not vm_created:
+            exit_status_code_handler(exit_code=1, message='VHI vm creation timeout.')
+            return False
 
     # -- STEP 12 --
     logs.info(f"{_spaces}{live_migration}STEP #12 -- VHI: Stop just migrated OnApp VM on VHI hypervisor --",
               header=True)
-    # ToDo add validation to check whether VM is created
-    #  "virsh info {VM_IDn}"
-    exit_status, output = _vhi_hv_ssh.execute(f"virsh destroy {vm_idn} 2>/dev/null")
+    exit_status, output = _vhi_hv_ssh.execute(f"virsh shutdown {vm_idn} 2>/dev/null")
     if not exit_status_code_handler(exit_code=exit_status,
-                                    message='[live_migrate.py | STEP 12] VM "virsh destroy" on VHI node failed.'):
+                                    message='[live_migrate.py | STEP 12] VM "virsh shutdown" on VHI node failed.'):
         return False
 
     # -- STEP 13 --

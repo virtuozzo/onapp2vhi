@@ -95,7 +95,8 @@ class TestLiveMigrate(TestCase):
             'hot_migrate': True,
             'hostname': 'faidhi2',
             'domain': 'localdomain',
-            'storage_policy': 'default'
+            'storage_policy': 'default',
+            'flavor': 'flavor_1_1'
         }
 
         mock_ssh.return_value.execute.side_effect = [
@@ -109,7 +110,9 @@ class TestLiveMigrate(TestCase):
             (0, '<xml></xml>'),
             # live migrate run
             (0, ''),
-            # destroy onapp vm
+            # verify vm create
+            (0, 'Id: 123\nState:    running\nCpu: 4\n'),
+            # shutdown onapp vm
             (0, ''),
             # start precreated vhi vm
             (0, '')
@@ -179,7 +182,8 @@ class TestLiveMigrate(TestCase):
             'hot_migrate': True,
             'hostname': 'faidhi2',
             'domain': 'localdomain',
-            'storage_policy': 'default'
+            'storage_policy': 'default',
+            'flavor': 'flavor_1_1'
         }
 
         mock_ssh.return_value.execute.side_effect = [
@@ -193,7 +197,9 @@ class TestLiveMigrate(TestCase):
             (0, '<xml></xml>'),
             # live migrate run
             (0, ''),
-            # destroy onapp vm
+            # verify vm create
+            (0, 'Id: 123\nState:    running\nCpu: 4\n'),
+            # shutdown onapp vm
             (0, ''),
             # start precreated vhi vm
             (0, '')
