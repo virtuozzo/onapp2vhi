@@ -120,6 +120,7 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, vm_handler, idn: str, vm_proper
                     f"\t\tOutput: {output}"
     ):
         return False
+    windows_reconfig.delete_file()
 
     cmd = f'scp -P{cfg.onapp_conf["hv_ssh_port"]} {Helper.SCP_OPTS.value} {onapp_bat}' \
           f' Administrator@{_vm_ip_addr}:C:/onapp.bat 2>/dev/null'

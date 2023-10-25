@@ -1,4 +1,5 @@
 import os
+import sys
 
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.vhi_ssh_keys import VhiSshKeys
@@ -9,7 +10,8 @@ from onapp2vhi.inc.onapp_helpers import (
     get_user_ssh_keys,
     check_user_role,
     get_vm_source_properties,
-    VmHandler
+    VmHandler,
+    verify_vm_user
 )
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 
@@ -50,6 +52,8 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                  cloud_init_install='',
                  placement='',
                  storage_policy='',
+                 flavor='',
+                 cpu_hotplug=False
                  ):
     """
     Migrate all resources from OnApp to VHI:
@@ -80,20 +84,28 @@ def migrate_impl(cfg: OnApp2VHIConfig,
     :param cloud_init_install: project
     :param placement: placement "name" or "id"
     :param storage_policy: storage_policy "name"
+    :param cpu_hotplug: 'True' to enable, 'False' otherwise
     :return:
     """
     # Arrange
     logs.info(f"{Helper.EQUAL.value} VHI: Starting Migration Session {Helper.EQUAL.value}", header=True)
     _pid = os.getpid()
     _file_name = ('migration_logs/{user}/migrated')
+
     user_idn = ''
     if user:
         if not user.isdigit():
             logs.error("Please specify User ID as integer: --user=7")
             exit(1)
         user_idn = int(user)
+
+    if user_idn and vm:
+        if not verify_vm_user(cfg, user_idn, vm):
+            sys.exit(1)
+
     vz_guest_tools = False if vz_guest_tools_install == 'false' else True
     _storage_policy = storage_policy if storage_policy else cfg.vhi_conf['vhi_storage_policy']
+    _flavor = flavor
     if cloud_init_install is SENTINEL:
         cloud_init = {'user': False, 'install': True}
     elif cloud_init_install == 'false':
@@ -204,6 +216,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
 
             _vm_properties = get_vm_source_properties(cfg, vm_idn=_idn)
             _vm_properties['storage_policy'] = _storage_policy
+            _vm_properties['flavor'] = _flavor
             _cloud_init_log = _prepare_cloud_init_msg(cloud_init_install=cloud_init, vm_properties=_vm_properties)
             if not _vm['built_from_iso'] and not _vm['built_from_ova']:
                 result = bootloader_drivers(cfg,
@@ -238,7 +251,8 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                                    vdom=cfg.vhi_conf['vinfra_domain'],
                                    vm_properties=_vm_properties,
                                    vhi_obj=vhi,
-                                   placement=placement)
+                                   placement=placement,
+                                   cpu_hotplug=cpu_hotplug)
 
             vm_msg += (f'\t{_vm_number}. Migration Status = {result_vm}\n'
                        f'\t\t- IP "{_vm["ip_addr"]}"\n'

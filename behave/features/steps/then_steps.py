@@ -118,18 +118,27 @@ def step_impl(context, state):
     vm_list = json.loads(output.stdout)
     
     match = False
+    arr_vhi_vm_ip = []
     for vm in vm_list:
 
         if hostname in vm["name"] and state.lower() == vm["status"].lower():
+            match = True
 
             for network in vm["networks"]:
-                for ip in ips:
-                    if ip in network["ips"]:
-                        match = True
-                        break
+                for ip in network["ips"]:
+                    arr_vhi_vm_ip.append(ip)
             
     if not match:
         assert CHECK_FAILED, "error: the virtual machine is not found in VHI portal or its state is not %s" % state
+
+    onapp_vm_ip = context.cp.get("virtual_machines", context.result[0]["virtual_machine"]["id"], action="ip_addresses")
+
+    arr_onapp_vm_ip = []
+    for ip in onapp_vm_ip:
+        arr_onapp_vm_ip.append(ip["ip_address_join"]["ip_address"]["address"])
+
+    if arr_vhi_vm_ip.sort() != arr_onapp_vm_ip.sort():
+        assert CHECK_FAILED, "error: the ip(s) in onapp and vhi aren't matched"
 
 use_step_matcher('parse')
 @then('its CPU, RAM and storage are correct')
@@ -267,3 +276,39 @@ def step_impl(context, name):
         
         if storage_policy_name != output_result:
             assert CHECK_FAILED, "error: disk is not using the storage policy, it is using %s" % output_result
+
+use_step_matcher('parse')
+@then('the vm is placed in the corrent placement ({placement})')
+def stepm_impl(context, placement):
+
+    hostname = context.result[0]["virtual_machine"]["hostname"]
+    config = helper.get_config()["vhi"]
+
+    placement_output = helper.open_vhi_ssh_connection(config, "service compute placement list -f json")
+    placement_list = json.loads(placement_output.stdout)
+    placement_name = helper.get_fixture("placement")[placement]["name"]
+
+    match = False
+    for p in placement_list:
+        if placement_name == p["name"]:
+            placement_id = p["id"]
+            match = True
+            break
+    
+    if not match:
+        assert CHECK_FAILED, "error: placement is not found"
+    
+    vm_output = helper.open_vhi_ssh_connection(config, "service compute server list --long -f json")
+    vm_list = json.loads(vm_output.stdout)
+    
+    match = False
+    for vm in vm_list:
+
+        if hostname in vm["name"]:
+            for p in vm["placements"]:
+                if p == placement_id:
+                    match = True
+                    break
+
+    if not match:
+        assert CHECK_FAILED, "error: vm is not placed in correct placement"

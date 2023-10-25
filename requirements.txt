@@ -42,3 +42,4 @@ pylint==2.13.9
 nox==2022.1.7
 regex==2023.8.8
 questionary==1.10.0
+tqdm==4.64.1

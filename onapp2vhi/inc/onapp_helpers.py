@@ -935,7 +935,8 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
                       onapp_nics: list,
                       hostname: str,
                       domain: str,
-                      vhi_storage_policy: str):
+                      vhi_storage_policy: str,
+                      cpu_hotplug: bool = False):
     """
     Create new VM on VHI side with the same properties as at OnApp
     Disks and Networks
@@ -962,6 +963,8 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
     else:
         disk_rm = "yes"
 
+    allow_live_resize_opt = '--allow-live-resize ' if cpu_hotplug else ''
+
     if len(onapp_disks) > 1:
         for idx, dsk in enumerate(onapp_disks):
             if idx >= 1:
@@ -975,7 +978,9 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
                   f" --description '{hostname_domain}_{vm_idn}' {network} --volume source=image,id={vhi_image},"
                   f"size={onapp_disks[0]['size']},rm={disk_rm},boot-index=0,storage-policy={vhi_storage_policy}"
                   f"{extra_disks}"
-                  f" --flavor {flavour} -f json")
+                  f" --flavor {flavour} "
+                  f"{allow_live_resize_opt}"
+                  "-f json")
     exit_status, output = vhi_ssh.execute(command=create_cmd)
     if exit_status:
         logs.error(f'*** SOMETHING WENT WRONG. MIGRATION FAILED DUE TO ERROR:\n{Bcolors.BOLD}{output}{Bcolors.ENDC}\n'
@@ -1169,3 +1174,19 @@ def find_correct_disk_key(on_app_disks: list, target: str):
             return f"{disk_info['name'][:2]}{_letter}"
 
         return disk_info['name']
+
+
+def verify_vm_user(cfg: OnApp2VHIConfig, user_id: int, vms_id: str) -> bool:
+    """Verify vm actually belong to the user"""
+    onapp_requests = OnAppRequests(cfg)
+    vms_id = vms_id.split(',')
+    for id_ in vms_id:
+        response = onapp_requests.get(f"virtual_machines/{id_}")
+        vm = response["virtual_machine"]
+        if vm["user_id"] != user_id:
+            logs.error(
+                f"Virtual server ({id_}) does not belong to user"
+                f"({user_id})"
+            )
+            return False
+    return True
