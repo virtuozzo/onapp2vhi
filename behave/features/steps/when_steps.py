@@ -671,7 +671,6 @@ def step_impl(context, name):
         assert CHECK_FAILED, "error: no machine found"
 
     config = helper.get_config()
-    basic_command = "migrate --vm {vm_id} --user {user_id} ".format(vm_id=vm_identifier, user_id=user_id)
 
     data = {}
     details = ""
@@ -682,8 +681,12 @@ def step_impl(context, name):
 
             if helper.get_actual_name(heading):
                 data[heading] = helper.get_fixture(heading)[row[heading]]["name"]
+            elif heading == "username":
+                user_id = context.cp.search("users", args=row[heading])[0]["user"]["id"]
             else:
                 data[heading] = row[heading]
+
+    basic_command = "migrate --vm {vm_id} --user {user_id} ".format(vm_id=vm_identifier, user_id=user_id)
 
     for key, value in data.items():
         details += "--" + key + " " + value + " "
@@ -694,7 +697,15 @@ def step_impl(context, name):
         command = basic_command + details
     
     print(command)
-    _ = helper.open_onapp_ssh_connection(config["onapp"], command)
+
+    if "negative" not in context.tags:
+        _ = helper.open_onapp_ssh_connection(config["onapp"], command)
+    
+    else:
+        try:
+            _ = helper.open_onapp_ssh_connection(config["onapp"], command)
+        except Exception:
+            pass
 
 use_step_matcher('parse')
 @when('I migrate the virtual machine ({name})')
