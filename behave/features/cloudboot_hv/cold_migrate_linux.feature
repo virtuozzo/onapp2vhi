@@ -134,3 +134,16 @@ Scenario: Cold migration with user's SSH key with second network interface (IPv4
   Then I wait for 10 seconds
   And I should see the virtual machine is SHUTOFF in VHI portal
   And its CPU, RAM and storage are correct
+
+@negative
+Scenario: Cold migration with incorrect user
+  Given I am a cloud user (uda)
+  When I create a virtual machine (linux-vm-without-startup-cloudboot)
+  Then CP API (create) should return status code 201
+  And I wait for 2 minutes
+  And the virtual machine (linux-vm-without-startup-cloudboot) is built successfully
+
+  When I migrate the virtual machine (linux-vm-without-startup-cloudboot) with following details
+  | username |
+  | ultron   |
+  Then I should not see the virtual machine in VHI portal
