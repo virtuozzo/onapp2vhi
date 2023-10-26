@@ -20,7 +20,7 @@ class ConfigCli:
 
     def __init__(self, config_path=None):
         self._config = OnApp2VHIConfig.load_config(config_path)
-        self._config_sections = ["onapp", "vhi"]
+        self._config_sections = ["onapp", "vhi", "key"]
 
     def run(self):
 
