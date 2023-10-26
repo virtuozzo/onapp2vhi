@@ -126,3 +126,16 @@ Scenario: Hot migration with user's SSH key with second network interface (IPv4 
   Then I wait for 10 seconds
   And I should see the virtual machine is ACTIVE in VHI portal
   And its CPU, RAM and storage are correct
+
+@negative
+Scenario: Hot migration with incorrect user
+  Given I am a cloud user (uda)
+  When I create a virtual machine (linux-vm-with-startup-static)
+  Then CP API (create) should return status code 201
+  And I wait for 2 minutes
+  And the virtual machine (linux-vm-with-startup-static) is built successfully
+
+  When I migrate the virtual machine (linux-vm-with-startup-static) with following details
+  | username |
+  | ultron   |
+  Then I should not see the virtual machine in VHI portal

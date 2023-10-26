@@ -312,3 +312,26 @@ def stepm_impl(context, placement):
 
     if not match:
         assert CHECK_FAILED, "error: vm is not placed in correct placement"
+
+use_step_matcher('parse')
+@then('I should not see the virtual machine in VHI portal')
+def step_impl(context):
+
+    hostname = context.result[0]["virtual_machine"]["hostname"]
+    ips = []
+
+    for ip in context.result[0]["virtual_machine"]["ip_addresses"]:
+        ips.append(ip["ip_address"]["address"])
+
+    config = helper.get_config()
+    output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server list -f json")
+    vm_list = json.loads(output.stdout)
+    
+    match = False
+    for vm in vm_list:
+
+        if hostname not in vm["name"]:
+            match = True
+
+    if not match:
+        assert CHECK_FAILED, "error: the virtual machine is found in VHI portal"
