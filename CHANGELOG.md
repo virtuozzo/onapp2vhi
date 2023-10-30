@@ -1,8 +1,12 @@
-## Unreleased (06/10/2023)
+## Unreleased (01/11/2023)
 
 ### Feature
 
 - O2V-185: Implement progress bar for long running operation
+
+### Fixes
+
+- O2V-216: Fix broken migrate multiple vm in 1 single command
 
 ## v1.0.3 (24/10/2023)
 
