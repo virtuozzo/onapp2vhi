@@ -3,6 +3,7 @@
 ### Feature
 
 - O2V-185: Implement progress bar for long running operation
+- O2V-218: refactor flavor flags
 
 ## v1.0.3 (24/10/2023)
 
@@ -11,7 +12,6 @@
 - O2V-177: enable disk deletion on vm termination
 - O2V-199: add option to enable cpu & ram hot plug on `migrate`
 - O2V-200: Add new custom flavor flag for new vm in vhi
-- O2V-218: refactor flavor flags
 
 ### Fixes
 
