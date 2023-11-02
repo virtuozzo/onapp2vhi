@@ -4,6 +4,9 @@
 
 - O2V-185: Implement progress bar for long running operation
 
+### Fixes
+- O2V-215: Stop migrating suspended vm
+
 ## v1.0.3 (24/10/2023)
 
 ### Feature
