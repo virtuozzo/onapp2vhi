@@ -17,6 +17,7 @@ dependencies = [
     "requests==2.27.1",
     "regex==2023.8.8",
     "importlib-resources==1.4.0",
+    "questionary==1.10.0",
     "tqdm==4.64.1",
 ]
 
@@ -27,4 +28,5 @@ Changelog = "https://bitbucket.org/onappcore/onapp2vhi/src/master/CHANGELOG.md"
 
 [project.scripts]
 onapp2vhi = "onapp2vhi.main:run"
+onapp2vhi-config = "onapp2vhi.main:config_cli"
 
