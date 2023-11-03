@@ -3,6 +3,7 @@
 ### Feature
 
 - O2V-185: Implement progress bar for long running operation
+- O2V-186: Implement cli to initialize config
 
 ### Fixes
 
