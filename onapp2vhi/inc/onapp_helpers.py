@@ -1049,8 +1049,17 @@ def prepare_vhi_migration_data(cfg: OnApp2VHIConfig, user_idn=None, vm_idn=None)
 
     try:
         if vm_idn:
+            vms_idn = vm_idn.split(',')
+            for idn in vms_idn:
+                vm_result = get_all_virtual_machines(cfg, vm_id=idn)
+                if vm_result:
+                    if not _vms_dict:
+                        _vms_dict.update(vm_result)
+                    else:
+                        [result] = vm_result.values()
+                        [existing] = _vms_dict.values()
+                        existing.extend(result)
 
-            _vms_dict = get_all_virtual_machines(cfg, vm_id=vm_idn)
             if _vms_dict:
                 user_idn = list(_vms_dict.keys())[0]
                 _user_data = get_user_data(cfg, url=f"users/{user_idn}", get_type='ID')
