@@ -1196,7 +1196,15 @@ def verify_vm_user(cfg: OnApp2VHIConfig, user_id: int, vms_id: str) -> bool:
     onapp_requests = OnAppRequests(cfg)
     vms_id = vms_id.split(',')
     for id_ in vms_id:
-        response = onapp_requests.get(f"virtual_machines/{id_}")
+        try:
+            response = onapp_requests.get(f"virtual_machines/{id_}")
+        except OnAppRequestsException:
+            logs.error(
+                f"Virtual server ({id_}) does not exist"
+                f"({id_})"
+            )
+            return False
+
         vm = response["virtual_machine"]
         if vm["user_id"] != user_id:
             logs.error(

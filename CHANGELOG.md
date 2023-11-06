@@ -9,6 +9,7 @@
 ### Fixes
 - O2V-215: Stop migrating suspended vm
 - O2V-216: Fix broken migrate multiple vm in 1 single command
+- O2V-219: Fix vm not handled properly if vm id is wrong
 
 ## v1.0.3 (24/10/2023)
 

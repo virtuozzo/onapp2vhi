@@ -2241,6 +2241,15 @@ class TestVerifyVmUser(OnAppHelpersTestCase):
         self.mock_onapprequests = Mock(spec=OnAppRequests)
 
     @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    def test_vm_correct_vm_id(self, mock_onapprequests):
+        mock_onapprequests.return_value = self.mock_onapprequests
+        self.mock_onapprequests.get.side_effect = [
+            OnAppRequestsException()
+        ]
+
+        self.assertFalse(verify_vm_user(self.mock_cfg, 888, "xxx"))
+
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
     def test_vm_correct_user(self, mock_onapprequests):
         mock_onapprequests.return_value = self.mock_onapprequests
         self.mock_onapprequests.get.side_effect = [
