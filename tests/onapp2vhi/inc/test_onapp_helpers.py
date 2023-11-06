@@ -2118,6 +2118,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
                         "built_from_iso": False,
                         "built_from_ova": False,
                         "vip": False,
+                        "suspended": False,
                     },
                 }
             elif path == "virtual_machines/hijklmn":
@@ -2141,6 +2142,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
                         "built_from_iso": False,
                         "built_from_ova": False,
                         "vip": False,
+                        "suspended": False,
                     },
                 }
 
