@@ -597,6 +597,7 @@ class GetAllVirtualMachinesTestCase(OnAppHelpersTestCase):
                         'built_from_iso': False,
                         'built_from_ova': False,
                         'vip': False,
+                        'suspended': False,
                         'label': 'testvm1',}
                       }
                 ]
@@ -649,6 +650,7 @@ class GetAllVirtualMachinesTestCase(OnAppHelpersTestCase):
                         'built_from_iso': False,
                         'built_from_ova': False,
                         'vip': False,
+                        'suspended': False,
                         'label': 'testvm1'}
                       }
                 ]
@@ -717,6 +719,7 @@ class GetAllVirtualMachinesTestCase(OnAppHelpersTestCase):
                         'built_from_iso': False,
                         'built_from_ova': False,
                         'vip': False,
+                        'suspended': False,
                         'label': 'testvm1'}
                       }
                 ]
@@ -760,6 +763,39 @@ class GetAllVirtualMachinesTestCase(OnAppHelpersTestCase):
                         'built_from_iso': False,
                         'built_from_ova': False,
                         'vip': True,
+                        'suspended': False,
+                        'label': 'testvm1'}
+                      }
+                ]
+            else:
+                raise RuntimeError('unhandled onapprequsets.get()')
+
+    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    def test_with_suspended_onapp_vm(self, mock_onapprequests, mock_ssh):
+
+        def onapprequestsget(param:str):
+            if param == 'version':
+                return {'version': '6.4.3.testbuild(1)'}
+            elif param == 'virtual_machines':
+                return [
+                    { 'virtual_machine': {
+                        'name': 'vm1',
+                        'identifier': 'abcdef',
+                        'ip_addresses': [
+                            { 'ip_address': { 'address': '1.1.1.1', 'primary': False}, },
+                            { 'ip_address': { 'address': '2.2.2.2', 'primary': True}, },
+                            { 'ip_address': { 'address': '3.3.3.3', 'primary': False}, }
+                        ],
+                        'hostname': 'vm1',
+                        'domain': 'localdomain',
+                        'user_id': 11,
+                        'booted': False,
+                        'operating_system': 'centos7',
+                        'built_from_iso': False,
+                        'built_from_ova': False,
+                        'vip': False,
+                        'suspended': True,
                         'label': 'testvm1'}
                       }
                 ]
@@ -1560,6 +1596,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
                             'built_from_iso': False,
                             'built_from_ova': False,
                             'vip': False,
+                            'suspended': False,
                         },
                     },
                 ]
@@ -1668,6 +1705,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
                             'built_from_iso': False,
                             'built_from_ova': False,
                             'vip': False,
+                            'suspended': False,
                         },
                     },
                 ]
@@ -1781,6 +1819,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
                             'built_from_iso': False,
                             'built_from_ova': False,
                             'vip': False,
+                            'suspended': False,
                         },
                     },
                 ]
@@ -1873,6 +1912,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
                             'built_from_iso': False,
                             'built_from_ova': False,
                             'vip': False,
+                            'suspended': False,
                         },
                     },
                 ]
@@ -1951,6 +1991,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
                         'built_from_iso': False,
                         'built_from_ova': False,
                         'vip': False,
+                        'suspended': False,
                     },
                 }
             elif path == 'users/13':
@@ -2037,6 +2078,159 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
 
         result = prepare_vhi_migration_data(self.mock_cfg, vm_idn='abcdef')
         self.assertFalse(result)
+
+    @patch("onapp2vhi.inc.onapp_helpers.VinfraServer")
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    def test_prepare_migration_data_with_multiple_vm_id(
+        self, mock_onapprequests, mock_vinfraserver
+    ):
+        mock_onapprequests.return_value = self.mock_onapprequests
+        mock_vinfraserver.return_value = self.mock_vinfraserver
+
+        self.mock_vinfraserver.list_server.return_value = json.dumps(
+            [
+                {
+                    "name": "vm1",
+                    "domain_id": "58fa18b2cefc4bad8a52f11008dfbf72",
+                },
+            ]
+        )
+
+        def mock_onapprequests_get(path: str, params: str = None):
+            if path == "virtual_machines/abcdef":
+                return {
+                    "virtual_machine": {
+                        "identifier": "abcdef",
+                        "label": "test-vm1-label",
+                        "hostname": "test-vm1",
+                        "domain": "testdomain",
+                        "user_id": 13,
+                        "ip_addresses": [
+                            {
+                                "ip_address": {
+                                    "address": "1.2.3.4",
+                                    "primary": True,
+                                }
+                            }
+                        ],
+                        "booted": True,
+                        "operating_system": "centos7",
+                        "built_from_iso": False,
+                        "built_from_ova": False,
+                        "vip": False,
+                    },
+                }
+            elif path == "virtual_machines/hijklmn":
+                return {
+                    "virtual_machine": {
+                        "identifier": "hijklmn",
+                        "label": "test-vm2-label",
+                        "hostname": "test-vm2",
+                        "domain": "testdomain",
+                        "user_id": 13,
+                        "ip_addresses": [
+                            {
+                                "ip_address": {
+                                    "address": "1.2.3.5",
+                                    "primary": True,
+                                }
+                            }
+                        ],
+                        "booted": True,
+                        "operating_system": "centos7",
+                        "built_from_iso": False,
+                        "built_from_ova": False,
+                        "vip": False,
+                    },
+                }
+
+            elif path == "users/13":
+                return {
+                    "user": {
+                        "login": "tester",
+                        "email": "tester@unit.onapp2vhi.test",
+                        "id": 13,
+                        "first_name": "test",
+                        "last_name": "er",
+                        "roles": ["Admin", "user"],
+                        "bucket_id": "abc123",
+                    }
+                }
+            elif path == "billing/buckets/abc123/access_controls":
+                return [
+                    {
+                        "access_control": {
+                            "type": "compute_zone_resource",
+                            "server_type": "virtual",
+                            "limits": {
+                                "limit_memory": "4096",
+                                "limit_cpu": "4",
+                            },
+                            "target_name": "sample compute target name",
+                        }
+                    },
+                    {
+                        "access_control": {
+                            "type": "data_store_zone_resource",
+                            "limits": {
+                                "limit": "40",
+                            },
+                            "target_name": "sample datastore target name",
+                        }
+                    },
+                ]
+            elif path == "version":
+                return {"version": "6.4.12345-unittest"}
+
+            raise RuntimeError("unhandled path = {path}".format(path=path))
+
+        self.mock_onapprequests.get.side_effect = mock_onapprequests_get
+        expected = [
+            {
+                "first_name": "test",
+                "id": 13,
+                "last_name": "er",
+                "password": ANY,
+                "project_name": "project_tester@unit.onapp2vhi.test",
+                "quotas": {
+                    "cores": 4,
+                    "ram-size": 4398046511104,
+                    "storage": 40,
+                },
+                "roles": ["Admin", "user"],
+                "user_email": "tester@unit.onapp2vhi.test",
+                "user_login": "tester",
+                "virtual_machines": [
+                    {
+                        "booted": True,
+                        "built_from_iso": False,
+                        "built_from_ova": False,
+                        "domain": "testdomain",
+                        "hostname": "test-vm1",
+                        "id": "abcdef",
+                        "ip_addr": "1.2.3.4",
+                        "label": "test-vm1-label",
+                        "operating_system": "centos7",
+                    },
+                    {
+                        "booted": True,
+                        "built_from_iso": False,
+                        "built_from_ova": False,
+                        "domain": "testdomain",
+                        "hostname": "test-vm2",
+                        "id": "hijklmn",
+                        "ip_addr": "1.2.3.5",
+                        "label": "test-vm2-label",
+                        "operating_system": "centos7",
+                    }
+                ],
+            },
+        ]
+
+        result = prepare_vhi_migration_data(
+            self.mock_cfg, vm_idn="abcdef,hijklmn"
+        )
+        self.assertEqual(result, expected)
 
 
 class TestVerifyVmUser(OnAppHelpersTestCase):
