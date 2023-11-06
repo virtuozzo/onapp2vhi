@@ -1,4 +1,4 @@
-## Unreleased (01/11/2023)
+## Unreleased (06/11/2023)
 
 ### Feature
 
@@ -8,6 +8,7 @@
 ### Fixes
 
 - O2V-216: Fix broken migrate multiple vm in 1 single command
+- O2V-173: setting migration_network_id with invalid value will cause migration to fail prematurely
 
 ## v1.0.3 (24/10/2023)
 
