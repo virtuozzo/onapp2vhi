@@ -9,6 +9,9 @@
 
 - O2V-216: Fix broken migrate multiple vm in 1 single command
 
+### Fixes
+- O2V-215: Stop migrating suspended vm
+
 ## v1.0.3 (24/10/2023)
 
 ### Feature
