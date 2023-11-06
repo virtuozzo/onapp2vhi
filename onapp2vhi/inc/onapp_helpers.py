@@ -359,6 +359,12 @@ def get_all_virtual_machines(cfg: OnApp2VHIConfig, user_id: int = None, vm_id:st
         vm = _vm['virtual_machine']
         _ip_addr = _get_primary_vm_ip(cfg, vm)
 
+        if vm["suspended"]:
+            msg = (f'Virtual Machine is suspended, skipping migration \n\n\t\t'
+                   f'VM Info [{vm["identifier"]} | {_ip_addr} | {vm["hostname"]} | {vm["label"]}]\n')
+            logs.warn(msg=msg)
+            continue
+
         if vm["vip"]:
             msg = (f'Virtual Machine is marked as VIP, skipping migration \n\n\t\t'
                    f'VM Info [{vm["identifier"]} | {_ip_addr} | {vm["hostname"]} | {vm["label"]}]\n')
