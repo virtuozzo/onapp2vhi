@@ -3,10 +3,11 @@
 ### Feature
 
 - O2V-185: Implement progress bar for long running operation
+- O2V-218: refactor flavor flags
 - O2V-186: Implement cli to initialize config
 
 ### Fixes
-
+- O2V-215: Stop migrating suspended vm
 - O2V-216: Fix broken migrate multiple vm in 1 single command
 - O2V-173: setting migration_network_id with invalid value will cause migration to fail prematurely
 

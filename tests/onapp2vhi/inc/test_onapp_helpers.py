@@ -597,6 +597,7 @@ class GetAllVirtualMachinesTestCase(OnAppHelpersTestCase):
                         'built_from_iso': False,
                         'built_from_ova': False,
                         'vip': False,
+                        'suspended': False,
                         'label': 'testvm1',}
                       }
                 ]
@@ -649,6 +650,7 @@ class GetAllVirtualMachinesTestCase(OnAppHelpersTestCase):
                         'built_from_iso': False,
                         'built_from_ova': False,
                         'vip': False,
+                        'suspended': False,
                         'label': 'testvm1'}
                       }
                 ]
@@ -717,6 +719,7 @@ class GetAllVirtualMachinesTestCase(OnAppHelpersTestCase):
                         'built_from_iso': False,
                         'built_from_ova': False,
                         'vip': False,
+                        'suspended': False,
                         'label': 'testvm1'}
                       }
                 ]
@@ -760,6 +763,39 @@ class GetAllVirtualMachinesTestCase(OnAppHelpersTestCase):
                         'built_from_iso': False,
                         'built_from_ova': False,
                         'vip': True,
+                        'suspended': False,
+                        'label': 'testvm1'}
+                      }
+                ]
+            else:
+                raise RuntimeError('unhandled onapprequsets.get()')
+
+    @patch("onapp2vhi.inc.vinfra_wrapper.SSH")
+    @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
+    def test_with_suspended_onapp_vm(self, mock_onapprequests, mock_ssh):
+
+        def onapprequestsget(param:str):
+            if param == 'version':
+                return {'version': '6.4.3.testbuild(1)'}
+            elif param == 'virtual_machines':
+                return [
+                    { 'virtual_machine': {
+                        'name': 'vm1',
+                        'identifier': 'abcdef',
+                        'ip_addresses': [
+                            { 'ip_address': { 'address': '1.1.1.1', 'primary': False}, },
+                            { 'ip_address': { 'address': '2.2.2.2', 'primary': True}, },
+                            { 'ip_address': { 'address': '3.3.3.3', 'primary': False}, }
+                        ],
+                        'hostname': 'vm1',
+                        'domain': 'localdomain',
+                        'user_id': 11,
+                        'booted': False,
+                        'operating_system': 'centos7',
+                        'built_from_iso': False,
+                        'built_from_ova': False,
+                        'vip': False,
+                        'suspended': True,
                         'label': 'testvm1'}
                       }
                 ]
@@ -1560,6 +1596,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
                             'built_from_iso': False,
                             'built_from_ova': False,
                             'vip': False,
+                            'suspended': False,
                         },
                     },
                 ]
@@ -1668,6 +1705,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
                             'built_from_iso': False,
                             'built_from_ova': False,
                             'vip': False,
+                            'suspended': False,
                         },
                     },
                 ]
@@ -1781,6 +1819,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
                             'built_from_iso': False,
                             'built_from_ova': False,
                             'vip': False,
+                            'suspended': False,
                         },
                     },
                 ]
@@ -1873,6 +1912,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
                             'built_from_iso': False,
                             'built_from_ova': False,
                             'vip': False,
+                            'suspended': False,
                         },
                     },
                 ]
@@ -1951,6 +1991,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
                         'built_from_iso': False,
                         'built_from_ova': False,
                         'vip': False,
+                        'suspended': False,
                     },
                 }
             elif path == 'users/13':
@@ -2077,6 +2118,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
                         "built_from_iso": False,
                         "built_from_ova": False,
                         "vip": False,
+                        "suspended": False,
                     },
                 }
             elif path == "virtual_machines/hijklmn":
@@ -2100,6 +2142,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
                         "built_from_iso": False,
                         "built_from_ova": False,
                         "vip": False,
+                        "suspended": False,
                     },
                 }
 
