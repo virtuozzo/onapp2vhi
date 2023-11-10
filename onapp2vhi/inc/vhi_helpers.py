@@ -1,4 +1,5 @@
 import time
+import sys
 import urllib3
 import json
 
@@ -563,3 +564,8 @@ def get_vhi_hv_ip(cfg: OnApp2VHIConfig, vhi_vm_id: str, vhi_ssh):
             hv_ip = ip_mask.split('/')[0]
             logs.info(msg=f'*** Found VHI IP address [{hv_ip}] ***')
             return hv_ip
+
+    msg = (f'Invalid migration network id: ["{_migration_network_id}"]'
+           f'\n\tvinfra node iface list --node {node_id}')
+    logs.error(msg=msg)
+    sys.exit(1)

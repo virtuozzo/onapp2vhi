@@ -3,10 +3,13 @@ from pathlib import Path
 import click
 import onapp2vhi
 import os
+import json
 
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.utilities.template import CONFIG_TEMPLATE
 from onapp2vhi.utilities.logs.logger import setup_logger
+from onapp2vhi.inc.vinfra_wrapper import VinfraFlavor
+from onapp2vhi.utilities.config_cli import ConfigCli
 
 
 cfg = None
@@ -17,27 +20,18 @@ def validate_flavor(ctx, param, value):
     if not value:
         return None
 
-    flavor = value.split("_")
+    onapp_flavor = {}
+    vhi = VinfraFlavor(cfg, service_user=True)
+    output = vhi.flavor_list()
+    vhi_flavors = [_flavor for _flavor in json.loads(output)]
+    for flavor in vhi_flavors:
+        if flavor["name"] == value:
+            onapp_flavor = flavor
 
-    if len(flavor) < 3:
-        raise click.BadParameter("Format must be \"name_cpus_ram\"")
+    if not onapp_flavor:
+        raise click.BadParameter(f"Flavor {value} does not exist, manually create first.")
 
-    if not flavor[1].isnumeric():
-        raise click.BadParameter("Format must be \"name_cpus_ram\", cpus must be in numeric")
-
-    if not 1 <= int(flavor[1]) <= 64:
-        raise click.BadParameter("Cpus must be in range between 1-64")
-
-    if not flavor[2].isnumeric():
-        raise click.BadParameter("Format must be \"name_cpus_ram\", ram must be in numeric")
-
-    flavor_dict = {
-        "name": value,
-        "vcpus": flavor[1],
-        "ram": flavor[2]
-    }
-
-    return flavor_dict
+    return onapp_flavor
 
 
 def search_config():
@@ -125,6 +119,20 @@ def list_onapp_users(props="", find=""):
     )
 
     list_onapp_users_impl(cfg, props=props, find=find)
+
+
+@run.group(invoke_without_command=True)
+def config_cli():
+    """
+    Initialize config file by updating a existing file or
+    creating a new config file
+    """
+    config_path = search_config()
+    if not config_path:
+        print("No config file found. Run `onapp2vhi --generate-config`")
+        return
+    cli = ConfigCli(config_path)
+    cli.run()
 
 
 @run.command()
