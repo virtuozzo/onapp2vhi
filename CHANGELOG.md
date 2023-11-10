@@ -1,4 +1,4 @@
-## Unreleased (01/11/2023)
+## Unreleased (06/11/2023)
 
 ### Feature
 
@@ -10,6 +10,7 @@
 - O2V-215: Stop migrating suspended vm
 - O2V-216: Fix broken migrate multiple vm in 1 single command
 - O2V-219: Fix vm not handled properly if vm id is wrong
+- O2V-173: setting migration_network_id with invalid value will cause migration to fail prematurely
 
 ## v1.0.3 (24/10/2023)
 
