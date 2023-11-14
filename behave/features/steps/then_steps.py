@@ -38,7 +38,7 @@ def step_impl(context, name):
         # [20230905] we do retry every 1 minute for 10 times, or we fail it
         # this is to allocate more times for the vm build in case the environment is busy
         i = 1
-        while i < 11:
+        while i < 21:
 
             data = context.cp.search("virtual_machines", args=fixture[name]["virtual_machine"]["label"])
 
@@ -318,11 +318,6 @@ use_step_matcher('parse')
 def step_impl(context):
 
     hostname = context.result[0]["virtual_machine"]["hostname"]
-    ips = []
-
-    for ip in context.result[0]["virtual_machine"]["ip_addresses"]:
-        ips.append(ip["ip_address"]["address"])
-
     config = helper.get_config()
     output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server list -f json")
     vm_list = json.loads(output.stdout)
@@ -335,3 +330,39 @@ def step_impl(context):
 
     if not match:
         assert CHECK_FAILED, "error: the virtual machine is found in VHI portal"
+
+use_step_matcher('parse')
+@then('I should see the hotplug is enabled')
+def step_impl(context):
+    
+    hostname = context.result[0]["virtual_machine"]["hostname"]
+    config = helper.get_config()
+    output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server list --long -f json")
+    vm_list = json.loads(output.stdout)
+    
+    match = False
+    for vm in vm_list:
+
+        if hostname in vm["name"] and vm["allow_live_resize"]:
+            match = True
+
+    if not match:
+        assert CHECK_FAILED, "error: hotplug is not enabled"
+
+use_step_matcher('parse')
+@then('I should see the hotplug is disabled')
+def step_impl(context):
+    
+    hostname = context.result[0]["virtual_machine"]["hostname"]
+    config = helper.get_config()
+    output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server list --long -f json")
+    vm_list = json.loads(output.stdout)
+    
+    match = False
+    for vm in vm_list:
+
+        if hostname in vm["name"] and not vm.get("allow_live_resize"):
+            match = True
+
+    if not match:
+        assert CHECK_FAILED, "error: hotplug is not disabled"
