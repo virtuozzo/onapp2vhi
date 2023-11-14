@@ -691,6 +691,9 @@ def step_impl(context, name):
     for key, value in data.items():
         details += "--" + key + " " + value + " "
 
+    if "hotplug true" in details.lower():
+        details = details.lower().replace("hotplug true", "hotplug")
+
     if hasattr(context, "log_path"):
         command = context.log_path + basic_command + details
     else:
