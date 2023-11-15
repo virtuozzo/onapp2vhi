@@ -301,6 +301,11 @@
 
 ---
 
+- ### Modifying configs in `~/.config/onapp2vhi/config.ini`:
+    - RUN in terminal `onapp2vhi-config`
+
+---
+
 - ### Deactivate environment:
     - RUN in terminal `deactivate`
 
