@@ -54,14 +54,14 @@
     ```
     - install onapp2vhi CLI tool from source:
     ```
-    (myenv) [onapp@cp onapp2vhi]$ pip install git+ssh://git@bitbucket.org/onappcore/onapp2vhi.git@v1.0.0
-    Collecting git+ssh://****@bitbucket.org/onappcore/onapp2vhi.git@v1.0.0
-      Cloning ssh://****@bitbucket.org/onappcore/onapp2vhi.git (to revision v1.0.0) to /tmp/pip-req-build-tcd_5faw
-      Running command git clone -q 'ssh://****@bitbucket.org/onappcore/onapp2vhi.git' /tmp/pip-req-build-tcd_5faw
+    (myenv) [onapp@cp onapp2vhi]$ pip install git+ssh://git@bitbucket.org/virtuozzocore/onapp2vhi.git@v1.0.0
+    Collecting git+ssh://****@bitbucket.org/virtuozzocore/onapp2vhi.git@v1.0.0
+      Cloning ssh://****@bitbucket.org/virtuozzocore/onapp2vhi.git (to revision v1.0.0) to /tmp/pip-req-build-tcd_5faw
+      Running command git clone -q 'ssh://****@bitbucket.org/virtuozzocore/onapp2vhi.git' /tmp/pip-req-build-tcd_5faw
       Running command git checkout -b v1.0.0 --track origin/v1.0.0
       Switched to a new branch 'v1.0.0'
       Branch v1.0.0 set up to track remote branch v1.0.0 from origin.
-      Resolved ssh://****@bitbucket.org/onappcore/onapp2vhi.git to commit c7ff0d423fa5b6446eb8e69fca5af295f81a8e00
+      Resolved ssh://****@bitbucket.org/virtuozzocore/onapp2vhi.git to commit c7ff0d423fa5b6446eb8e69fca5af295f81a8e00
       Installing build dependencies: started
       Installing build dependencies: finished with status 'done'
       Getting requirements to build wheel: started
