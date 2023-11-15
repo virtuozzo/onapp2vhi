@@ -54,14 +54,14 @@
     ```
     - install onapp2vhi CLI tool from source:
     ```
-    (myenv) [onapp@cp onapp2vhi]$ pip install git+ssh://git@bitbucket.org/onappcore/onapp2vhi.git@v1.0.0
-    Collecting git+ssh://****@bitbucket.org/onappcore/onapp2vhi.git@v1.0.0
-      Cloning ssh://****@bitbucket.org/onappcore/onapp2vhi.git (to revision v1.0.0) to /tmp/pip-req-build-tcd_5faw
-      Running command git clone -q 'ssh://****@bitbucket.org/onappcore/onapp2vhi.git' /tmp/pip-req-build-tcd_5faw
+    (myenv) [onapp@cp onapp2vhi]$ pip install git+ssh://git@bitbucket.org/virtuozzocore/onapp2vhi.git@v1.0.0
+    Collecting git+ssh://****@bitbucket.org/virtuozzocore/onapp2vhi.git@v1.0.0
+      Cloning ssh://****@bitbucket.org/virtuozzocore/onapp2vhi.git (to revision v1.0.0) to /tmp/pip-req-build-tcd_5faw
+      Running command git clone -q 'ssh://****@bitbucket.org/virtuozzocore/onapp2vhi.git' /tmp/pip-req-build-tcd_5faw
       Running command git checkout -b v1.0.0 --track origin/v1.0.0
       Switched to a new branch 'v1.0.0'
       Branch v1.0.0 set up to track remote branch v1.0.0 from origin.
-      Resolved ssh://****@bitbucket.org/onappcore/onapp2vhi.git to commit c7ff0d423fa5b6446eb8e69fca5af295f81a8e00
+      Resolved ssh://****@bitbucket.org/virtuozzocore/onapp2vhi.git to commit c7ff0d423fa5b6446eb8e69fca5af295f81a8e00
       Installing build dependencies: started
       Installing build dependencies: finished with status 'done'
       Getting requirements to build wheel: started
@@ -280,13 +280,15 @@
       - `--project=my_project` - stands for pre-created project `NAME` at VHI side
       - `--cloud_init_install` - Boolean flag, default value is `true`, set `false` to **NOT** install cloud_init
       - `--vz_guest_tools_install` - Boolean flag, default value is `true`, set `false` to **NOT** install vz-guest-tools
-      - `--storage_policy` - stands for pre-created project `NAME` at VHI side
-      - `--placement` - stands for pre-created project `NAME` at VHI side
+      - `--storage_policy` - Defaults to string `default` when not provided. When it is specified, it refers to storage policy defined in VHI to be used in the VM creation.
+      - `--placement` - Defaults to string `default` when not provided. When it is specified, it refers to placement defined in VHI to be used in the VM creation.
+      - `--flavor` - Flavor defined in VHI for VM creation. Defaults to string `default` when not provided, where it will use current OnApp VM specification for a flavor.
+      - `--hotplug` - Enable VM CPU and RAM hot plug for the create VHI VM
         - **Examples**:
 
           Full possible flags:
           ```
-          onapp2vhi migrate --user=7 --vm=sydarelogizozd,sy43relogizozd --storage_policy=not_default --project=my_project --vz_guest_tools_install=false --cloud_init_install=false
+          onapp2vhi migrate --user=7 --vm=sydarelogizozd,sy43relogizozd --storage_policy=not_default --project=my_project --vz_guest_tools_install=false --cloud_init_install=false --placement=some_placement --flavor=4cpu_32gb --hotplug
           ```
 
           User + VM + disable cloud-init installation:
@@ -298,6 +300,11 @@
           ```
           onapp2vhi migrate --user=9 --vz_guest_tools_install=false
           ```
+
+---
+
+- ### Modifying configs in `~/.config/onapp2vhi/config.ini`:
+    - RUN in terminal `onapp2vhi-config`
 
 ---
 

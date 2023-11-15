@@ -10,7 +10,7 @@ def before_scenario(context, scenario):
 
     if "network" in scenario.tags:
         context.arr_network_to_delete = []
-
+        
 def after_scenario(context, scenario):
     
     if "migrate_vm" in context.feature.tags:
@@ -96,36 +96,62 @@ def after_scenario(context, scenario):
                 # to delete vm in vhi portal
                 print("VM found in VHI portal, proceed to delete...")
                 _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute server delete {vm_name}".format(vm_name=vm["name"]))
-                sleep(30)
 
                 print("VM has been deleted successfully")
-
-                for id in arr_device:
-                    # find the storage policy from volume
-                    storage_policy_output = helper.open_vhi_ssh_connection(config["vhi"], "service compute volume show %s -c storage_policy_name -f json" % id)
-                    storage_policy = json.loads(storage_policy_output.stdout)["storage_policy_name"]
-
-                    # delete volume, ignore if there's none to delete
-                    try:
-                        _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute volume delete %s" % id)
-                        print("volume %s has been removed" % id)
-                    except:
-                        pass
-                        
-                    # only delete the storage policy that we created using behave
-                    if hasattr(context, "entity_to_delete"):
-                        try:
-                            if storage_policy == context.entity_to_delete["storage_policy"]:
-                                _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute storage-policy delete %s" % storage_policy)
-                                print("storage policy named %s has been removed" % storage_policy)
-                        except:
-                            pass
-
                 break
         
         # we proceed with the rest of the scenario even if the vm is not found
         if not match:
             print("VM is not found in VHI portal, proceed to next scenario")
+        
+        if "arr_device" in locals():
+            for id in arr_device:
+                try:
+                    # delete volume, ignore if there's none to delete
+                    _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute volume delete %s" % id)
+                    print("volume %s has been removed" % id)
+                except:
+                    pass
+                
+        # only delete the storage policy that we created using behave
+        if context.entity_to_delete.get("storage_policy"):
+            storage_policy = context.entity_to_delete["storage_policy"]["name"]
+            _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute storage-policy delete %s" % storage_policy)
+            print("storage policy named %s has been removed" % storage_policy)
+
+        if context.entity_to_delete.get("placement"):
+            arr_node = context.entity_to_delete["placement"]["nodes"].split(",")
+            name = context.entity_to_delete["placement"]["name"]
+
+            for node in arr_node:
+                _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute placement delete-assign --node {node} {name}"\
+                                                    .format(node=node, name=name))
+                print("node named %s has been unassigned from placement %s" % (node, name))
+
+            # to unassign flavour from placement
+            placement_output = helper.open_vhi_ssh_connection(config["vhi"], "service compute placement show %s -f json" % name)
+            placement_id = json.loads(placement_output.stdout)["id"]
+            
+            flavor_placement_output = helper.open_vhi_ssh_connection(config["vhi"], "service compute flavor list --long -c name -c placements -f json")
+            flavor_placement = json.loads(flavor_placement_output.stdout)
+
+            match = False
+            for flavor in flavor_placement:
+                for placement in flavor["placements"]:
+                    if placement == placement_id:
+                        flavor_name = flavor["name"]
+                        match = True
+                        break
+
+            if not match:
+                assert False, "error: flavor is not found in placement"
+            
+            _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute placement delete-assign --flavor {flavor} {name}"\
+                                                    .format(flavor=flavor_name, name=name))
+            print("flavor named %s has been unassigned from placement %s" % (flavor_name, name))
+
+            _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute placement delete {name}".format(name=name))
+            print("placement named %s has been removed" % name)
 
         if "network" in context.scenario.tags:
             

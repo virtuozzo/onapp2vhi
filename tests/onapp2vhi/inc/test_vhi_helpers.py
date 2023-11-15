@@ -2,7 +2,7 @@ import unittest
 import json
 
 from mock import mock_open, patch, Mock, call
-from onapp2vhi.inc.vhi_helpers import Vhi
+from onapp2vhi.inc.vhi_helpers import Vhi, get_vhi_hv_ip
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.inc.ssh_connector import SSH
 from onapp2vhi.inc.vinfra_wrapper import VinfraError
@@ -929,6 +929,26 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
             self.mock_project_ssh,
         ]
         self.assertTrue(self.vhi.create_project(self.project_data))
+
+    @patch("sys.exit")
+    def test_incorrect_migration_network_id(self, mock_exit):
+        self.mock_cfg.vhi_conf["migration_network_id"] = "888"
+        self.mock_ssh.execute.side_effect = [
+            (0, '{"host": "hv1vhi.vstoragedomain"}'),
+            (
+                0,
+                (
+                    '[{"id": "b16ae4e6-3a86-4a67-bb0c-86c5a34436d2",'
+                    '"host": "hv1vhi.vstoragedomain"}]'
+                ),
+            ),
+            (0,
+                '[{"network": "88e9d81b-23b9-4a16-89a7-2847a13dc0a3"}]'
+             )
+        ]
+
+        get_vhi_hv_ip(self.mock_cfg, "69", self.mock_ssh)
+        mock_exit.assert_called_once_with(1)
 
     # TODO! cover create project failed
     # TODO! cover no quota change

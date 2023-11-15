@@ -15,6 +15,7 @@ Scenario: Cold migration without user's SSH key
   Then I wait for 10 seconds
   And I should see the virtual machine is SHUTOFF in VHI portal
   And its CPU, RAM and storage are correct
+  And I should see the hotplug is disabled
 
 Scenario: Cold migration with user's SSH key
   Given I am a cloud user (uda)
@@ -31,25 +32,33 @@ Scenario: Cold migration with user's SSH key
   And I should see the virtual machine is SHUTOFF in VHI portal
   And its CPU, RAM and storage are correct
   And the log is seen in logging path (uda-log)
+  And I should see the hotplug is disabled
 
-Scenario: Cold migration with user's SSH key with storage policy specified
+@placement
+Scenario: Cold migration with user's SSH key with storage policy and placement specified
   Given I am a cloud user (uda)
   When I create a storage policy (behave-storage-policy) in VHI portal with following details
   | tier | replicas | failure domain |
   | 0    | 3        | 1              |
   And I assign the storage policy (behave-storage-policy) with 100G to the project
+  And I create a placement (behave-soft-placement) in VHI portal with following details
+  | nodes |
+  | cpvhi |
+  And I assign the placement (behave-soft-placement) with 100 placement to the project
   And I create a virtual machine (windows-vm-without-startup-cloudboot)
   Then CP API (create) should return status code 201
   And I wait for 10 minutes
   And the virtual machine (windows-vm-without-startup-cloudboot) is built successfully
 
   When I migrate the virtual machine (windows-vm-without-startup-cloudboot) with following details
-  | storage policy        |
-  | behave-storage-policy |
+  | storage policy        | placement             | hotplug |
+  | behave-storage-policy | behave-soft-placement | True    |
   Then I wait for 10 seconds
   And I should see the virtual machine is SHUTOFF in VHI portal
   And its CPU, RAM and storage are correct
   And its volume is using the correct storage policy (behave-storage-policy)
+  And the vm is placed in the corrent placement (behave-soft-placement)
+  And I should see the hotplug is enabled
 
 @network
 Scenario: Cold migration with user's SSH key with second network interface (IPv4 and IPv6)
@@ -92,3 +101,4 @@ Scenario: Cold migration with user's SSH key with second network interface (IPv4
   Then I wait for 10 seconds
   And I should see the virtual machine is SHUTOFF in VHI portal
   And its CPU, RAM and storage are correct
+  And I should see the hotplug is disabled
