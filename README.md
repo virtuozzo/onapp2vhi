@@ -280,13 +280,15 @@
       - `--project=my_project` - stands for pre-created project `NAME` at VHI side
       - `--cloud_init_install` - Boolean flag, default value is `true`, set `false` to **NOT** install cloud_init
       - `--vz_guest_tools_install` - Boolean flag, default value is `true`, set `false` to **NOT** install vz-guest-tools
-      - `--storage_policy` - stands for pre-created project `NAME` at VHI side
-      - `--placement` - stands for pre-created project `NAME` at VHI side
+      - `--storage_policy` - Defaults to string `default` when not provided. When it is specified, it refers to storage policy defined in VHI to be used in the VM creation.
+      - `--placement` - Defaults to string `default` when not provided. When it is specified, it refers to placement defined in VHI to be used in the VM creation.
+      - `--flavor` - Flavor defined in VHI for VM creation. Defaults to string `default` when not provided, where it will use current OnApp VM specification for a flavor.
+      - `--hotplug` - Enable VM CPU and RAM hot plug for the create VHI VM
         - **Examples**:
 
           Full possible flags:
           ```
-          onapp2vhi migrate --user=7 --vm=sydarelogizozd,sy43relogizozd --storage_policy=not_default --project=my_project --vz_guest_tools_install=false --cloud_init_install=false
+          onapp2vhi migrate --user=7 --vm=sydarelogizozd,sy43relogizozd --storage_policy=not_default --project=my_project --vz_guest_tools_install=false --cloud_init_install=false --placement=some_placement --flavor=4cpu_32gb --hotplug
           ```
 
           User + VM + disable cloud-init installation:
