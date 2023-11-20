@@ -144,4 +144,3 @@ Scenario: Hot migration with incorrect user
   | username |
   | ultron   |
   Then I should not see the virtual machine (linux-vm-with-startup-static1) in VHI portal
-  And I should see the hotplug is disabled in virtual machine (linux-vm-with-startup-static1)

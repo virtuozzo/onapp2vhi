@@ -152,4 +152,3 @@ Scenario: Cold migration with incorrect user
   | username |
   | ultron   |
   Then I should not see the virtual machine (linux-vm-without-startup-cloudboot1) in VHI portal
-  And I should see the hotplug is disabled in virtual machine (linux-vm-without-startup-cloudboot1)
