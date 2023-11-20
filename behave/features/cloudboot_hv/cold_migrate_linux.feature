@@ -6,33 +6,33 @@ Feature: Cold migration for Linux VM
 
 Scenario: Cold migration without user's SSH key
   Given I am a cloud user (ultron)
-  When I create a virtual machine (linux-vm-without-startup-cloudboot)
+  When I create a virtual machine (linux-vm-without-startup-cloudboot1)
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
-  And the virtual machine (linux-vm-without-startup-cloudboot) is built successfully
+  And the virtual machine (linux-vm-without-startup-cloudboot1) is built successfully
 
   # To test for new migrated user, we delete the existing user account
   When I delete the existing user account (ultron) from the VHI portal
-  And I migrate the virtual machine (linux-vm-without-startup-cloudboot)
+  And I migrate the virtual machine (linux-vm-without-startup-cloudboot1)
   Then I wait for 10 seconds
-  And I should see the virtual machine is SHUTOFF in VHI portal
-  And its CPU, RAM and storage are correct
-  And I should see the hotplug is disabled
+  And I should see the virtual machine (linux-vm-without-startup-cloudboot1) is SHUTOFF in VHI portal
+  And the virtual machine (linux-vm-without-startup-cloudboot1) should have correct CPU, RAM and storage
+  And I should see the hotplug is disabled in virtual machine (linux-vm-without-startup-cloudboot1)
 
 Scenario: Cold migration with user's SSH key
   Given I am a cloud user (uda)
-  When I create a virtual machine (linux-vm-without-startup-cloudboot)
+  When I create a virtual machine (linux-vm-without-startup-cloudboot1)
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
-  And the virtual machine (linux-vm-without-startup-cloudboot) is built successfully
+  And the virtual machine (linux-vm-without-startup-cloudboot1) is built successfully
 
   When I set the logging path (uda-log)
-  And I migrate the virtual machine (linux-vm-without-startup-cloudboot)
+  And I migrate the virtual machine (linux-vm-without-startup-cloudboot1)
   Then I wait for 10 seconds
-  And I should see the virtual machine is SHUTOFF in VHI portal
-  And its CPU, RAM and storage are correct
+  And I should see the virtual machine (linux-vm-without-startup-cloudboot1) is SHUTOFF in VHI portal
+  And the virtual machine (linux-vm-without-startup-cloudboot1) should have correct CPU, RAM and storage
+  And I should see the hotplug is disabled in virtual machine (linux-vm-without-startup-cloudboot1)
   And the log is seen in logging path (uda-log)
-  And I should see the hotplug is disabled
 
 @placement
 Scenario: Cold migration with user's SSH key with storage policy and placement specified
@@ -45,20 +45,20 @@ Scenario: Cold migration with user's SSH key with storage policy and placement s
   | nodes |
   | cpvhi |
   And I assign the placement (behave-hard-placement) with 100 placement to the project
-  And I create a virtual machine (linux-vm-without-startup-cloudboot)
+  And I create a virtual machine (linux-vm-without-startup-cloudboot1)
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
-  And the virtual machine (linux-vm-without-startup-cloudboot) is built successfully
+  And the virtual machine (linux-vm-without-startup-cloudboot1) is built successfully
 
-  When I migrate the virtual machine (linux-vm-without-startup-cloudboot) with following details
+  When I migrate the virtual machine (linux-vm-without-startup-cloudboot1) with following details
   | storage policy        | placement             | hotplug |
   | behave-storage-policy | behave-hard-placement | True    |
   Then I wait for 30 seconds
-  And I should see the virtual machine is SHUTOFF in VHI portal
-  And its CPU, RAM and storage are correct
-  And its volume is using the correct storage policy (behave-storage-policy)
-  And the vm is placed in the corrent placement (behave-hard-placement)
-  And I should see the hotplug is enabled
+  And the virtual machine (linux-vm-without-startup-cloudboot1) is using the correct storage policy (behave-storage-policy) in its volume
+  And the virtual machine (linux-vm-without-startup-cloudboot1) is placed in the corrent placement (behave-hard-placement)
+  And I should see the virtual machine (linux-vm-without-startup-cloudboot1) is SHUTOFF in VHI portal
+  And the virtual machine (linux-vm-without-startup-cloudboot1) should have correct CPU, RAM and storage
+  And I should see the hotplug is enabled in virtual machine (linux-vm-without-startup-cloudboot1)
 
 @network
 Scenario: Cold migration with user's SSH key with second network interface (IPv6)
@@ -72,30 +72,30 @@ Scenario: Cold migration with user's SSH key with second network interface (IPv6
   When I add the network join (behave-network-join-994) from network (behave-network-ipv6) to the compute zone (CloudBoot Compute Zone)
   Then CP API (create) should return status code 201
 
-  When I create a virtual machine (linux-vm-without-startup-cloudboot)
+  When I create a virtual machine (linux-vm-without-startup-cloudboot1)
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
-  And the virtual machine (linux-vm-without-startup-cloudboot) is built successfully
+  And the virtual machine (linux-vm-without-startup-cloudboot1) is built successfully
 
-  When I add a network interface (behave-network-interface-ipv6) with network join (behave-network-join-994) at compute zone (CloudBoot Compute Zone) to the virtual machine (linux-vm-without-startup-cloudboot)
+  When I add a network interface (behave-network-interface-ipv6) with network join (behave-network-join-994) at compute zone (CloudBoot Compute Zone) to the virtual machine (linux-vm-without-startup-cloudboot1)
   Then CP API (create) should return status code 201
 
-  When I add an IP address (behave-ip-net-ipv6) from network (behave-network-ipv6) to the network interface (behave-network-interface-ipv6) on virtual machine (linux-vm-without-startup-cloudboot)
+  When I add an IP address (behave-ip-net-ipv6) from network (behave-network-ipv6) to the network interface (behave-network-interface-ipv6) on virtual machine (linux-vm-without-startup-cloudboot1)
   Then CP API (create) should return status code 201
 
-  When I reboot the virtual machine (linux-vm-without-startup-cloudboot) in Onapp cloud
+  When I reboot the virtual machine (linux-vm-without-startup-cloudboot1) in Onapp cloud
   Then CP API (reboot) should return status code 201
   And I wait for 90 seconds
 
-  When I shutdown the virtual machine (linux-vm-without-startup-cloudboot) in Onapp cloud
+  When I shutdown the virtual machine (linux-vm-without-startup-cloudboot1) in Onapp cloud
   Then CP API (shutdown) should return status code 201
   And I wait for 90 seconds
 
-  When I migrate the virtual machine (linux-vm-without-startup-cloudboot)
+  When I migrate the virtual machine (linux-vm-without-startup-cloudboot1)
   Then I wait for 10 seconds
-  And I should see the virtual machine is SHUTOFF in VHI portal
-  And its CPU, RAM and storage are correct
-  And I should see the hotplug is disabled
+  And I should see the virtual machine (linux-vm-without-startup-cloudboot1) is SHUTOFF in VHI portal
+  And the virtual machine (linux-vm-without-startup-cloudboot1) should have correct CPU, RAM and storage
+  And I should see the hotplug is disabled in virtual machine (linux-vm-without-startup-cloudboot1)
 
 @network
 Scenario: Cold migration with user's SSH key with second network interface (IPv4 and IPv6)
@@ -112,44 +112,44 @@ Scenario: Cold migration with user's SSH key with second network interface (IPv4
   When I add the network join (behave-network-join-997) from network (behave-network-ipv4-ipv6) to the compute zone (CloudBoot Compute Zone)
   Then CP API (create) should return status code 201
 
-  When I create a virtual machine (linux-vm-without-startup-cloudboot)
+  When I create a virtual machine (linux-vm-without-startup-cloudboot1)
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
-  And the virtual machine (linux-vm-without-startup-cloudboot) is built successfully
+  And the virtual machine (linux-vm-without-startup-cloudboot1) is built successfully
 
-  When I add a network interface (behave-network-interface-ipv4-ipv6) with network join (behave-network-join-997) at compute zone (CloudBoot Compute Zone) to the virtual machine (linux-vm-without-startup-cloudboot)
+  When I add a network interface (behave-network-interface-ipv4-ipv6) with network join (behave-network-join-997) at compute zone (CloudBoot Compute Zone) to the virtual machine (linux-vm-without-startup-cloudboot1)
   Then CP API (create) should return status code 201
 
-  When I add an IP address (behave-ip-net-ipv4) from network (behave-network-ipv4-ipv6) to the network interface (behave-network-interface-ipv4-ipv6) on virtual machine (linux-vm-without-startup-cloudboot)
+  When I add an IP address (behave-ip-net-ipv4) from network (behave-network-ipv4-ipv6) to the network interface (behave-network-interface-ipv4-ipv6) on virtual machine (linux-vm-without-startup-cloudboot1)
   Then CP API (create) should return status code 201
   
-  When I add an IP address (behave-ip-net-ipv6) from network (behave-network-ipv4-ipv6) to the network interface (behave-network-interface-ipv4-ipv6) on virtual machine (linux-vm-without-startup-cloudboot)
+  When I add an IP address (behave-ip-net-ipv6) from network (behave-network-ipv4-ipv6) to the network interface (behave-network-interface-ipv4-ipv6) on virtual machine (linux-vm-without-startup-cloudboot1)
   Then CP API (create) should return status code 201
 
-  When I reboot the virtual machine (linux-vm-without-startup-cloudboot) in Onapp cloud
+  When I reboot the virtual machine (linux-vm-without-startup-cloudboot1) in Onapp cloud
   Then CP API (reboot) should return status code 201
   And I wait for 90 seconds
 
-  When I shutdown the virtual machine (linux-vm-without-startup-cloudboot) in Onapp cloud
+  When I shutdown the virtual machine (linux-vm-without-startup-cloudboot1) in Onapp cloud
   Then CP API (shutdown) should return status code 201
   And I wait for 90 seconds
 
-  When I migrate the virtual machine (linux-vm-without-startup-cloudboot)
+  When I migrate the virtual machine (linux-vm-without-startup-cloudboot1)
   Then I wait for 10 seconds
-  And I should see the virtual machine is SHUTOFF in VHI portal
-  And its CPU, RAM and storage are correct
-  And I should see the hotplug is disabled
+  And I should see the virtual machine (linux-vm-without-startup-cloudboot1) is SHUTOFF in VHI portal
+  And the virtual machine (linux-vm-without-startup-cloudboot1) should have correct CPU, RAM and storage
+  And I should see the hotplug is disabled in virtual machine (linux-vm-without-startup-cloudboot1)
 
 @negative
 Scenario: Cold migration with incorrect user
   Given I am a cloud user (uda)
-  When I create a virtual machine (linux-vm-without-startup-cloudboot)
+  When I create a virtual machine (linux-vm-without-startup-cloudboot1)
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
-  And the virtual machine (linux-vm-without-startup-cloudboot) is built successfully
+  And the virtual machine (linux-vm-without-startup-cloudboot1) is built successfully
 
-  When I migrate the virtual machine (linux-vm-without-startup-cloudboot) with following details
+  When I migrate the virtual machine (linux-vm-without-startup-cloudboot1) with following details
   | username |
   | ultron   |
-  Then I should not see the virtual machine in VHI portal
-  And I should see the hotplug is disabled
+  Then I should not see the virtual machine (linux-vm-without-startup-cloudboot1) in VHI portal
+  And I should see the hotplug is disabled in virtual machine (linux-vm-without-startup-cloudboot1)
