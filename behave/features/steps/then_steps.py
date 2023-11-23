@@ -330,13 +330,15 @@ def step_impl(context, name):
     vm_list = json.loads(output.stdout)
     
     match = False
-    for vm in vm_list:
 
-        if hostname not in vm["name"]:
-            match = True
+    if vm_list: 
+        for vm in vm_list:
+            if hostname not in vm["name"]:
+                match = True
+                break
 
-    if not match:
-        assert CHECK_FAILED, "error: the virtual machine is found in VHI portal"
+        if not match:
+            assert CHECK_FAILED, "error: the virtual machine is found in VHI portal"
 
 use_step_matcher('parse')
 @then('I should see the hotplug is enabled in virtual machine ({name})')
