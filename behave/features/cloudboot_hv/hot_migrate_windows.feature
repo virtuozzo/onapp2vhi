@@ -33,6 +33,7 @@ Scenario: Hot migration with user's SSH key
   And the virtual machine (windows-vm-with-startup-cloudboot1) should have correct CPU, RAM and storage
 
 @placement
+@storage_policy
 Scenario: Hot migration with user's SSH key with storage policy and placement specified
   Given I am a cloud user (uda)
   When I create a storage policy (behave-storage-policy) in VHI portal with following details

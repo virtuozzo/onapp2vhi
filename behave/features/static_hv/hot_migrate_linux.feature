@@ -35,6 +35,8 @@ Scenario: Hot migration with user's SSH key
   And I should see the hotplug is disabled in virtual machine (linux-vm-with-startup-static1)
 
 @placement
+@storage_policy
+@hotplug
 Scenario: Hot migration with user's SSH key with storage policy and placement specified
   Given I am a cloud user (uda)
   When I create a storage policy (behave-storage-policy) in VHI portal with following details

@@ -35,6 +35,8 @@ Scenario: Hot migration with user's SSH key
   And I should see the hotplug is disabled in virtual machine (windows-vm-with-startup-static1)
 
 @placement
+@storage_policy
+@hotplug
 Scenario: Hot migration with user's SSH key with storage policy and placement specified
   Given I am a cloud user (uda)
   When I create a storage policy (behave-storage-policy) in VHI portal with following details
@@ -59,21 +61,6 @@ Scenario: Hot migration with user's SSH key with storage policy and placement sp
   And I should see the hotplug is enabled in virtual machine (windows-vm-with-startup-static1)
   And the virtual machine (windows-vm-with-startup-static1) is using the correct storage policy (behave-storage-policy) in its volume
   And the virtual machine (windows-vm-with-startup-static1) is placed in the corrent placement (behave-hard-placement)
-
-Scenario: Hot migration with user's SSH key with storage policy and placement specified
-  Given I am a cloud user (uda)
-  When I create a virtual machine (windows-vm-with-startup-static1)
-  Then CP API (create) should return status code 201
-  And I wait for 10 minutes
-  And the virtual machine (windows-vm-with-startup-static1) is built successfully
-
-  When I migrate the virtual machine (windows-vm-with-startup-static1) with following details
-  | hotplug |
-  | True    |
-  Then I wait for 10 seconds
-  And I should see the virtual machine (windows-vm-with-startup-static1) is ACTIVE in VHI portal
-  And the virtual machine (windows-vm-with-startup-static1) should have correct CPU, RAM and storage
-  And I should see the hotplug is disabled in virtual machine (windows-vm-with-startup-static1)
 
 @network
 Scenario: Hot migration with user's SSH key with second network interface (IPv4)
