@@ -861,6 +861,10 @@ class GetVmSourcePropertiesTestCase(OnAppHelpersTestCase):
                         'ip_address': '1.1.2.2',
                     }
                 }
+            elif param == 'version':
+                return {
+                    'version': '6.4.1rc'
+                }
 
             raise RuntimeError(f'unhandled onapprequsets.get({param})')
 
