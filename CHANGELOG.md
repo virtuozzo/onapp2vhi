@@ -1,3 +1,8 @@
+## v1.1.0 (15/12/2023)
+
+### Fixes
+- O2V-220: Fix vm network information parsing for OnApp CP <=6.3
+
 ## v1.1.0 (15/11/2023)
 
 ### Feature
