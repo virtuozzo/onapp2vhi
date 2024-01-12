@@ -209,7 +209,7 @@ Scenario: Cold migration with multiple vm with storage policy and placement spec
   And the virtual machine (linux-vm-without-startup-static2) is placed in the corrent placement (behave-hard-placement)
 
 @negative
-Scenario: Cold migration without user's SSH key
+Scenario: Cold migration without VM IP
   Given I am a cloud user (ultron)
   When I create a virtual machine (linux-vm-without-startup-static1)
   Then CP API (create) should return status code 201
