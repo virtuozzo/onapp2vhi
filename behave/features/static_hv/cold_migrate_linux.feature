@@ -207,3 +207,18 @@ Scenario: Cold migration with multiple vm with storage policy and placement spec
   And the virtual machine (linux-vm-without-startup-static2) should have correct CPU, RAM and storage
   And the virtual machine (linux-vm-without-startup-static2) is using the correct storage policy (behave-storage-policy) in its volume
   And the virtual machine (linux-vm-without-startup-static2) is placed in the corrent placement (behave-hard-placement)
+
+@negative
+Scenario: Cold migration without VM IP
+  Given I am a cloud user (ultron)
+  When I create a virtual machine (linux-vm-without-startup-static1)
+  Then CP API (create) should return status code 201
+  And I wait for 2 minutes
+  And the virtual machine (linux-vm-without-startup-static1) is built successfully
+
+  When I remove the ip address from the virtual machine (linux-vm-without-startup-static1)
+  And I rebuild the network of the virtual machine (linux-vm-without-startup-static1) with following details
+  | force | shutdown type | required startup |
+  | true  | graceful      | false            |
+  And I migrate the virtual machine (linux-vm-without-startup-static1)
+  Then I should not see the virtual machine (linux-vm-without-startup-static1) in VHI portal
