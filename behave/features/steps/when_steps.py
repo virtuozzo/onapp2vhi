@@ -940,3 +940,57 @@ def step_impl(context, name, size):
                                                     .format(id=placement_id, size=size, project_id=project["id"]))
             
             break
+
+use_step_matcher('parse')
+@when('I remove the ip address from the virtual machine ({name})')
+def step_impl(context, name):
+
+    fixture = helper.get_fixture("virtual_machine")
+    vm = context.cp.search("virtual_machines", args=fixture[name]["virtual_machine"]["label"])
+    
+    if vm:
+        vm_id = vm[0]["virtual_machine"]["id"]
+    else:
+        assert CHECK_FAILED, "error: no machine found"
+
+    arr_get_ip_address = context.cp.get_all("virtual_machines/%s" % vm_id, action="ip_addresses")
+
+    for ip in arr_get_ip_address:
+
+        response = context.cp.delete("virtual_machines/%s/ip_addresses" % vm_id, entity_id=ip["ip_address_join"]["id"])
+        
+        if response.status_code != 204:
+            assert CHECK_FAILED, "error: unable to delete the IP, actual status code returned is %s" % str(response.status_code)
+
+use_step_matcher('parse')
+@when('I rebuild the network of the virtual machine ({name}) with following details')
+def step_impl(context, name):
+
+    fixture = helper.get_fixture("virtual_machine")
+    vm = context.cp.search("virtual_machines", args=fixture[name]["virtual_machine"]["label"])
+    
+    if vm:
+        vm_id = vm[0]["virtual_machine"]["id"]
+    else:
+        assert CHECK_FAILED, "error: no machine found"
+
+    data = {}
+    headings = helper.rephrase_key(context.table.headings)
+    for heading in headings:
+        for row in context.table.rows:
+            row.headings = headings
+            data[heading] = row[heading]
+
+    query_string = ""
+    for key in data:
+        query_string += key + "=" + data[key] + "&"
+
+    query_string = query_string.replace("true", "1").replace("false", "0")
+    query_string = query_string[:-1]
+
+    response = context.cp.post_action("virtual_machines", vm_id, "rebuild_network", query_string=query_string)
+    
+    if response.status_code != 201:
+        assert CHECK_FAILED, "error: unable to rebuild network"
+
+    sleep(120)
