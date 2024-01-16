@@ -161,7 +161,7 @@ class OnAppCP(object):
         '''
         return self._cp_api(session.get, entity, args=args, filter=filter, returned_json=returned_json)
 
-    def post_action(self, entity, _id, action, data=None):
+    def post_action(self, entity, _id, action, data=None, query_string=None):
         """
         Example:
         POST /edge_servers/:edge_server_id/reboot.json
@@ -194,15 +194,25 @@ class OnAppCP(object):
         action: ip_nets
         data: {"network":{"label":"Network API TEST 2","network_group_id":3,"vlan":43,"type":"Networking::Network"}}
 
+        Example 4:
+        curl -i -X POST -H 'Accept: application/json' -H 'Content-type: application/json'
+            -u user:userpass 
+            --url http://onapp.test/virtual_machines/1/rebuild_network.json?force=1&shutdown_type=graceful&required_startup=1
+        entity: virtual_machines/networks
+        _id: 1
+        action: rebuild_network
+        query_string: force=1&shutdown_type=graceful&required_startup=1
+
         :param entity:
         :param _id:
         :param action:
         :param data:
+        :param query_string:
         :return:
         """
-        return self._cp_api(session.post, entity, entity_id=_id, action=action, data=data)
+        return self._cp_api(session.post, entity, entity_id=_id, action=action, data=data, query_string=query_string)
     
-    def _cp_api(self, requests_func, entity, data=None, entity_id=None, action=None, args=None, filter=False, returned_json=None):
+    def _cp_api(self, requests_func, entity, data=None, entity_id=None, action=None, query_string=None, args=None, filter=False, returned_json=None):
         """
         :param requests_func: session.get or session.post
         :param args: entity. eg: edge_groups, cdn_resource
@@ -216,12 +226,16 @@ class OnAppCP(object):
             path = "%s/%s" % (entity, entity_id)
 
         if action is not None:
+
             if entity_id is not None:
                 path = "%s/%s/%s" % (entity, entity_id, action)
             else:
                 path = "%s/%s" % (entity, action)
 
         url = "%s/%s.json" % (self.config["cp_url"], path)
+
+        if action == "rebuild_network":
+            url = url + "?%s" % query_string
 
         if args is not None and not filter:
             url = url + "?q=" + args

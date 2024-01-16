@@ -1,10 +1,10 @@
-linux-vm-without-startup-static:
+linux-vm-without-startup-static1:
   virtual_machine:
-    label: linux vm off
+    label: linux vm off1
     memory: 2048
     cpus: 1
     cpu_shares: 1
-    hostname: linuxvmoff
+    hostname: linuxvmoff1
     primary_disk_size: 5
     swap_disk_size: 0
     required_virtual_machine_build: 1
@@ -12,13 +12,13 @@ linux-vm-without-startup-static:
     required_virtual_machine_startup: 0
     hypervisor_id: HV1onapp2vhi
 
-linux-vm-with-startup-static:
+linux-vm-with-startup-static1:
   virtual_machine:
-    label: linux vm on
+    label: linux vm on1
     memory: 2048
     cpus: 1
     cpu_shares: 1
-    hostname: linuxvmon
+    hostname: linuxvmon1
     primary_disk_size: 5
     swap_disk_size: 0
     required_virtual_machine_build: 1
@@ -26,13 +26,13 @@ linux-vm-with-startup-static:
     required_virtual_machine_startup: 1
     hypervisor_id: HV1onapp2vhi
 
-windows-vm-without-startup-static:
+windows-vm-without-startup-static1:
   virtual_machine:
-    label: windows vm off
+    label: windows vm off1
     memory: 8192
     cpus: 1
     cpu_shares: 1
-    hostname: windowsvmoff
+    hostname: windowsvmoff1
     primary_disk_size: 30
     required_virtual_machine_build: 1
     template_id: Windows Server 2016 x64 STD
@@ -41,13 +41,13 @@ windows-vm-without-startup-static:
     required_virtual_machine_startup: 0
     hypervisor_id: HV1onapp2vhi
 
-windows-vm-with-startup-static:
+windows-vm-with-startup-static1:
   virtual_machine:
-    label: windows vm on
+    label: windows vm on1
     memory: 8192
     cpus: 1
     cpu_shares: 1
-    hostname: windowsvmon
+    hostname: windowsvmon1
     primary_disk_size: 30
     required_virtual_machine_build: 1
     template_id: Windows Server 2016 x64 STD
@@ -56,13 +56,13 @@ windows-vm-with-startup-static:
     required_virtual_machine_startup: 1
     hypervisor_id: HV1onapp2vhi
 
-linux-vm-without-startup-cloudboot:
+linux-vm-without-startup-cloudboot1:
   virtual_machine:
-    label: linux vm off
+    label: linux vm off1
     memory: 2048
     cpus: 1
     cpu_shares: 1
-    hostname: linuxvmoff
+    hostname: linuxvmoff1
     primary_disk_size: 5
     swap_disk_size: 0
     required_virtual_machine_build: 1
@@ -70,13 +70,13 @@ linux-vm-without-startup-cloudboot:
     required_virtual_machine_startup: 0
     hypervisor_id: CloudBootHV1
 
-linux-vm-with-startup-cloudboot:
+linux-vm-with-startup-cloudboot1:
   virtual_machine:
-    label: linux vm on
+    label: linux vm on1
     memory: 2048
     cpus: 1
     cpu_shares: 1
-    hostname: linuxvmon
+    hostname: linuxvmon1
     primary_disk_size: 5
     swap_disk_size: 0
     required_virtual_machine_build: 1
@@ -84,13 +84,13 @@ linux-vm-with-startup-cloudboot:
     required_virtual_machine_startup: 1
     hypervisor_id: CloudBootHV1
 
-windows-vm-without-startup-cloudboot:
+windows-vm-without-startup-cloudboot1:
   virtual_machine:
-    label: windows vm off
+    label: windows vm off1
     memory: 8192
     cpus: 1
     cpu_shares: 1
-    hostname: windowsvmoff
+    hostname: windowsvmoff1
     primary_disk_size: 30
     required_virtual_machine_build: 1
     template_id: Windows Server 2016 x64 STD
@@ -99,13 +99,129 @@ windows-vm-without-startup-cloudboot:
     required_virtual_machine_startup: 0
     hypervisor_id: CloudBootHV1
 
-windows-vm-with-startup-cloudboot:
+windows-vm-with-startup-cloudboot1:
   virtual_machine:
-    label: windows vm on
+    label: windows vm on1
     memory: 8192
     cpus: 1
     cpu_shares: 1
-    hostname: windowsvmon
+    hostname: windowsvmon1
+    primary_disk_size: 30
+    required_virtual_machine_build: 1
+    template_id: Windows Server 2016 x64 STD
+    licensing_type: own
+    licensing_key: N3TYV-2997C-CJF6W-CQ3HR-84464
+    required_virtual_machine_startup: 1
+    hypervisor_id: CloudBootHV1
+
+linux-vm-without-startup-static2:
+  virtual_machine:
+    label: linux vm off2
+    memory: 2048
+    cpus: 1
+    cpu_shares: 1
+    hostname: linuxvmoff2
+    primary_disk_size: 5
+    swap_disk_size: 0
+    required_virtual_machine_build: 1
+    template_id: Debian 10 x64
+    required_virtual_machine_startup: 0
+    hypervisor_id: HV1onapp2vhi
+
+linux-vm-with-startup-static2:
+  virtual_machine:
+    label: linux vm on2
+    memory: 2048
+    cpus: 1
+    cpu_shares: 1
+    hostname: linuxvmon2
+    primary_disk_size: 5
+    swap_disk_size: 0
+    required_virtual_machine_build: 1
+    template_id: Debian 10 x64
+    required_virtual_machine_startup: 1
+    hypervisor_id: HV1onapp2vhi
+
+windows-vm-without-startup-static2:
+  virtual_machine:
+    label: windows vm off2
+    memory: 8192
+    cpus: 1
+    cpu_shares: 1
+    hostname: windowsvmoff2
+    primary_disk_size: 30
+    required_virtual_machine_build: 1
+    template_id: Windows Server 2016 x64 STD
+    licensing_type: own
+    licensing_key: N3TYV-2997C-CJF6W-CQ3HR-84464
+    required_virtual_machine_startup: 0
+    hypervisor_id: HV1onapp2vhi
+
+windows-vm-with-startup-static2:
+  virtual_machine:
+    label: windows vm on2
+    memory: 8192
+    cpus: 1
+    cpu_shares: 1
+    hostname: windowsvmon2
+    primary_disk_size: 30
+    required_virtual_machine_build: 1
+    template_id: Windows Server 2016 x64 STD
+    licensing_type: own
+    licensing_key: N3TYV-2997C-CJF6W-CQ3HR-84464
+    required_virtual_machine_startup: 1
+    hypervisor_id: HV1onapp2vhi
+
+linux-vm-without-startup-cloudboot2:
+  virtual_machine:
+    label: linux vm off2
+    memory: 2048
+    cpus: 1
+    cpu_shares: 1
+    hostname: linuxvmoff2
+    primary_disk_size: 5
+    swap_disk_size: 0
+    required_virtual_machine_build: 1
+    template_id: Debian 11.5 x64
+    required_virtual_machine_startup: 0
+    hypervisor_id: CloudBootHV1
+
+linux-vm-with-startup-cloudboot2:
+  virtual_machine:
+    label: linux vm on2
+    memory: 2048
+    cpus: 1
+    cpu_shares: 1
+    hostname: linuxvmon1
+    primary_disk_size: 5
+    swap_disk_size: 0
+    required_virtual_machine_build: 1
+    template_id: Debian 11.5 x64
+    required_virtual_machine_startup: 1
+    hypervisor_id: CloudBootHV1
+
+windows-vm-without-startup-cloudboot2:
+  virtual_machine:
+    label: windows vm off2
+    memory: 8192
+    cpus: 1
+    cpu_shares: 1
+    hostname: windowsvmoff2
+    primary_disk_size: 30
+    required_virtual_machine_build: 1
+    template_id: Windows Server 2016 x64 STD
+    licensing_type: own
+    licensing_key: N3TYV-2997C-CJF6W-CQ3HR-84464
+    required_virtual_machine_startup: 0
+    hypervisor_id: CloudBootHV1
+
+windows-vm-with-startup-cloudboot2:
+  virtual_machine:
+    label: windows vm on2
+    memory: 8192
+    cpus: 1
+    cpu_shares: 1
+    hostname: windowsvmon2
     primary_disk_size: 30
     required_virtual_machine_build: 1
     template_id: Windows Server 2016 x64 STD
