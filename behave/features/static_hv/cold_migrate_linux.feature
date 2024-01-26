@@ -222,3 +222,29 @@ Scenario: Cold migration without VM IP
   | true  | graceful      | false            |
   And I migrate the virtual machine (linux-vm-without-startup-static1)
   Then I should not see the virtual machine (linux-vm-without-startup-static1) in VHI portal
+
+@negative
+Scenario: Cold migration with non-existing flavor
+  Given I am a cloud user (ultron)
+  When I create a virtual machine (linux-vm-without-startup-static1)
+  Then CP API (create) should return status code 201
+  And I wait for 2 minutes
+  And the virtual machine (linux-vm-without-startup-static1) is built successfully
+
+  When I migrate the virtual machine (linux-vm-without-startup-static1) with following details
+  | flavor                 |
+  | behave-no-exist-flavor |
+  Then I should not see the virtual machine (linux-vm-without-startup-static1) in VHI portal
+
+Scenario: Cold migration with pre-existing flavor
+  Given I am a cloud user (ultron)
+  When I create a virtual machine (linux-vm-without-startup-static1)
+  Then CP API (create) should return status code 201
+  And I wait for 2 minutes
+  And the virtual machine (linux-vm-without-startup-static1) is built successfully
+
+  When I migrate the virtual machine (linux-vm-without-startup-static1) with following details
+  | flavor       |
+  | behave_1_512 |
+  Then I should see the virtual machine (linux-vm-without-startup-static1) is SHUTOFF in VHI portal
+  And the virtual machine (linux-vm-without-startup-static1) should have correct storage migrated, CPU and RAM same as flavor (behave_1_512) stated

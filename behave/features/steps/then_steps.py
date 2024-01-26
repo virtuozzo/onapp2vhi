@@ -147,6 +147,66 @@ def step_impl(context, name, state):
     if arr_vhi_vm_ip.sort() != arr_onapp_vm_ip.sort():
         assert CHECK_FAILED, "error: the ip(s) in onapp and vhi aren't matched"
 
+
+use_step_matcher('parse')
+@then('the virtual machine ({name}) should have correct storage migrated, CPU and RAM same as flavor ({flavor_name}) stated')
+def step_impl(context, name, flavor_name):
+    
+    hostname = helper.get_fixture("virtual_machine")[name]["virtual_machine"]["hostname"]
+    config = helper.get_config()
+    raw_vm_list = helper.open_vhi_ssh_connection(config["vhi"], "service compute server list --long -f json")
+    vm_list = json.loads(raw_vm_list.stdout)
+    dict_server_spec = {}
+
+    match = False
+    for vm in vm_list:
+
+        if hostname in vm["name"]:
+
+            dict_server_spec["hostname"] = vm["name"]
+            dict_server_spec["ram"] = vm["flavor"]["ram"]
+            dict_server_spec["vcpus"] = vm["flavor"]["vcpus"]
+            dict_server_spec["volumes"] = []
+
+            for volume in vm["volumes"]:
+                dict_server_spec["volumes"].append(volume["id"])
+
+    total_disk_size = 0
+    for volume in dict_server_spec["volumes"]:
+        
+        raw_disk_size = helper.open_vhi_ssh_connection(config["vhi"], "service compute volume show %s -c size -f json" % volume)
+        disk_size = json.loads(raw_disk_size.stdout)["size"]
+        total_disk_size += disk_size
+
+    onapp_vms = helper.get_fixture("virtual_machine")
+    
+    # compare vhi vm with onapp fixture
+    for vm in onapp_vms:
+        if onapp_vms[vm]["virtual_machine"]["hostname"] in dict_server_spec["hostname"]:
+
+            if  context.result[name]["virtual_machine"]["operating_system"] == "linux":
+                formula = onapp_vms[vm]["virtual_machine"]["primary_disk_size"] + onapp_vms[vm]["virtual_machine"]["swap_disk_size"]
+            else:
+                formula = onapp_vms[vm]["virtual_machine"]["primary_disk_size"]
+
+            if formula == total_disk_size:
+
+                match = True
+                break
+
+    if not match:
+        assert CHECK_FAILED, "error: disk space aren't tally"
+    
+    raw_flavor = helper.open_vhi_ssh_connection(config["vhi"], "service compute flavor show %s -f json" % flavor_name)
+    flavor = json.loads(raw_flavor.stdout)
+
+    if dict_server_spec["ram"] == flavor["ram"] and dict_server_spec["vcpus"] == flavor["vcpus"]:
+        match = True
+    
+    if not match:
+        assert CHECK_FAILED, "error: flavor used is not matched as per mentioned"
+                
+
 use_step_matcher('parse')
 @then('the virtual machine ({name}) should have correct CPU, RAM and storage')
 def step_impl(context, name):

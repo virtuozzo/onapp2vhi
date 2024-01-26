@@ -135,3 +135,17 @@ Scenario: Cold migration with user's SSH key with second network interface (IPv4
   Then I wait for 10 seconds
   And I should see the virtual machine (windows-vm-without-startup-static1) is SHUTOFF in VHI portal
   And the virtual machine (windows-vm-without-startup-static1) should have correct CPU, RAM and storage
+
+Scenario: Cold migration with pre-existing flavor
+  Given I am a cloud user (ultron)
+  When I create a virtual machine (windows-vm-without-startup-static1)
+  Then CP API (create) should return status code 201
+  And I wait for 10 minutes
+  And the virtual machine (windows-vm-without-startup-static1) is built successfully
+
+  When I migrate the virtual machine (windows-vm-without-startup-static1) with following details
+  | flavor        |
+  | behave_4_8192 |
+  Then I wait for 10 seconds
+  And I should see the virtual machine (windows-vm-without-startup-static1) is SHUTOFF in VHI portal
+  And the virtual machine (windows-vm-without-startup-static1) should have correct storage migrated, CPU and RAM same as flavor (behave_4_8192) stated
