@@ -434,8 +434,8 @@ class VinfraFlavor(VinfraServiceCompute):
 
 class VinfraUser(VinfraBase):
 
-    def __init__(self, cfg: OnApp2VHIConfig, cp_ip: bool = True):
-        super().__init__(cfg, cp_ip=cp_ip)
+    def __init__(self, cfg: OnApp2VHIConfig):
+        super().__init__(cfg)
         self.vinfra_root += ' domain user'
 
     def user_list(self, domain: str):
