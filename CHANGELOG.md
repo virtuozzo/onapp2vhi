@@ -1,7 +1,13 @@
-## v1.1.0 (15/12/2023)
+## Unreleased (dd/mm/yyyy)
 
 ### Fixes
-- O2V-220: Fix vm network information parsing for OnApp CP <=6.3
+- O2V-226: fix vm network information parsing for onapp cp < 6.4
+- O2V-228: use management network for vinfra command
+
+## v1.1.1 (15/12/2023)
+
+### Fixes
+- O2V-220: fix vm network information parsing for onapp cp < 6.3
 
 ## v1.1.0 (15/11/2023)
 

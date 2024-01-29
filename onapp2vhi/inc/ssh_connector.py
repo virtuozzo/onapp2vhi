@@ -233,35 +233,38 @@ class SSH:
         :param real_data: bool True or False
         :return: int, str
         """
+        logs.info(f'HOST: {self.host} | PORT: {self.port} | USER: {self.username} | TIMEOUT: {self.channel_timeout}')
+        logs.info(f'Running command: {command}')
+
         self._connect()
         output = ""
         self.transport = self.client.get_transport()
         self.channel = self.transport.open_session()
         paramiko.agent.AgentRequestHandler(self.channel)
         self.channel.settimeout(self.channel_timeout)
-        logs.debug(f"Channel timeout - {self.channel.timeout}")
         logs.debug(f"Default window size - {self.transport.default_window_size}")
-        logs.info(f'HOST: {self.host} | PORT: {self.port}')
-        logs.info(f'Running command: {command}')
-        self.command = command
-        self.channel.exec_command(command)
-        while True:
-            data = self._receive_data(real_data=real_data)
-            data = "\n".join([s for s in data.split("\n") if "Warning: Permanently added" not in s])
-            output += data
-            if self.channel.exit_status_ready():
-                output += self._receive_data()
-                exit_status = self.channel.recv_exit_status()
-                break
-            sleep(1)
 
-        self.transport.close()
-        self.client.close()
+        try:
+            self.command = command
+            self.channel.exec_command(command)
+            while True:
+                data = self._receive_data(real_data=real_data)
+                data = "\n".join([s for s in data.split("\n") if "Warning: Permanently added" not in s])
+                output += data
+                if self.channel.exit_status_ready():
+                    output += self._receive_data()
+                    exit_status = self.channel.recv_exit_status()
+                    break
+                sleep(1)
+        finally:
+            self.transport.close()
+            self.client.close()
+
         if exit_status != 0:
             logs.warn(f'Exit code [{exit_status}] | Output: {output}')
         else:
             if len(output) >= 1000:
-                logs.debug(f'Exit code [{exit_status}] | ... OUTPUT LENGTH IS TOO BIG ...')
+                logs.info(f'Exit code [{exit_status}] | ... OUTPUT LENGTH IS TOO BIG ...')
             else:
-                logs.debug(f'Exit code [{exit_status}] | Output: {output}')
+                logs.info(f'Exit code [{exit_status}] | Output: {output}')
         return exit_status, output
