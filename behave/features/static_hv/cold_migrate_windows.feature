@@ -136,6 +136,7 @@ Scenario: Cold migration with user's SSH key with second network interface (IPv4
   And I should see the virtual machine (windows-vm-without-startup-static1) is SHUTOFF in VHI portal
   And the virtual machine (windows-vm-without-startup-static1) should have correct CPU, RAM and storage
 
+@flavor
 Scenario: Cold migration with pre-existing flavor
   Given I am a cloud user (ultron)
   When I create a virtual machine (windows-vm-without-startup-static1)

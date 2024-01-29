@@ -223,6 +223,7 @@ Scenario: Cold migration without VM IP
   And I migrate the virtual machine (linux-vm-without-startup-static1)
   Then I should not see the virtual machine (linux-vm-without-startup-static1) in VHI portal
 
+@flavor
 @negative
 Scenario: Cold migration with non-existing flavor
   Given I am a cloud user (ultron)
@@ -236,6 +237,7 @@ Scenario: Cold migration with non-existing flavor
   | behave-no-exist-flavor |
   Then I should not see the virtual machine (linux-vm-without-startup-static1) in VHI portal
 
+@flavor
 Scenario: Cold migration with pre-existing flavor
   Given I am a cloud user (ultron)
   When I create a virtual machine (linux-vm-without-startup-static1)

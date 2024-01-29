@@ -147,7 +147,6 @@ def step_impl(context, name, state):
     if arr_vhi_vm_ip.sort() != arr_onapp_vm_ip.sort():
         assert CHECK_FAILED, "error: the ip(s) in onapp and vhi aren't matched"
 
-
 use_step_matcher('parse')
 @then('the virtual machine ({name}) should have correct storage migrated, CPU and RAM same as flavor ({flavor_name}) stated')
 def step_impl(context, name, flavor_name):
@@ -204,8 +203,7 @@ def step_impl(context, name, flavor_name):
         match = True
     
     if not match:
-        assert CHECK_FAILED, "error: flavor used is not matched as per mentioned"
-                
+        assert CHECK_FAILED, "error: flavor used is not matched as per mentioned"           
 
 use_step_matcher('parse')
 @then('the virtual machine ({name}) should have correct CPU, RAM and storage')
