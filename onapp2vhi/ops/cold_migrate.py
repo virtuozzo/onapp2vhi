@@ -104,7 +104,7 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig,
         vinfra_access = f"{cfg.DOMAIN_AUTH}  --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
     _vhi_ssh = SSH(**{'host': cfg.vhi_conf['cp_ip'], 'port': cfg.vhi_conf['cloud_ssh_port'], 'ssh_key': cfg.ssh_key})
 
-    vinfra_command = VinfraCommand(cfg, vinfra_access=cfg.ADMIN_AUTH, cp_ip=True)
+    vinfra_command = VinfraCommand(cfg, vinfra_access=cfg.ADMIN_AUTH)
     try:
         output = vinfra_command.execute("service compute server list --long -f json")
     except VinfraError as e:
@@ -213,7 +213,7 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig,
         if not _vhi_hv_ip:
             return False
 
-    vinfra_command = VinfraCommand(cfg, vinfra_access=vinfra_access, host=_vhi_hv_ip)
+    vinfra_command = VinfraCommand(cfg, vinfra_access=vinfra_access)
     try:
         output = vinfra_command.execute("service compute server volume list"
                                         f" --server {_vhi_vm_id} -f json")

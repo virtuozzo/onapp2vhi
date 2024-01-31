@@ -263,8 +263,9 @@ class SSH:
         if exit_status != 0:
             logs.warn(f'Exit code [{exit_status}] | Output: {output}')
         else:
+            logs.info(f'Exit code [{exit_status}]')
             if len(output) >= 1000:
-                logs.info(f'Exit code [{exit_status}] | ... OUTPUT LENGTH IS TOO BIG ...')
+                logs.debug('... OUTPUT LENGTH IS TOO BIG ...')
             else:
-                logs.info(f'Exit code [{exit_status}] | Output: {output}')
+                logs.debug(f'Output: {output}')
         return exit_status, output

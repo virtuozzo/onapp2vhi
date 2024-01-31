@@ -279,39 +279,7 @@ class VinfraCommandTestCase(TestCase):
         command.execute('test command')
 
         mock_ssh_ctor.assert_called_with(
-            host='unittest.onapp2vhi.test', port=22, connect_timeout=300, channel_timeout=3600,
-            ssh_key='/path/to/your/ssh_key/id_rsa')
-        self.mock_ssh.execute.assert_called_with(
-            'vinfra special_param test command')
-
-    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
-    def test_constructor_with_for_cp(self, mock_ssh_ctor):
-        mock_output = (0, 'ok')
-        self.mock_ssh.execute.return_value = mock_output
-        mock_ssh_ctor.return_value = self.mock_ssh
-
-        command = VinfraCommand(self.mock_config, vinfra_access="vinfra special_param", cp_ip=True)
-
-        command.execute('test command')
-
-        mock_ssh_ctor.assert_called_with(
-            host='unittestcp.onapp2vhi.test', port=22, connect_timeout=300, channel_timeout=3600,
-            ssh_key='/path/to/your/ssh_key/id_rsa')
-        self.mock_ssh.execute.assert_called_with(
-            'vinfra special_param test command')
-
-    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
-    def test_constructor_with_diff_host(self, mock_ssh_ctor):
-        mock_output = (0, 'ok')
-        self.mock_ssh.execute.return_value = mock_output
-        mock_ssh_ctor.return_value = self.mock_ssh
-
-        command = VinfraCommand(self.mock_config, vinfra_access="vinfra special_param", host='1.2.3.4')
-
-        command.execute('test command')
-
-        mock_ssh_ctor.assert_called_with(
-            host='1.2.3.4', port=22, connect_timeout=300, channel_timeout=3600,
+            host='unittestcp.onapp2vhi.test', port=2222, connect_timeout=300, channel_timeout=3600,
             ssh_key='/path/to/your/ssh_key/id_rsa')
         self.mock_ssh.execute.assert_called_with(
             'vinfra special_param test command')

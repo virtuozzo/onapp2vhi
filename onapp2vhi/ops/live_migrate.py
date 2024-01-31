@@ -140,7 +140,7 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
     onappvm_pri_ip = _onapp_nics[0]['ips'][0]
     onappvm_pri_mac = _onapp_nics[0]['mac']
 
-    vinfra_command = VinfraCommand(cfg, vinfra_access=cfg.ADMIN_AUTH, cp_ip=True)
+    vinfra_command = VinfraCommand(cfg, vinfra_access=cfg.ADMIN_AUTH)
     try:
         output = vinfra_command.execute("service compute server list --long -f json")
     except VinfraError as e:
@@ -254,7 +254,7 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
         if not _vhi_hv_ip:
             return False
 
-    vinfra_command = VinfraCommand(cfg, vinfra_access=vinfra_access, host=_vhi_hv_ip)
+    vinfra_command = VinfraCommand(cfg, vinfra_access=vinfra_access)
     try:
         output = vinfra_command.execute("service compute server volume list"
                                         f" --server {_vhi_vm_id} -f json")
