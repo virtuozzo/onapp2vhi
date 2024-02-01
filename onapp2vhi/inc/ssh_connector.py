@@ -306,7 +306,7 @@ class SSH:
         """
         message = f'HOST: {self.host} | PORT: {self.port} | USER: {self.username} | TIMEOUT: {self.channel_timeout}'
         if self.jumpbox:
-            message = message + f' | JUMP HOST: {self.jump_host_external} | JUMP HOST PORT: {self.jump_host_port}'
+            message = message + f' | JUMP HOST: {self.jump_host_external}, {self.jump_host_internal} | JUMP HOST PORT: {self.jump_host_port}'
         logs.info(message)
         logs.info(f'Running command: {command}')
 
