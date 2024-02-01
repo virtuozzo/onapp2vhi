@@ -13,6 +13,7 @@ CONNECT_TIMEOUT = 300
 logs = OnAppVHILogger()
 
 
+# TODO! rename this function to run_command, refactor into separate module
 def ssh_run(command: str, interactive=True, comment='', log_off=False, output=True):
     if comment:
         logs.info(comment)
@@ -64,23 +65,48 @@ _preferred_pubkeys_old = ("ssh-ed25519",
 class SSH:
 
     def __init__(self, **kwargs):
+        paramiko.util.log_to_file("ssh_connection.log")
+
+        self.jumpbox = None
+        self.jumpbox_transport = None
+        self.jump_host_external = kwargs.get('jump_host_external')
+        if self.jump_host_external:
+            self.jump_host_internal = kwargs.get('jump_host_internal')
+            self.jump_host_port = kwargs.get('jump_host_port', 22)
+            if not type(self.jump_host_port):
+                raise TypeError(f'jump_host_port requires an integer, {self.jump_host_port} given')
+
+            self.jumpbox = paramiko.SSHClient()
+            self.jumpbox.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
         self.client = paramiko.SSHClient()
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
         self.host = kwargs.get("host")
         self.port = kwargs.get("port", 22)
+        if not type(self.port) is int:
+            raise TypeError(f'port requires an integer, {self.port} is given')
         self.username = kwargs.get("username", "root")
         self.connect_timeout = kwargs.get("connect_timeout", CONNECT_TIMEOUT)
+        if not type(self.connect_timeout) is int:
+            raise TypeError(f'connect_timeout requires an integer, {self.connect_timeout} given')
         self.channel_timeout = kwargs.get("channel_timeout", CHANNEL_TIMEOUT)
+        if not type(self.channel_timeout) is int:
+            raise TypeError(f'channel_timeout requires an integer, {self.channel_timeout} given')
         self.pkey = paramiko.RSAKey.from_private_key_file(kwargs.get("ssh_key"))
 
     def _port_is_open(self, timeout=10):
-        logs.debug(f"Check if port {self.port} is open on {self.host} host")
+        host = self.jump_host_external if self.jumpbox is not None else self.host
+        port = self.jump_host_port if self.jumpbox is not None else self.port
+
+        logs.debug(f"Check if port {port} is open on {host} host")
         connection = False
+
         for i in range(timeout):
             try:
                 socket.setdefaulttimeout(timeout)
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.connect((self.host, int(self.port)))
+                sock.connect((host, port))
                 connection = True
                 if connection:
                     break
@@ -89,6 +115,8 @@ class SSH:
             finally:
                 sock.close()
             sleep(10)
+
+        logs.debug(f'port open = {connection}')
         return connection
 
     def _key_algorithms_handler(self):
@@ -124,38 +152,81 @@ class SSH:
 
     def _connect(self):
         paramiko.transport.Transport._preferred_pubkeys = _preferred_pubkeys
-        paramiko.util.log_to_file("ssh_connection.log")
+
         if self._port_is_open():
-            # Try to connect
-            try:
+
+            # connect to jumpbox
+            if self.jumpbox:
+                try:
+                    self.jumpbox.connect(hostname=self.jump_host_external,
+                                         username=self.username,
+                                         port=self.jump_host_port,
+                                         pkey=self.pkey,
+                                         timeout=self.connect_timeout)
+                except paramiko.AuthenticationException as e:
+                    logs.error(f"""{e}\n The possible issues:
+                        - password is required;
+                        - your public key is absent on the server;
+                        - host is empty;
+                        - PubkeyAcceptedAlgorithms or PubkeyAcceptedKeyTypes are different on
+                         remote server(try `sudo vi /etc/ssh/sshd_config` [HostKeyAlgorithms +ssh-rsa,
+                          PubkeyAcceptedKeyTypes +ssh-rsa] and `sudo systemctl restart ssh`)
+                        - your ssh-agent may missing your public key""")
+                    logs.warn(msg='Trying OLD algorithm for SSH keys. . .')
+                    paramiko.transport.Transport._preferred_pubkeys = _preferred_pubkeys_old
+                    try:
+                        self.jumpbox.connect(hostname=self.jump_host_external,
+                                             username=self.username,
+                                             port=self.jump_host_port,
+                                             pkey=self.pkey,
+                                             timeout=self.connect_timeout)
+                    except paramiko.AuthenticationException:
+                        return False
+
+                self.jumpbox_transport = self.jumpbox.get_transport()
+                src_addr = (self.jump_host_external, self.jump_host_port)
+                dest_addr = (self.host, self.port)
+                jumpbox_channel = self.jumpbox_transport.open_channel(
+                    'direct-tcpip', dest_addr, src_addr)
+
                 self.client.connect(hostname=self.host,
                                     username=self.username,
                                     port=self.port,
                                     pkey=self.pkey,
-                                    timeout=self.connect_timeout)
+                                    timeout=self.connect_timeout,
+                                    sock=jumpbox_channel)
                 return True
+            else:
 
-            except paramiko.AuthenticationException as AE:
-                logs.error(f"""{AE}\n The possible issues:
-                    - password is required;
-                    - your public key is absent on the server;
-                    - host is empty;
-                    - PubkeyAcceptedAlgorithms or PubkeyAcceptedKeyTypes are different on
-                     remote server(try `sudo vi /etc/ssh/sshd_config` [HostKeyAlgorithms +ssh-rsa,
-                      PubkeyAcceptedKeyTypes +ssh-rsa] and `sudo systemctl restart ssh`)
-                    - your ssh-agent may missing your public key""")
-                paramiko.transport.Transport._preferred_pubkeys = _preferred_pubkeys_old
+                # Try to connect directly
                 try:
-                    logs.warn(msg='Trying OLD algorithm for SSH keys. . .')
                     self.client.connect(hostname=self.host,
                                         username=self.username,
                                         port=self.port,
                                         pkey=self.pkey,
                                         timeout=self.connect_timeout)
                     return True
-                except paramiko.AuthenticationException:
-                    return False
 
+                except paramiko.AuthenticationException as e:
+                    logs.error(f"""{e}\n The possible issues:
+                        - password is required;
+                        - your public key is absent on the server;
+                        - host is empty;
+                        - PubkeyAcceptedAlgorithms or PubkeyAcceptedKeyTypes are different on
+                         remote server(try `sudo vi /etc/ssh/sshd_config` [HostKeyAlgorithms +ssh-rsa,
+                          PubkeyAcceptedKeyTypes +ssh-rsa] and `sudo systemctl restart ssh`)
+                        - your ssh-agent may missing your public key""")
+                    logs.warn(msg='Trying OLD algorithm for SSH keys. . .')
+                    paramiko.transport.Transport._preferred_pubkeys = _preferred_pubkeys_old
+                    try:
+                        self.client.connect(hostname=self.host,
+                                            username=self.username,
+                                            port=self.port,
+                                            pkey=self.pkey,
+                                            timeout=self.connect_timeout)
+                        return True
+                    except paramiko.AuthenticationException:
+                        return False
         return False
 
     def _update_progressbar(self, pbar, data, progress):
@@ -259,6 +330,12 @@ class SSH:
         finally:
             self.transport.close()
             self.client.close()
+            if self.jumpbox_transport:
+                self.jumpbox_transport.close()
+                self.jumpbox_transport = None
+            if self.jumpbox:
+                self.jumpbox.close()
+                self.jumpbox = None
 
         if exit_status != 0:
             logs.warn(f'Exit code [{exit_status}] | Output: {output}')

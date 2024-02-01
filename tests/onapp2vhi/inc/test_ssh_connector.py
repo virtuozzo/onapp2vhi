@@ -43,3 +43,7 @@ class Test_progress_bar(unittest.TestCase):
         ]
         self.ssh.execute("qemu-img convert", real_data=True)
         self.assertEquals(mock_tqdm().update.call_count, 4)
+
+
+class TestSSH(unittest.TestCase):
+    pass

@@ -189,7 +189,7 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
 
     logs.debug(f'NETWORK PARAMS: {_network}', separator=True)
     _vhi_ssh = SSH(**{'host': cfg.vhi_conf['cp_ip'],
-                      'port': cfg.vhi_conf['cloud_ssh_port'],
+                      'port': int(cfg.vhi_conf['cloud_ssh_port']),
                       'ssh_key': cfg.ssh_key})
     if not vm_created:
         _vhi_vm_id = create_new_vhi_vm(cfg,
@@ -267,7 +267,11 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
     vhivm_disks = json.loads(output)
     _vhi_vm_disks = {str(x['device'].split('/')[2]): str(x['id']) for x in vhivm_disks}
 
-    _vhi_hv_ssh = SSH(**{'host': _vhi_hv_ip, 'ssh_key': cfg.ssh_key})
+    _vhi_hv_ssh = SSH(**{'host': _vhi_hv_ip,
+                         'jump_host_external': cfg.vhi_conf['cp_ip'],
+                         'jump_host_internal': cfg.vhi_conf['cp_ip_internal'],
+                         'jump_host_port': int(cfg.vhi_conf['cloud_ssh_port']),
+                         'ssh_key': cfg.ssh_key})
     for disk_lb, disk_id in _vhi_vm_disks.items():
         exit_status, output = _vhi_hv_ssh.execute(
             f"find /mnt/vstorage/vols/datastores/cinder/ -type f -name \"*volume-{disk_id}\" 2>/dev/null"
