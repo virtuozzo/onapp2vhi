@@ -304,7 +304,10 @@ class SSH:
         :param real_data: bool True or False
         :return: int, str
         """
-        logs.info(f'HOST: {self.host} | PORT: {self.port} | USER: {self.username} | TIMEOUT: {self.channel_timeout}')
+        message = f'HOST: {self.host} | PORT: {self.port} | USER: {self.username} | TIMEOUT: {self.channel_timeout}'
+        if self.jumpbox:
+            message = message + f' | JUMP HOST: {self.jump_host_external} | JUMP HOST PORT: {self.jump_host_port}'
+        logs.info(message)
         logs.info(f'Running command: {command}')
 
         self._connect()
@@ -332,10 +335,8 @@ class SSH:
             self.client.close()
             if self.jumpbox_transport:
                 self.jumpbox_transport.close()
-                self.jumpbox_transport = None
             if self.jumpbox:
                 self.jumpbox.close()
-                self.jumpbox = None
 
         if exit_status != 0:
             logs.warn(f'Exit code [{exit_status}] | Output: {output}')
