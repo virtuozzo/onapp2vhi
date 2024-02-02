@@ -343,6 +343,12 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
                 for tgt in nic.findall('target'):
                     tgt.attrib['dev'] = _xml_vvm_nics[0]['tap']
             nic_num += 1
+
+    # trucate VNC password to 8 characters long
+    for node in vmxml.getiterator():
+        if node.attrib.get('type', '') == 'vnc':
+            node.attrib['passwd'] = node.attrib.get('passwd', '')[8:]
+
     xmltree = KVMxml.ElementTree(vmxml)
     xmltree.write(f"/tmp/{vm_idn}.xml")
 

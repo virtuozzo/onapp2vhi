@@ -3,6 +3,7 @@
 ### Fixes
 - O2V-226: fix vm network information parsing for onapp cp < 6.4
 - O2V-228: use management network for vinfra command
+- O2V-232: trucate vnc passwords that are too long
 
 ## v1.1.1 (15/12/2023)
 
