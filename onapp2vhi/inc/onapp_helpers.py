@@ -752,6 +752,7 @@ class VmHandler:
                 return vm_install_bootloader_offline, vm_cold_migrate
 
 
+# Todo: Move this class to separate module
 class GenerateXmlConfig:
     RECOVERY_TEMPLATE = 'ls /onapp/tools/recovery/recovery-centos-7.*.{file} | tail -1'
 
@@ -777,7 +778,7 @@ class GenerateXmlConfig:
         :return:
         """
         cmd_1 = (f"virsh dumpxml {self._vm_idn} 2>/dev/null > /tmp/{self._vm_idn}.xml;"
-                 f" cat /tmp/{self._vm_idn}.xml' 2>/dev/null")
+                 f" cat /tmp/{self._vm_idn}.xml 2>/dev/null")
         exit_status, vm_xml_cfg = self.hv_ssh.execute(command=cmd_1)
         vm_xml = KVMxml.fromstring(vm_xml_cfg)
         for device in vm_xml.findall("devices"):
