@@ -2300,7 +2300,6 @@ class TestGenerateXmlConfig(unittest.TestCase):
 
         self.gxc = GenerateXmlConfig(mock_cfg, mock_config_path, mock_vm_idn, mock_hv_ip)
 
-
     @patch('onapp2vhi.inc.onapp_helpers.KVMxml')
     def test_shutdown_vm_ok(self, mock_element_tree_ctor):
         self.mock_ssh.execute.side_effect = [
@@ -2311,7 +2310,7 @@ class TestGenerateXmlConfig(unittest.TestCase):
 
         self.gxc.shut_down_vm()
         self.mock_ssh.execute.assert_has_calls([
-            call(command='virsh dumpxml abcd123 2>/dev/null > /tmp/abcd123.xml;'\
+            call(command='virsh dumpxml abcd123 2>/dev/null > /tmp/abcd123.xml;'
                          ' cat /tmp/abcd123.xml 2>/dev/null'),
             call(command='virsh shutdown abcd123'),
         ])
