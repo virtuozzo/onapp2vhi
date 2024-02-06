@@ -71,12 +71,12 @@ class SSH:
         self.jumpbox_transport = None
         self.jump_host_external = kwargs.get('jump_host_external')
         if self.jump_host_external is not None and not type(self.jump_host_external) == str:
-            raise TypeError('jump_host_external requires string, ' \
+            raise TypeError('jump_host_external requires string, '
                             f'{type(self.jump_host_external)} given')
         if self.jump_host_external:
             self.jump_host_internal = kwargs.get('jump_host_internal')
             if not type(self.jump_host_internal) == str:
-                raise TypeError('jump_host_internal requires string, ' \
+                raise TypeError('jump_host_internal requires string, '
                                 f'{type(self.jump_host_internal)} given')
             self.jump_host_port = kwargs.get('jump_host_port', 22)
             if not type(self.jump_host_port) == int:
