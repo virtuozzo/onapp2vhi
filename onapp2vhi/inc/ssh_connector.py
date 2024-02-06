@@ -70,11 +70,17 @@ class SSH:
         self.jumpbox = None
         self.jumpbox_transport = None
         self.jump_host_external = kwargs.get('jump_host_external')
+        if self.jump_host_external is not None and not type(self.jump_host_external) == str:
+            raise TypeError('jump_host_external requires string, ' \
+                            f'{type(self.jump_host_external)} given')
         if self.jump_host_external:
             self.jump_host_internal = kwargs.get('jump_host_internal')
+            if not type(self.jump_host_internal) == str:
+                raise TypeError('jump_host_internal requires string, ' \
+                                f'{type(self.jump_host_internal)} given')
             self.jump_host_port = kwargs.get('jump_host_port', 22)
-            if not type(self.jump_host_port):
-                raise TypeError(f'jump_host_port requires an integer, {self.jump_host_port} given')
+            if not type(self.jump_host_port) == int:
+                raise TypeError(f'jump_host_port requires an integer, {type(self.jump_host_port)} given')
 
             self.jumpbox = paramiko.SSHClient()
             self.jumpbox.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -83,16 +89,18 @@ class SSH:
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
         self.host = kwargs.get("host")
+        if not self.host:
+            raise ValueError(f'host cannot be {self.host}')
         self.port = kwargs.get("port", 22)
         if not type(self.port) is int:
-            raise TypeError(f'port requires an integer, {self.port} is given')
+            raise TypeError(f'port requires an integer, {type(self.port)} given')
         self.username = kwargs.get("username", "root")
         self.connect_timeout = kwargs.get("connect_timeout", CONNECT_TIMEOUT)
         if not type(self.connect_timeout) is int:
-            raise TypeError(f'connect_timeout requires an integer, {self.connect_timeout} given')
+            raise TypeError(f'connect_timeout requires an integer, {type(self.connect_timeout)} given')
         self.channel_timeout = kwargs.get("channel_timeout", CHANNEL_TIMEOUT)
         if not type(self.channel_timeout) is int:
-            raise TypeError(f'channel_timeout requires an integer, {self.channel_timeout} given')
+            raise TypeError(f'channel_timeout requires an integer, {type(self.channel_timeout)} given')
         self.pkey = paramiko.RSAKey.from_private_key_file(kwargs.get("ssh_key"))
 
     def _port_is_open(self, timeout=10):
