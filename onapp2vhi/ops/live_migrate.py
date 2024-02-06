@@ -427,8 +427,8 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
     # -- STEP 14 --
     logs.info(f"{_spaces}{live_migration}STEP #14 -- VHI: Start original pre-created VHI VM on VHI hypervisor --",
               header=True)
-    exit_status, output = _vhi_hv_ssh.execute(f"{vinfra_access} service compute server start {_vhi_vm_id}"
-                                              f" -f json | jq -c -r \"[ .id , .power_state ]\" 2>/dev/null")
+    exit_status, output = _vhi_ssh.execute(f"{vinfra_access} service compute server start {_vhi_vm_id}"
+                                           f" -f json | jq -c -r \"[ .id , .power_state ]\" 2>/dev/null")
     if not exit_status_code_handler(exit_code=exit_status,
                                     message=f'[live_migrate.py | STEP 13] {vinfra_access}'
                                             f' service compute server start {_vhi_vm_id} on VHI node failed.'):
