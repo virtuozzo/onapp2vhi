@@ -102,9 +102,11 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig,
     vinfra_access = f"{cfg.ADMIN_AUTH} --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
     if cfg.vhi_conf['vinfra_domain'] != 'Default':
         vinfra_access = f"{cfg.DOMAIN_AUTH}  --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
-    _vhi_ssh = SSH(**{'host': cfg.vhi_conf['cp_ip'], 'port': cfg.vhi_conf['cloud_ssh_port'], 'ssh_key': cfg.ssh_key})
+    _vhi_ssh = SSH(**{'host': cfg.vhi_conf['cp_ip'],
+                      'port': int(cfg.vhi_conf['cloud_ssh_port']),
+                      'ssh_key': cfg.ssh_key})
 
-    vinfra_command = VinfraCommand(cfg, vinfra_access=cfg.ADMIN_AUTH, cp_ip=True)
+    vinfra_command = VinfraCommand(cfg, vinfra_access=cfg.ADMIN_AUTH)
     try:
         output = vinfra_command.execute("service compute server list --long -f json")
     except VinfraError as e:
@@ -213,7 +215,7 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig,
         if not _vhi_hv_ip:
             return False
 
-    vinfra_command = VinfraCommand(cfg, vinfra_access=vinfra_access, host=_vhi_hv_ip)
+    vinfra_command = VinfraCommand(cfg, vinfra_access=vinfra_access)
     try:
         output = vinfra_command.execute("service compute server volume list"
                                         f" --server {_vhi_vm_id} -f json")
@@ -225,7 +227,11 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig,
 
     vhivm_disks = json.loads(output)
     _vhi_vm_disks = {str(x['device'].split('/')[2]): str(x['id']) for x in vhivm_disks}
-    _vhi_hv_ssh = SSH(**{'host': _vhi_hv_ip, 'ssh_key': cfg.ssh_key})
+    _vhi_hv_ssh = SSH(**{'host': _vhi_hv_ip,
+                         'jump_host_external': cfg.vhi_conf['cp_ip'],
+                         'jump_host_internal': cfg.vhi_conf['cp_ip_internal'],
+                         'jump_host_port': int(cfg.vhi_conf['cloud_ssh_port']),
+                         'ssh_key': cfg.ssh_key})
     for disk_lb, disk_id in _vhi_vm_disks.items():
         exit_status, output = _vhi_hv_ssh.execute(
             f"find /mnt/vstorage/vols/datastores/cinder/ -type f -name \"*volume-{disk_id}\" 2>/dev/null"

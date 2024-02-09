@@ -24,6 +24,7 @@ login = admin
 admin_ui_pwd = ui_admin_password
 hv_ip = 10.63.0.64
 cp_ip = 10.63.0.63
+cp_ip_internal = 192.168.1.11
 network = public2
 cloud_ssh_port = 2222
 hv_ssh_port = 22

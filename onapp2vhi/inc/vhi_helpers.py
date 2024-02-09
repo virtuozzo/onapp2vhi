@@ -52,7 +52,7 @@ class Vhi:
         self._storage_id = ""
         self._storage_name = ""
         self._vhi_ssh = SSH(**{'host': self.cfg.vhi_conf['cp_ip'],
-                               'port': self.cfg.vhi_conf['cloud_ssh_port'],
+                               'port': int(self.cfg.vhi_conf['cloud_ssh_port']),
                                'ssh_key': self.cfg.ssh_key})
 
     @staticmethod
