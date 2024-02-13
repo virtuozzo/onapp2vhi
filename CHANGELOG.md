@@ -1,4 +1,4 @@
-## Unreleased (dd/mm/yyyy)
+## v1.1.2 (13/02/2024)
 
 ### Fixes
 - O2V-226: fix vm network information parsing for onapp cp < 6.4
