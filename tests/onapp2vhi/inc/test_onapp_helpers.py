@@ -19,6 +19,7 @@ from onapp2vhi.inc.onapp_helpers import (
     create_new_vhi_vm,
     prepare_vhi_migration_data,
     verify_vm_user,
+    GenerateXmlConfig,
 )
 from onapp2vhi.inc.vinfra_wrapper import (
     VinfraServer,
@@ -860,6 +861,10 @@ class GetVmSourcePropertiesTestCase(OnAppHelpersTestCase):
                     'hypervisor': {
                         'ip_address': '1.1.2.2',
                     }
+                }
+            elif param == 'version':
+                return {
+                    'version': '6.4.1rc'
                 }
 
             raise RuntimeError(f'unhandled onapprequsets.get({param})')
@@ -2276,3 +2281,36 @@ class TestVerifyVmUser(OnAppHelpersTestCase):
         ]
 
         self.assertFalse(verify_vm_user(self.mock_cfg, 777, "xxx,yyy"))
+
+
+class TestGenerateXmlConfig(unittest.TestCase):
+
+    @patch('onapp2vhi.inc.onapp_helpers.SSH')
+    def setUp(self, mock_ssh_ctor):
+        super().setUp()
+
+        self.mock_ssh = Mock(spec=SSH, name='mock_ssh')
+
+        mock_cfg = Mock(spec=OnApp2VHIConfig, name='mock_onapp_cfg')
+        mock_config_path = '/tmp/dummy.xml'
+        mock_vm_idn = 'abcd123'
+        mock_hv_ip = '127.0.0.4'
+
+        mock_ssh_ctor.return_value = self.mock_ssh
+
+        self.gxc = GenerateXmlConfig(mock_cfg, mock_config_path, mock_vm_idn, mock_hv_ip)
+
+    @patch('onapp2vhi.inc.onapp_helpers.KVMxml')
+    def test_shutdown_vm_ok(self, mock_element_tree_ctor):
+        self.mock_ssh.execute.side_effect = [
+            (0, '<xml>virsh dump result</xml>'),
+            (0, '<xml>virsh shutdown result</xml>')
+        ]
+        mock_element_tree_ctor.return_value = Mock(name='mock_xml')
+
+        self.gxc.shut_down_vm()
+        self.mock_ssh.execute.assert_has_calls([
+            call(command='virsh dumpxml abcd123 2>/dev/null > /tmp/abcd123.xml;'
+                         ' cat /tmp/abcd123.xml 2>/dev/null'),
+            call(command='virsh shutdown abcd123'),
+        ])

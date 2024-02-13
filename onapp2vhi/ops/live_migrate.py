@@ -140,7 +140,7 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
     onappvm_pri_ip = _onapp_nics[0]['ips'][0]
     onappvm_pri_mac = _onapp_nics[0]['mac']
 
-    vinfra_command = VinfraCommand(cfg, vinfra_access=cfg.ADMIN_AUTH, cp_ip=True)
+    vinfra_command = VinfraCommand(cfg, vinfra_access=cfg.ADMIN_AUTH)
     try:
         output = vinfra_command.execute("service compute server list --long -f json")
     except VinfraError as e:
@@ -189,7 +189,7 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
 
     logs.debug(f'NETWORK PARAMS: {_network}', separator=True)
     _vhi_ssh = SSH(**{'host': cfg.vhi_conf['cp_ip'],
-                      'port': cfg.vhi_conf['cloud_ssh_port'],
+                      'port': int(cfg.vhi_conf['cloud_ssh_port']),
                       'ssh_key': cfg.ssh_key})
     if not vm_created:
         _vhi_vm_id = create_new_vhi_vm(cfg,
@@ -254,7 +254,7 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
         if not _vhi_hv_ip:
             return False
 
-    vinfra_command = VinfraCommand(cfg, vinfra_access=vinfra_access, host=_vhi_hv_ip)
+    vinfra_command = VinfraCommand(cfg, vinfra_access=vinfra_access)
     try:
         output = vinfra_command.execute("service compute server volume list"
                                         f" --server {_vhi_vm_id} -f json")
@@ -267,7 +267,11 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
     vhivm_disks = json.loads(output)
     _vhi_vm_disks = {str(x['device'].split('/')[2]): str(x['id']) for x in vhivm_disks}
 
-    _vhi_hv_ssh = SSH(**{'host': _vhi_hv_ip, 'ssh_key': cfg.ssh_key})
+    _vhi_hv_ssh = SSH(**{'host': _vhi_hv_ip,
+                         'jump_host_external': cfg.vhi_conf['cp_ip'],
+                         'jump_host_internal': cfg.vhi_conf['cp_ip_internal'],
+                         'jump_host_port': int(cfg.vhi_conf['cloud_ssh_port']),
+                         'ssh_key': cfg.ssh_key})
     for disk_lb, disk_id in _vhi_vm_disks.items():
         exit_status, output = _vhi_hv_ssh.execute(
             f"find /mnt/vstorage/vols/datastores/cinder/ -type f -name \"*volume-{disk_id}\" 2>/dev/null"
@@ -343,6 +347,12 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
                 for tgt in nic.findall('target'):
                     tgt.attrib['dev'] = _xml_vvm_nics[0]['tap']
             nic_num += 1
+
+    # trucate VNC password to 8 characters long
+    for node in vmxml.getiterator():
+        if node.attrib.get('type', '') == 'vnc':
+            node.attrib['passwd'] = node.attrib.get('passwd', '')[8:]
+
     xmltree = KVMxml.ElementTree(vmxml)
     xmltree.write(f"/tmp/{vm_idn}.xml")
 
@@ -417,8 +427,8 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
     # -- STEP 14 --
     logs.info(f"{_spaces}{live_migration}STEP #14 -- VHI: Start original pre-created VHI VM on VHI hypervisor --",
               header=True)
-    exit_status, output = _vhi_hv_ssh.execute(f"{vinfra_access} service compute server start {_vhi_vm_id}"
-                                              f" -f json | jq -c -r \"[ .id , .power_state ]\" 2>/dev/null")
+    exit_status, output = _vhi_ssh.execute(f"{vinfra_access} service compute server start {_vhi_vm_id}"
+                                           f" -f json | jq -c -r \"[ .id , .power_state ]\" 2>/dev/null")
     if not exit_status_code_handler(exit_code=exit_status,
                                     message=f'[live_migrate.py | STEP 13] {vinfra_access}'
                                             f' service compute server start {_vhi_vm_id} on VHI node failed.'):

@@ -60,21 +60,11 @@ class VinfraCommand:
     def __init__(self,
                  cfg: OnApp2VHIConfig,
                  vinfra_access: str,
-                 host: str = '',
-                 port: int = 22,
                  connect_timeout: int = CONNECT_TIMEOUT,
-                 channel_timeout: int = CHANNEL_TIMEOUT,
-                 cp_ip: bool = False):
-        self.cp_ip = cp_ip
-        if host:
-            _host = host
-        else:
-            _host = cfg.vhi_conf['hv_ip']
-            if self.cp_ip:
-                _host = cfg.vhi_conf['cp_ip']
+                 channel_timeout: int = CHANNEL_TIMEOUT):
 
-        self.ssh = SSH(**{"host": _host,
-                          "port": port,
+        self.ssh = SSH(**{"host": cfg.vhi_conf['cp_ip'],
+                          "port": int(cfg.vhi_conf['cloud_ssh_port']),
                           "connect_timeout": connect_timeout,
                           "channel_timeout": channel_timeout,
                           "ssh_key": cfg.ssh_key})
@@ -434,8 +424,8 @@ class VinfraFlavor(VinfraServiceCompute):
 
 class VinfraUser(VinfraBase):
 
-    def __init__(self, cfg: OnApp2VHIConfig, cp_ip: bool = True):
-        super().__init__(cfg, cp_ip=cp_ip)
+    def __init__(self, cfg: OnApp2VHIConfig):
+        super().__init__(cfg)
         self.vinfra_root += ' domain user'
 
     def user_list(self, domain: str):

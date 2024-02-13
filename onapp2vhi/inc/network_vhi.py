@@ -10,7 +10,7 @@ from onapp2vhi.utilities.regex import JSON_REGEX
 class Network:
     def __init__(self, cfg: OnApp2VHIConfig, **kwargs):
         self._ssh = SSH(host=cfg.vhi_conf['cp_ip'],
-                        port=cfg.vhi_conf['cloud_ssh_port'],
+                        port=int(cfg.vhi_conf['cloud_ssh_port']),
                         ssh_key=cfg.ssh_key)
         self.vinfra_project = kwargs.get('vinfra_project', '')
         self._vinfra_options = f'{cfg.DOMAIN_AUTH} --vinfra-domain="{cfg.vhi_conf["vinfra_domain"]}"' \

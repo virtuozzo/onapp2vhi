@@ -52,7 +52,7 @@ class Vhi:
         self._storage_id = ""
         self._storage_name = ""
         self._vhi_ssh = SSH(**{'host': self.cfg.vhi_conf['cp_ip'],
-                               'port': self.cfg.vhi_conf['cloud_ssh_port'],
+                               'port': int(self.cfg.vhi_conf['cloud_ssh_port']),
                                'ssh_key': self.cfg.ssh_key})
 
     @staticmethod
@@ -259,7 +259,7 @@ class Vhi:
             - vinfra domain user set test123 --assign-domain MultiDomain compute --domain=MultiDomain
         :return:
         """
-        v_user = VinfraUser(self.cfg, cp_ip=True)
+        v_user = VinfraUser(self.cfg)
         _pwd = generate_random_password()
         _domain_service_user = {"email": f"{self.vinfra_domain}@user.com",
                                 "name": f"dom_migration_user_{self.vinfra_domain.lower()}",
@@ -309,7 +309,7 @@ class Vhi:
         `vinfra domain user set migration_user@onapp.test.com --assign-domain Default compute --domain=Default`
         :return:
         """
-        v_user = VinfraUser(self.cfg, cp_ip=True)
+        v_user = VinfraUser(self.cfg)
         _pwd = generate_random_password()
         _service_user_payload = {"email": "migration_helper@user.com",
                                  "system-permissions": 'compute',

@@ -1,3 +1,19 @@
+## v1.1.2 (13/02/2024)
+
+### Fixes
+- O2V-226: fix vm network information parsing for onapp cp < 6.4
+- O2V-228: use management network for vinfra command, implement jump host functionality to
+           migration network
+    - requires additional config: cp_ip_internal = xx.xx.xx.xx to be assign to vhicontroller
+      node storage network ip
+- O2V-230: fix incorect bash syntax on vm shut down
+- O2V-232: trucate vnc passwords that are too long
+
+## v1.1.1 (15/12/2023)
+
+### Fixes
+- O2V-220: fix vm network information parsing for onapp cp < 6.3
+
 ## v1.1.0 (15/11/2023)
 
 ### Feature

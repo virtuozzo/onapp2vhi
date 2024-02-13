@@ -711,6 +711,63 @@ def step_impl(context, name):
             pass
 
 use_step_matcher('parse')
+@when('I migrate the virtual machines with following details')
+def step_impl(context):
+    
+    user = context.cp.search("users", args=vars(vars(context.cp)["auth"])["username"])
+    
+    if user:
+        user_id = user[0]["user"]["id"]
+    else:
+        assert CHECK_FAILED, "error: no user found"
+    
+    vm_ids = ""
+    for identifier in context.entity_to_delete["onapp_vm"]:
+        vm_ids = identifier + "," + vm_ids
+    
+    vm_ids = vm_ids[:-1]
+
+    config = helper.get_config()
+
+    data = {}
+    details = ""
+    headings = helper.rephrase_key(context.table.headings)
+    for heading in headings:
+        for row in context.table.rows:
+            row.headings = headings
+
+            if helper.get_actual_name(heading):
+                data[heading] = helper.get_fixture(heading)[row[heading]]["name"]
+            elif heading == "username":
+                user_id = context.cp.search("users", args=row[heading])[0]["user"]["id"]
+            else:
+                data[heading] = row[heading]
+
+    basic_command = "migrate --vm {vm_ids} --user {user_id} ".format(vm_ids=vm_ids, user_id=user_id)
+
+    for key, value in data.items():
+        details += "--" + key + " " + value + " "
+
+    if "hotplug true" in details.lower():
+        details = details.lower().replace("hotplug true", "hotplug")
+
+    if hasattr(context, "log_path"):
+        command = context.log_path + basic_command + details
+    else:
+        command = basic_command + details
+    
+    print(command)
+
+    if "negative" not in context.tags:
+        _ = helper.open_onapp_ssh_connection(config["onapp"], command)
+    
+    else:
+        try:
+            _ = helper.open_onapp_ssh_connection(config["onapp"], command)
+        except Exception:
+            pass
+
+use_step_matcher('parse')
 @when('I migrate the virtual machine ({name})')
 def step_impl(context, name):
 
@@ -735,6 +792,33 @@ def step_impl(context, name):
         command = context.log_path + "migrate --vm {vm_id} --user {user_id}".format(vm_id=vm_identifier, user_id=user_id)
     else:
         command = "migrate --vm {vm_id} --user {user_id}".format(vm_id=vm_identifier, user_id=user_id)
+    
+    print(command)
+    _ = helper.open_onapp_ssh_connection(config["onapp"], command)
+
+use_step_matcher('parse')
+@when('I migrate the virtual machines')
+def step_impl(context):
+
+    user = context.cp.search("users", args=vars(vars(context.cp)["auth"])["username"])
+    
+    if user:
+        user_id = user[0]["user"]["id"]
+    else:
+        assert CHECK_FAILED, "error: no user found"
+
+    vm_ids = ""
+    for identifier in context.entity_to_delete["onapp_vm"]:
+        vm_ids = identifier + "," + vm_ids
+    
+    vm_ids = vm_ids[:-1]
+    
+    config = helper.get_config()
+    
+    if hasattr(context, "log_path"):
+        command = context.log_path + "migrate --vm {vm_ids} --user {user_id}".format(vm_ids=vm_ids, user_id=user_id)
+    else:
+        command = "migrate --vm {vm_ids} --user {user_id}".format(vm_ids=vm_ids, user_id=user_id)
     
     print(command)
     _ = helper.open_onapp_ssh_connection(config["onapp"], command)
@@ -856,3 +940,57 @@ def step_impl(context, name, size):
                                                     .format(id=placement_id, size=size, project_id=project["id"]))
             
             break
+
+use_step_matcher('parse')
+@when('I remove the ip address from the virtual machine ({name})')
+def step_impl(context, name):
+
+    fixture = helper.get_fixture("virtual_machine")
+    vm = context.cp.search("virtual_machines", args=fixture[name]["virtual_machine"]["label"])
+    
+    if vm:
+        vm_id = vm[0]["virtual_machine"]["id"]
+    else:
+        assert CHECK_FAILED, "error: no machine found"
+
+    arr_get_ip_address = context.cp.get_all("virtual_machines/%s" % vm_id, action="ip_addresses")
+
+    for ip in arr_get_ip_address:
+
+        response = context.cp.delete("virtual_machines/%s/ip_addresses" % vm_id, entity_id=ip["ip_address_join"]["id"])
+        
+        if response.status_code != 204:
+            assert CHECK_FAILED, "error: unable to delete the IP, actual status code returned is %s" % str(response.status_code)
+
+use_step_matcher('parse')
+@when('I rebuild the network of the virtual machine ({name}) with following details')
+def step_impl(context, name):
+
+    fixture = helper.get_fixture("virtual_machine")
+    vm = context.cp.search("virtual_machines", args=fixture[name]["virtual_machine"]["label"])
+    
+    if vm:
+        vm_id = vm[0]["virtual_machine"]["id"]
+    else:
+        assert CHECK_FAILED, "error: no machine found"
+
+    data = {}
+    headings = helper.rephrase_key(context.table.headings)
+    for heading in headings:
+        for row in context.table.rows:
+            row.headings = headings
+            data[heading] = row[heading]
+
+    query_string = ""
+    for key in data:
+        query_string += key + "=" + data[key] + "&"
+
+    query_string = query_string.replace("true", "1").replace("false", "0")
+    query_string = query_string[:-1]
+
+    response = context.cp.post_action("virtual_machines", vm_id, "rebuild_network", query_string=query_string)
+    
+    if response.status_code != 201:
+        assert CHECK_FAILED, "error: unable to rebuild network"
+
+    sleep(120)
