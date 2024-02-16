@@ -1,3 +1,8 @@
+## unreleased (dd/mm/yyyy)
+
+### Fixes
+- O2V-222: fix windows live migrate fails to start migrated vm
+
 ## v1.1.2 (13/02/2024)
 
 ### Fixes
