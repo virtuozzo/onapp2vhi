@@ -408,9 +408,9 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
     # -- STEP 12 --
     logs.info(f"{_spaces}{live_migration}STEP #12 -- VHI: Stop just migrated OnApp VM on VHI hypervisor --",
               header=True)
-    exit_status, output = _vhi_hv_ssh.execute(f"virsh shutdown {vm_idn} 2>/dev/null")
+    exit_status, output = _vhi_hv_ssh.execute(f"virsh destroy {vm_idn} 2>/dev/null")
     if not exit_status_code_handler(exit_code=exit_status,
-                                    message='[live_migrate.py | STEP 12] VM "virsh shutdown" on VHI node failed.'):
+                                    message='[live_migrate.py | STEP 12] VM "virsh destroy" on VHI node failed.'):
         return False
 
     # -- STEP 13 --
