@@ -53,6 +53,8 @@ class TestLiveMigrate(TestCase):
     def setUp(self):
         self.mock_cfg = OnApp2VHIConfig.load_config("test.ini")
 
+    @patch("os.unlink")
+    @patch("onapp2vhi.ops.live_migrate.KVMxml")
     @patch("onapp2vhi.ops.live_migrate.ssh_run")
     @patch("onapp2vhi.ops.live_migrate.VinfraCommand")
     @patch("onapp2vhi.ops.live_migrate.SSH")
@@ -83,7 +85,9 @@ class TestLiveMigrate(TestCase):
                         mock_suspend_vm,
                         mock_ssh,
                         mock_vinfra_cmd,
-                        mock_ssh_run):
+                        mock_ssh_run,
+                        mock_kvmxml,
+                        mock_unlink):
 
         mock_vdom = "behave"
         mock_vproj = "Default_Project"
@@ -104,11 +108,11 @@ class TestLiveMigrate(TestCase):
             # check vm running
             (0, ''),
             # dump xml
-            (0, '<xml></xml>'),
+            (0, '/tmp/onapp-sodfaypsdofiy.xml'),
             # find volume id in cinder
             (0, 'asdfoiurapfd'),
             # dump xml again
-            (0, '<xml></xml>'),
+            (0, '/tmp/vhi-sdfaposifsdi.xml'),
             # live migrate run
             (0, ''),
             # verify vm create
@@ -129,7 +133,9 @@ class TestLiveMigrate(TestCase):
             }]),
         ]
         mock_ssh_run.side_effect = [
-            (0, '')
+            (0, ''),    # copy onapp vm xml
+            (0, ''),    # copy vhi vm xml
+            (0, '')     # upload xml for migration
         ]
 
         result = vm_live_migrate(self.mock_cfg,
@@ -140,6 +146,8 @@ class TestLiveMigrate(TestCase):
                                  mock_vhi)
         self.assertTrue(result)
 
+    @patch("os.unlink")
+    @patch("onapp2vhi.ops.live_migrate.KVMxml")
     @patch("onapp2vhi.ops.live_migrate.ssh_run")
     @patch("onapp2vhi.ops.live_migrate.VinfraCommand")
     @patch("onapp2vhi.ops.live_migrate.SSH")
@@ -170,7 +178,9 @@ class TestLiveMigrate(TestCase):
                                                   mock_suspend_vm,
                                                   mock_ssh,
                                                   mock_vinfra_cmd,
-                                                  mock_ssh_run):
+                                                  mock_ssh_run,
+                                                  mock_kvmxml,
+                                                  mock_unlink):
 
         mock_vdom = "behave"
         mock_vproj = "Default_Project"
@@ -191,11 +201,11 @@ class TestLiveMigrate(TestCase):
             # check vm running
             (0, ''),
             # dump xml
-            (0, '<xml></xml>'),
+            (0, '/tmp/onapp-sodfaypsdofiy.xml'),
             # find volume id in cinder
             (0, 'asdfoiurapfd'),
             # dump xml again
-            (0, '<xml></xml>'),
+            (0, '/tmp/vhi-sdfaposifsdi.xml'),
             # live migrate run
             (0, ''),
             # verify vm create
@@ -220,7 +230,9 @@ class TestLiveMigrate(TestCase):
             }]),
         ]
         mock_ssh_run.side_effect = [
-            (0, '')
+            (0, ''),    # copy onapp vm xml
+            (0, ''),    # copy vhi vm xml
+            (0, '')     # upload xml for migration
         ]
 
         result = vm_live_migrate(self.mock_cfg,

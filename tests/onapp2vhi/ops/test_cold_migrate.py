@@ -95,7 +95,10 @@ class TestVmColdMigration(unittest.TestCase):
         result = vm_cold_migrate(self.mock_cfg, mock_vdom, mock_vproj, mock_idn, mock_properties, mock_vhi)
         self.assertFalse(result)
 
+    @patch("os.unlink")
+    @patch("onapp2vhi.ops.cold_migrate.KVMxml")
     @patch("onapp2vhi.ops.cold_migrate.VinfraCommand")
+    @patch("onapp2vhi.ops.cold_migrate.ssh_run")
     @patch("onapp2vhi.ops.cold_migrate.SSH")
     @patch("onapp2vhi.ops.cold_migrate.suspend_vm")
     @patch("onapp2vhi.ops.cold_migrate.get_vhi_hv_ip")
@@ -123,7 +126,10 @@ class TestVmColdMigration(unittest.TestCase):
                                                             mock_get_vhi_hv_ip,
                                                             mock_suspend_vm,
                                                             mock_ssh,
-                                                            mock_vinfra_cmd):
+                                                            mock_ssh_run,
+                                                            mock_vinfra_cmd,
+                                                            mock_kvmxml,
+                                                            mock_unlink):
 
         mock_vdom = "behave"
         mock_vproj = "Default_Project"
@@ -146,7 +152,10 @@ class TestVmColdMigration(unittest.TestCase):
             # find cinder volume
             (0, 'abbsseedf'),
             # dumpxml
-            (0, """<xml></xml>"""),
+            (0, "/tmp/abcdef.xml"),
+        ]
+        mock_ssh_run.side_effect = [
+            (0, ''),
         ]
         mock_vinfra_cmd.return_value.execute.side_effect = [
             # server listing
@@ -184,7 +193,10 @@ class TestVmColdMigration(unittest.TestCase):
                                  mock_vhi)
         self.assertTrue(result)
 
+    @patch("os.unlink")
+    @patch("onapp2vhi.ops.cold_migrate.KVMxml")
     @patch("onapp2vhi.ops.cold_migrate.VinfraCommand")
+    @patch("onapp2vhi.ops.cold_migrate.ssh_run")
     @patch("onapp2vhi.ops.cold_migrate.SSH")
     @patch("onapp2vhi.ops.cold_migrate.suspend_vm")
     @patch("onapp2vhi.ops.cold_migrate.get_vhi_hv_ip")
@@ -212,7 +224,10 @@ class TestVmColdMigration(unittest.TestCase):
                                   mock_get_vhi_hv_ip,
                                   mock_suspend_vm,
                                   mock_ssh,
-                                  mock_vinfra_cmd):
+                                  mock_ssh_run,
+                                  mock_vinfra_cmd,
+                                  mock_kvmxml,
+                                  mock_unlink):
 
         mock_vdom = "behave"
         mock_vproj = "Default_Project"
@@ -235,7 +250,10 @@ class TestVmColdMigration(unittest.TestCase):
             # find cinder volume
             (0, 'abbsseedf'),
             # dumpxml
-            (0, """<xml></xml>"""),
+            (0, "/tmp/abcdef.xml"),
+        ]
+        mock_ssh_run.side_effect = [
+            (0, ''),
         ]
         mock_vinfra_cmd.return_value.execute.side_effect = [
             # server listing
@@ -263,7 +281,7 @@ class TestVmColdMigration(unittest.TestCase):
             { 'result': 'ok', }
         ]
         mock_create_new_vhi_vm.side_effect = [
-            { 'result': 'ok'},
+            'xfsadradfd',
         ]
         mock_get_iface_from_specific_vs.side_effect = [
             [ { 'id': 'asdfqerss', } ]

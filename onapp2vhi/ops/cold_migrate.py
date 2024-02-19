@@ -1,3 +1,4 @@
+import os
 import json
 import re
 import xml.etree.ElementTree as KVMxml
@@ -22,7 +23,7 @@ from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.network_handler import get_network_configuration
 from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.utils import exit_status_code_handler
-from onapp2vhi.inc.ssh_connector import SSH
+from onapp2vhi.inc.ssh_connector import ssh_run, SSH
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.inc.vinfra_wrapper import VinfraCommand, VinfraError
 
@@ -241,14 +242,18 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig,
 
     # -- STEP 7 --
     logs.info(f"{_spaces}{_cm_msg}STEP #7 -- VHI: get VHI VM XML config parameters --", header=True)
-    exit_status, output = _vhi_hv_ssh.execute(
-        f"virsh dumpxml {_vhi_vm_id} 2>/dev/null > /tmp/{_vhi_vm_id}.xml ; cat /tmp/{_vhi_vm_id}.xml 2>/dev/null"
-    )
-    if not exit_status_code_handler(exit_code=exit_status, message='[cold_migrate.py | STEP 7] VM dumpxml failed.'):
+    exit_status, output = _vhi_hv_ssh.execute(f"virsh dumpxml {_vhi_vm_id} > /tmp/{_vhi_vm_id}.xml")
+    if not exit_status_code_handler(exit_code=exit_status,
+                                    message='[cold_migrate.py | STEP 7] VM dumpxml failed.'):
         return False
 
-    _vm_xml_cfg = output
-    vhixml = KVMxml.fromstring(_vm_xml_cfg)
+    exit_status, output = ssh_run(f"scp -oProxyCommand='ssh -W %h:%p root@{cfg.vhi_conf['cp_ip']}' "
+                                  f"root@{_vhi_hv_ip}:/tmp/{_vhi_vm_id}.xml /tmp/")
+    if not exit_status_code_handler(exit_code=exit_status,
+                                    message='[live_migrate.py | STEP 7] VM xml copy failed.'):
+        return False
+
+    vhixml = KVMxml.parse(f'/tmp/{_vhi_vm_id}.xml')
     _xml_vvm_disks = []
     for device in vhixml.findall("devices"):
         for disk in device.findall("disk"):
@@ -304,6 +309,8 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig,
 
     logs.info(f"The virtual server ``COLD MIGRATION`` has completed successfully:"
               f" {cfg.vhi_conf.url}/compute/servers/instances/{_vhi_vm_id}")
+
+    os.unlink(f'/tmp/{_vhi_vm_id}.xml')
 
     # -- STEP 9 --
     logs.info(f"{_spaces}{_cm_msg}STEP #9 -- OnApp: Suspend VM [{vm_idn} | {_vm_properties['vm_ip_addr']}] --",

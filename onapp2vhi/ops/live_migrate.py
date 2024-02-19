@@ -1,3 +1,4 @@
+import os
 import json
 import re
 import xml.etree.ElementTree as KVMxml
@@ -107,16 +108,20 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
     logs.info(f"{_spaces}{live_migration}STEP #5 -- OnApp: Get VM's XML config from OnApp hypervisor --",
               header=True)
     exit_status, output = _hv_ssh.execute(
-        f"virsh dumpxml {vm_idn} --migratable > /tmp/{vm_idn}.xml && cat /tmp/{vm_idn}.xml"
+        f"virsh dumpxml {vm_idn} --migratable > /tmp/{vm_idn}.xml"
     )
-    _vm_xml_cfg = output
     if not exit_status_code_handler(
             exit_code=exit_status,
-            message=f"[live_migrate.py | STEP 5] Can't find VM running on Hypervisor. {_vm_xml_cfg}. Output\n\t{output}"
+            message=f"[live_migrate.py | STEP 5] Can't find VM running on Hypervisor: {vm_idn}. Output\n\t{output}"
     ):
         return False
 
-    vmxml = KVMxml.fromstring(_vm_xml_cfg)
+    exit_status, output = ssh_run(f"scp root@{_vm_hv_ip}:/tmp/{vm_idn}.xml /tmp/")
+    if not exit_status_code_handler(exit_code=exit_status,
+                                    message='[live_migrate.py | STEP 5] VM xml copy failed.'):
+        return False
+
+    vmxml = KVMxml.parse(f'/tmp/{vm_idn}.xml')
     _xml_ovm_disks = []
     _xml_ovm_macs = []
 
@@ -131,6 +136,8 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
 
     logs.info(f"XML OVM DISKS: {_xml_ovm_disks}")
     logs.info(f"XML OVM MACS: {_xml_ovm_macs}")
+
+    os.unlink(f'/tmp/{vm_idn}.xml')
 
     # -- STEP 6 --
     logs.info(f"{_spaces}{live_migration}STEP #6 -- VHI: Create similar VM on VHI side --", header=True)
@@ -285,15 +292,18 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
 
     # -- STEP 8 --
     logs.info(f"{_spaces}{live_migration}STEP #8 -- VHI: Get VHI VM XML config parameters --", header=True)
-    exit_status, output = _vhi_hv_ssh.execute(
-        f"virsh dumpxml {_vhi_vm_id} 2>/dev/null > /tmp/{_vhi_vm_id}.xml ; cat /tmp/{_vhi_vm_id}.xml 2>/dev/null"
-    )
+    exit_status, output = _vhi_hv_ssh.execute(f"virsh dumpxml {_vhi_vm_id} > /tmp/{_vhi_vm_id}.xml")
     if not exit_status_code_handler(exit_code=exit_status,
                                     message='[live_migrate.py | STEP 8] VM dumpxml failed.'):
         return False
 
-    _vm_xml_cfg = output
-    vhixml = KVMxml.fromstring(_vm_xml_cfg)
+    exit_status, output = ssh_run(f"scp -oProxyCommand='ssh -W %h:%p root@{cfg.vhi_conf['cp_ip']}' "
+                                  f"root@{_vhi_hv_ip}:/tmp/{_vhi_vm_id}.xml /tmp/")
+    if not exit_status_code_handler(exit_code=exit_status,
+                                    message='[live_migrate.py | STEP 8] VM xml copy failed.'):
+        return False
+
+    vhixml = KVMxml.parse(f"/tmp/{_vhi_vm_id}.xml")
     _xml_vvm_disks, _xml_vvm_nics = [], []
     for device in vhixml.findall("devices"):
         for disk in device.findall("disk"):
@@ -353,7 +363,7 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
         if node.attrib.get('type', '') == 'vnc':
             node.attrib['passwd'] = node.attrib.get('passwd', '')[8:]
 
-    xmltree = KVMxml.ElementTree(vmxml)
+    xmltree = KVMxml.ElementTree(vmxml).getroot()
     xmltree.write(f"/tmp/{vm_idn}.xml")
 
     # -- STEP 10 --
@@ -369,6 +379,8 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
             message='[live_migrate.py | STEP 10] VM DUMPXML copy process from VHI to OnApp failed.'
     ):
         return False
+
+    os.unlink(f'/tmp/{vm_idn}.xml')
 
     # -- STEP 11 --
     logs.info(f"{_spaces}{live_migration}STEP #11 -- VHI: Run OnApp2VHI VM migration from OnApp to VHI hypervisor --",
