@@ -1,6 +1,7 @@
 ## unreleased (dd/mm/yyyy)
 
 ### Fixes
+- O2V-237: fix vm xml parsing
 - O2V-222, O2V-236: fix windows live migrate fails to start migrated vm
 
 ## v1.1.2 (13/02/2024)
