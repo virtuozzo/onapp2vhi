@@ -57,6 +57,7 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig,
     logs.info(f"{_spaces}{_cm_msg}STEP #1 -- OnApp: Get source VM properties --", header=True)
     _vm_properties = vm_properties
     _vm_hv_ip = _vm_properties['hv_ip']
+    _vm_data_hv_ip = _vm_properties['hv_data_ip']
     vhi = vhi_obj
 
     if _vm_properties['flavor']:
@@ -289,7 +290,7 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig,
         nbd_port = output.strip()
         exit_status, output = _vhi_hv_ssh.execute(
             "qemu-img convert -p -n -t directsync"
-            f" {sparse_opt} nbd://{_vm_hv_ip}:{nbd_port} -O qcow2 {_xml_vvm_disks[dsk_num]}", real_data=True
+            f" {sparse_opt} nbd://{_vm_data_hv_ip}:{nbd_port} -O qcow2 {_xml_vvm_disks[dsk_num]}", real_data=True
         )
         if not exit_status_code_handler(
                 exit_code=exit_status,

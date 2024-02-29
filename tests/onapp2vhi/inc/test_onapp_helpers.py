@@ -860,6 +860,7 @@ class GetVmSourcePropertiesTestCase(OnAppHelpersTestCase):
                 return {
                     'hypervisor': {
                         'ip_address': '1.1.2.2',
+                        'backup_ip_address': '1.2.2.2',
                     }
                 }
             elif param == 'version':
@@ -877,6 +878,7 @@ class GetVmSourcePropertiesTestCase(OnAppHelpersTestCase):
             'hostname': 'test-host',
             'hot_migrate': True,
             'hv_ip': '1.1.2.2',
+            'hv_data_ip': '1.2.2.2',
             'network_info': { 'eth0': ['2.3.2.4'] },
             'vm_ip_addr': '2.3.2.4',
             'vm_os': 'centos7',
