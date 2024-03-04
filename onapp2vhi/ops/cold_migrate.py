@@ -287,9 +287,52 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig,
             return False
 
         nbd_port = output.strip()
+
+        exit_status, output = _vhi_hv_ssh.execute("ip ro")
+        if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f"[cold_migrate.py | STEP 8] discover vhi hv ip route failed! Output:\n\t{output}"
+        ):
+            return False
+
+        for line in output.split('\n'):
+            if _vhi_hv_ip in line:
+                migration_network_address = line.split(' ')[0]
+                break
+
+        logs.info(f"migration network address: {migration_network_address}")
+
+        if not migration_network_address:
+            exit_status_code_handler(
+                exit_code=1,
+                message="[cold_migrate.py | STEP 8] migration network on vhi not found!"
+            )
+            return False
+
+        exit_status, output = _hv_ssh.execute("ip ro")
+        if not exit_status_code_handler(
+            exit_code=exit_status,
+            message=f"[cold_migrate.py | STEP 8] discover onapp hv ip route failed! Output:\n\t{output}"
+        ):
+            return False
+
+        for line in output.strip().split('\n'):
+            if migration_network_address in line:
+                onapp_migration_interface = line.strip().split()[-1]
+                break
+
+        logs.info(f"onapp migration interface: {onapp_migration_interface}")
+
+        if not onapp_migration_interface:
+            exit_status_code_handler(
+                exit_code=1,
+                message="[cold_migrate.py | STEP 8] migration interface on onapp not found!"
+            )
+            return False
+
         exit_status, output = _vhi_hv_ssh.execute(
             "qemu-img convert -p -n -t directsync"
-            f" {sparse_opt} nbd://{_vm_hv_ip}:{nbd_port} -O qcow2 {_xml_vvm_disks[dsk_num]}", real_data=True
+            f" {sparse_opt} nbd://{onapp_migration_interface}:{nbd_port} -O qcow2 {_xml_vvm_disks[dsk_num]}", real_data=True
         )
         if not exit_status_code_handler(
                 exit_code=exit_status,
