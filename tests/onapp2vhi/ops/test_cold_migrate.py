@@ -82,7 +82,6 @@ class TestVmColdMigration(unittest.TestCase):
         mock_idn = "testidn"
         mock_properties = {
             'hv_ip': '10.116.0.32',
-            'hv_data_ip': '10.118.0.32',
             'vm_os': 'linux',
             'vm_ip_addr': '10.119.0.4',
             'network_info': {860: ['10.119.0.4']},
@@ -137,7 +136,6 @@ class TestVmColdMigration(unittest.TestCase):
         mock_idn = "testidn"
         mock_properties = {
             'hv_ip': '10.116.0.32',
-            'hv_data_ip': '10.118.0.32',
             'vm_os': 'linux',
             'vm_ip_addr': '10.119.0.4',
             'network_info': {860: ['10.119.0.4']},
@@ -236,7 +234,6 @@ class TestVmColdMigration(unittest.TestCase):
         mock_idn = "testidn"
         mock_properties = {
             'hv_ip': '10.116.0.32',
-            'hv_data_ip': '10.118.0.32',
             'vm_os': 'linux',
             'vm_ip_addr': '10.119.0.4',
             'network_info': {860: ['10.119.0.4']},

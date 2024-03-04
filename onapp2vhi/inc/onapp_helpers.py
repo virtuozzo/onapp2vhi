@@ -405,8 +405,7 @@ def get_vm_source_properties(cfg: OnApp2VHIConfig, vm_idn: str) -> Dict:
     _vm_hostname = vm_properties['hostname']
     _vm_domain = vm_properties['domain']
     _hv_props = onapp_requests.get(f'settings/hypervisors/{_vm_hv_id}')
-    _vm_mgmt_hv_ip = _hv_props['hypervisor']['ip_address']
-    _vm_data_hv_ip = _hv_props['hypervisor']['backup_ip_address']
+    _vm_hv_ip = _hv_props['hypervisor']['ip_address']
     _vm_nics = onapp_requests.get(f'virtual_machines/{vm_idn}/ip_addresses')
     if version >= 6.4:
         _vm_ip_addr = [nic['ip_address_join']['ip_address']['address'] for nic in _vm_nics
@@ -416,17 +415,9 @@ def get_vm_source_properties(cfg: OnApp2VHIConfig, vm_idn: str) -> Dict:
         _vm_ip_addr = [nic['ip_address_join']['ip_address']['address'] for nic in _vm_nics
                        if (nic['ip_address_join']['ip_address']
                            and nic['ip_address_join']['ip_address']['address'])][0]
-    logs.info(f"-- Hypervisor ID: {_vm_hv_id} | Hypervisor IP ADDRESS: {_vm_mgmt_hv_ip}, {_vm_data_hv_ip} | VM IP ADDRESS {_vm_ip_addr}")
-    return {
-        'hv_ip': _vm_mgmt_hv_ip,
-        'hv_data_ip': _vm_data_hv_ip,
-        'vm_os': _vm_os,
-        'vm_ip_addr': _vm_ip_addr,
-        'network_info': network_info,
-        'hot_migrate': _hot_migrate,
-        'hostname': _vm_hostname,
-        'domain': _vm_domain
-    }
+    logs.info(f"-- Hypervisor ID: {_vm_hv_id} | Hypervisor IP ADDRESS: {_vm_hv_ip} | VM IP ADDRESS {_vm_ip_addr}")
+    return {'hv_ip': _vm_hv_ip, 'vm_os': _vm_os, 'vm_ip_addr': _vm_ip_addr, 'network_info': network_info,
+            'hot_migrate': _hot_migrate, 'hostname': _vm_hostname, 'domain': _vm_domain}
 
 
 def get_bucket_limits(cfg: OnApp2VHIConfig, bucket_id: str) -> dict:
