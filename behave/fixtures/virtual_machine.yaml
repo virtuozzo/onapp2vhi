@@ -11,6 +11,7 @@ linux-vm-without-startup-static1:
     template_id: Debian 10 x64
     required_virtual_machine_startup: 0
     hypervisor_id: HV1onapp2vhi
+    domain: localdomain
 
 linux-vm-with-startup-static1:
   virtual_machine:
@@ -25,6 +26,7 @@ linux-vm-with-startup-static1:
     template_id: Debian 10 x64
     required_virtual_machine_startup: 1
     hypervisor_id: HV1onapp2vhi
+    domain: localdomain
 
 windows-vm-without-startup-static1:
   virtual_machine:
@@ -40,6 +42,7 @@ windows-vm-without-startup-static1:
     licensing_key: N3TYV-2997C-CJF6W-CQ3HR-84464
     required_virtual_machine_startup: 0
     hypervisor_id: HV1onapp2vhi
+    domain: localdomain
 
 windows-vm-with-startup-static1:
   virtual_machine:
@@ -55,6 +58,7 @@ windows-vm-with-startup-static1:
     licensing_key: N3TYV-2997C-CJF6W-CQ3HR-84464
     required_virtual_machine_startup: 1
     hypervisor_id: HV1onapp2vhi
+    domain: localdomain
 
 linux-vm-without-startup-cloudboot1:
   virtual_machine:
@@ -69,6 +73,7 @@ linux-vm-without-startup-cloudboot1:
     template_id: Debian 11.5 x64
     required_virtual_machine_startup: 0
     hypervisor_id: CloudBootHV1
+    domain: localdomain
 
 linux-vm-with-startup-cloudboot1:
   virtual_machine:
@@ -83,6 +88,7 @@ linux-vm-with-startup-cloudboot1:
     template_id: Debian 11.5 x64
     required_virtual_machine_startup: 1
     hypervisor_id: CloudBootHV1
+    domain: localdomain
 
 windows-vm-without-startup-cloudboot1:
   virtual_machine:
@@ -98,6 +104,7 @@ windows-vm-without-startup-cloudboot1:
     licensing_key: N3TYV-2997C-CJF6W-CQ3HR-84464
     required_virtual_machine_startup: 0
     hypervisor_id: CloudBootHV1
+    domain: localdomain
 
 windows-vm-with-startup-cloudboot1:
   virtual_machine:
@@ -113,6 +120,7 @@ windows-vm-with-startup-cloudboot1:
     licensing_key: N3TYV-2997C-CJF6W-CQ3HR-84464
     required_virtual_machine_startup: 1
     hypervisor_id: CloudBootHV1
+    domain: localdomain
 
 linux-vm-without-startup-static2:
   virtual_machine:
@@ -127,6 +135,7 @@ linux-vm-without-startup-static2:
     template_id: Debian 10 x64
     required_virtual_machine_startup: 0
     hypervisor_id: HV1onapp2vhi
+    domain: localdomain
 
 linux-vm-with-startup-static2:
   virtual_machine:
@@ -141,6 +150,7 @@ linux-vm-with-startup-static2:
     template_id: Debian 10 x64
     required_virtual_machine_startup: 1
     hypervisor_id: HV1onapp2vhi
+    domain: localdomain
 
 windows-vm-without-startup-static2:
   virtual_machine:
@@ -156,6 +166,7 @@ windows-vm-without-startup-static2:
     licensing_key: N3TYV-2997C-CJF6W-CQ3HR-84464
     required_virtual_machine_startup: 0
     hypervisor_id: HV1onapp2vhi
+    domain: localdomain
 
 windows-vm-with-startup-static2:
   virtual_machine:
@@ -171,6 +182,7 @@ windows-vm-with-startup-static2:
     licensing_key: N3TYV-2997C-CJF6W-CQ3HR-84464
     required_virtual_machine_startup: 1
     hypervisor_id: HV1onapp2vhi
+    domain: localdomain
 
 linux-vm-without-startup-cloudboot2:
   virtual_machine:
@@ -185,6 +197,7 @@ linux-vm-without-startup-cloudboot2:
     template_id: Debian 11.5 x64
     required_virtual_machine_startup: 0
     hypervisor_id: CloudBootHV1
+    domain: localdomain
 
 linux-vm-with-startup-cloudboot2:
   virtual_machine:
@@ -199,6 +212,7 @@ linux-vm-with-startup-cloudboot2:
     template_id: Debian 11.5 x64
     required_virtual_machine_startup: 1
     hypervisor_id: CloudBootHV1
+    domain: localdomain
 
 windows-vm-without-startup-cloudboot2:
   virtual_machine:
@@ -214,6 +228,7 @@ windows-vm-without-startup-cloudboot2:
     licensing_key: N3TYV-2997C-CJF6W-CQ3HR-84464
     required_virtual_machine_startup: 0
     hypervisor_id: CloudBootHV1
+    domain: localdomain
 
 windows-vm-with-startup-cloudboot2:
   virtual_machine:
@@ -229,3 +244,4 @@ windows-vm-with-startup-cloudboot2:
     licensing_key: N3TYV-2997C-CJF6W-CQ3HR-84464
     required_virtual_machine_startup: 1
     hypervisor_id: CloudBootHV1
+    domain: localdomain
