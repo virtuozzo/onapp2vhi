@@ -247,7 +247,9 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig,
                                     message='[cold_migrate.py | STEP 7] VM dumpxml failed.'):
         return False
 
-    exit_status, output = ssh_run(f"scp -oProxyCommand='ssh -W %h:%p root@{cfg.vhi_conf['cp_ip']}' "
+    exit_status, output = ssh_run(f"scp {Helper.SCP_OPTS.value} "
+                                  f"-oProxyCommand='ssh {Helper.SSH_OPTS.value} "
+                                  f"-W %h:%p root@{cfg.vhi_conf['cp_ip']}' "
                                   f"root@{_vhi_hv_ip}:/tmp/{_vhi_vm_id}.xml /tmp/")
     if not exit_status_code_handler(exit_code=exit_status,
                                     message='[live_migrate.py | STEP 7] VM xml copy failed.'):
