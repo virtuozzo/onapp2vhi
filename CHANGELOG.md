@@ -4,7 +4,9 @@
 - O2V-237: fix vm xml parsing
 - O2V-222, O2V-236: fix windows live migrate fails to start migrated vm
 - O2V-234, O2V-235: initiate cold migration on data network for network block device
-- 02V-242: fix failed host key verification on xml copy
+- O2V-242: fix failed host key verification on xml copy
+- O2V-241: fix vm appliance network check throws exception
+  - network cidr match, but allocation_pools deleted on VHI side
 
 ## v1.1.2 (13/02/2024)
 
