@@ -4,6 +4,7 @@
 - O2V-237: fix vm xml parsing
 - O2V-222, O2V-236: fix windows live migrate fails to start migrated vm
 - O2V-234, O2V-235: initiate cold migration on data network for network block device
+- 02V-242: fix failed host key verification on xml copy
 
 ## v1.1.2 (13/02/2024)
 
