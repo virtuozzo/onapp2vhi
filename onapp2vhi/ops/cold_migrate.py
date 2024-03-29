@@ -318,6 +318,7 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig,
         ):
             return False
 
+        onapp_migration_interface = None
         for line in output.strip().split('\n'):
             if migration_network_address in line:
                 onapp_migration_interface = line.strip().split()[-1]
