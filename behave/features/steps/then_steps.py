@@ -62,7 +62,7 @@ def step_impl(context, name):
             if not data[0]["virtual_machine"]["built"] or data[0]["virtual_machine"]["state"] == "failed" or data[0]["virtual_machine"]["locked"]:
                 assert CHECK_FAILED, "error: virtual machine is not built successfully"
     
-    # to delete the vm in vhi portal with the vm IP found in onapp cloud
+    # to delete the vm in vhi portal with the existing vm IP found in onapp cloud
     arr_ip = []
 
     for ip in data[0]["virtual_machine"]["ip_addresses"]:
@@ -77,7 +77,7 @@ def step_impl(context, name):
     for vm in vm_list:
         for network in vm["networks"]:
             for ip in network["ips"]:
-                
+
                 if ip in arr_ip:
                     _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute server delete {vm_name}".format(vm_name=vm["name"]))
                     break
@@ -115,28 +115,34 @@ use_step_matcher('parse')
 def step_impl(context, name, state):
 
     hostname = helper.get_fixture("virtual_machine")[name]["virtual_machine"]["hostname"]
+    domain = helper.get_fixture("virtual_machine")[name]["virtual_machine"]["domain"]
+    vhi_vm_name = hostname + "." + domain
+
     ips = []
 
     for ip in context.result[name]["virtual_machine"]["ip_addresses"]:
         ips.append(ip["ip_address"]["address"])
 
     config = helper.get_config()
-    output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server list -f json")
-    vm_list = json.loads(output.stdout)
-    
-    match = False
-    arr_vhi_vm_ip = []
-    for vm in vm_list:
 
-        if hostname in vm["name"] and state.lower() == vm["status"].lower():
+    try:
+        output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server show {vhi_vm_name} -f json".format(vhi_vm_name=vhi_vm_name))
+        vm = json.loads(output.stdout)
+    
+        match = False
+        arr_vhi_vm_ip = []
+        
+        if vm and state.lower() == vm["status"].lower():
             match = True
 
             for network in vm["networks"]:
                 for ip in network["ips"]:
                     arr_vhi_vm_ip.append(ip)
-            
-    if not match:
-        assert CHECK_FAILED, "error: the virtual machine is not found in VHI portal or its state is not %s" % state
+                
+        if not match:
+            assert CHECK_FAILED, "error: the virtual machine is not found in VHI portal or its state is not %s" % state
+    except:
+        assert CHECK_FAILED, "error: virtual machine is not found in VHI portal"
 
     onapp_vm_ip = context.cp.get("virtual_machines", context.result[name]["virtual_machine"]["id"], action="ip_addresses")
 
@@ -152,15 +158,19 @@ use_step_matcher('parse')
 def step_impl(context, name, flavor_name):
     
     hostname = helper.get_fixture("virtual_machine")[name]["virtual_machine"]["hostname"]
+    domain = helper.get_fixture("virtual_machine")[name]["virtual_machine"]["domain"]
+    vhi_vm_name = hostname + "." + domain
+
     config = helper.get_config()
-    raw_vm_list = helper.open_vhi_ssh_connection(config["vhi"], "service compute server list --long -f json")
-    vm_list = json.loads(raw_vm_list.stdout)
-    dict_server_spec = {}
 
-    match = False
-    for vm in vm_list:
+    try:
+        raw_vm = helper.open_vhi_ssh_connection(config["vhi"], "service compute server show {vhi_vm_name} -f json".format(vhi_vm_name=vhi_vm_name))
+        vm = json.loads(raw_vm.stdout)
+        dict_server_spec = {}
 
-        if hostname in vm["name"]:
+        match = False
+
+        if vm:
 
             dict_server_spec["hostname"] = vm["name"]
             dict_server_spec["ram"] = vm["flavor"]["ram"]
@@ -170,56 +180,62 @@ def step_impl(context, name, flavor_name):
             for volume in vm["volumes"]:
                 dict_server_spec["volumes"].append(volume["id"])
 
-    total_disk_size = 0
-    for volume in dict_server_spec["volumes"]:
+        total_disk_size = 0
+        for volume in dict_server_spec["volumes"]:
+            
+            raw_disk_size = helper.open_vhi_ssh_connection(config["vhi"], "service compute volume show %s -c size -f json" % volume)
+            disk_size = json.loads(raw_disk_size.stdout)["size"]
+            total_disk_size += disk_size
+
+        onapp_vms = helper.get_fixture("virtual_machine")
         
-        raw_disk_size = helper.open_vhi_ssh_connection(config["vhi"], "service compute volume show %s -c size -f json" % volume)
-        disk_size = json.loads(raw_disk_size.stdout)["size"]
-        total_disk_size += disk_size
+        # compare vhi vm with onapp fixture
+        for vm in onapp_vms:
+            if onapp_vms[vm]["virtual_machine"]["hostname"] in dict_server_spec["hostname"]:
 
-    onapp_vms = helper.get_fixture("virtual_machine")
+                if  context.result[name]["virtual_machine"]["operating_system"] == "linux":
+                    formula = onapp_vms[vm]["virtual_machine"]["primary_disk_size"] + onapp_vms[vm]["virtual_machine"]["swap_disk_size"]
+                else:
+                    formula = onapp_vms[vm]["virtual_machine"]["primary_disk_size"]
+
+                if formula == total_disk_size:
+
+                    match = True
+                    break
+
+        if not match:
+            assert CHECK_FAILED, "error: disk space aren't tally"
+        
+        match = False
+        raw_flavor = helper.open_vhi_ssh_connection(config["vhi"], "service compute flavor show %s -f json" % flavor_name)
+        flavor = json.loads(raw_flavor.stdout)
+
+        if dict_server_spec["ram"] == flavor["ram"] and dict_server_spec["vcpus"] == flavor["vcpus"]:
+            match = True
+        
+        if not match:
+            assert CHECK_FAILED, "error: flavor used is not matched as per mentioned" 
     
-    # compare vhi vm with onapp fixture
-    for vm in onapp_vms:
-        if onapp_vms[vm]["virtual_machine"]["hostname"] in dict_server_spec["hostname"]:
-
-            if  context.result[name]["virtual_machine"]["operating_system"] == "linux":
-                formula = onapp_vms[vm]["virtual_machine"]["primary_disk_size"] + onapp_vms[vm]["virtual_machine"]["swap_disk_size"]
-            else:
-                formula = onapp_vms[vm]["virtual_machine"]["primary_disk_size"]
-
-            if formula == total_disk_size:
-
-                match = True
-                break
-
-    if not match:
-        assert CHECK_FAILED, "error: disk space aren't tally"
-    
-    raw_flavor = helper.open_vhi_ssh_connection(config["vhi"], "service compute flavor show %s -f json" % flavor_name)
-    flavor = json.loads(raw_flavor.stdout)
-
-    if dict_server_spec["ram"] == flavor["ram"] and dict_server_spec["vcpus"] == flavor["vcpus"]:
-        match = True
-    
-    if not match:
-        assert CHECK_FAILED, "error: flavor used is not matched as per mentioned"           
+    except:
+        assert CHECK_FAILED, "error: virtual machine is not found"              
 
 use_step_matcher('parse')
 @then('the virtual machine ({name}) should have correct CPU, RAM and storage')
 def step_impl(context, name):
 
     hostname = helper.get_fixture("virtual_machine")[name]["virtual_machine"]["hostname"]
+    domain = helper.get_fixture("virtual_machine")[name]["virtual_machine"]["domain"]
+    vhi_vm_name = hostname + "." + domain
+
     config = helper.get_config()
-    raw_vm_list = helper.open_vhi_ssh_connection(config["vhi"], "service compute server list --long -f json")
-    vm_list = json.loads(raw_vm_list.stdout)
-    dict_server_spec = {}
 
-    match = False
-    for vm in vm_list:
+    try:
+        raw_vm = helper.open_vhi_ssh_connection(config["vhi"], "service compute server show {vhi_vm_name} -f json".format(vhi_vm_name=vhi_vm_name))
+        vm = json.loads(raw_vm.stdout)
+        dict_server_spec = {}
 
-        if hostname in vm["name"]:
-
+        match = False
+        if vm:
             dict_server_spec["hostname"] = vm["name"]
             dict_server_spec["ram"] = vm["flavor"]["ram"]
             dict_server_spec["vcpus"] = vm["flavor"]["vcpus"]
@@ -228,53 +244,54 @@ def step_impl(context, name):
             for volume in vm["volumes"]:
                 dict_server_spec["volumes"].append(volume["id"])
 
-    total_disk_size = 0
-    for volume in dict_server_spec["volumes"]:
-        
-        raw_disk_size = helper.open_vhi_ssh_connection(config["vhi"], "service compute volume show %s -c size -f json" % volume)
-        disk_size = json.loads(raw_disk_size.stdout)["size"]
-        total_disk_size += disk_size
+        total_disk_size = 0
+        for volume in dict_server_spec["volumes"]:
+            
+            raw_disk_size = helper.open_vhi_ssh_connection(config["vhi"], "service compute volume show %s -c size -f json" % volume)
+            disk_size = json.loads(raw_disk_size.stdout)["size"]
+            total_disk_size += disk_size
 
-    onapp_vms = helper.get_fixture("virtual_machine")
-    # compare vhi vm with onapp fixture
-    for vm in onapp_vms:
-        if onapp_vms[vm]["virtual_machine"]["hostname"] in dict_server_spec["hostname"]:
+        onapp_vms = helper.get_fixture("virtual_machine")
+        # compare vhi vm with onapp fixture
+        for vm in onapp_vms:
+            if onapp_vms[vm]["virtual_machine"]["hostname"] in dict_server_spec["hostname"]:
 
-            if  context.result[name]["virtual_machine"]["operating_system"] == "linux":
-                formula = onapp_vms[vm]["virtual_machine"]["primary_disk_size"] + onapp_vms[vm]["virtual_machine"]["swap_disk_size"]
-            else:
-                formula = onapp_vms[vm]["virtual_machine"]["primary_disk_size"]
+                if  context.result[name]["virtual_machine"]["operating_system"] == "linux":
+                    formula = onapp_vms[vm]["virtual_machine"]["primary_disk_size"] + onapp_vms[vm]["virtual_machine"]["swap_disk_size"]
+                else:
+                    formula = onapp_vms[vm]["virtual_machine"]["primary_disk_size"]
 
-            if onapp_vms[vm]["virtual_machine"]["memory"] == dict_server_spec["ram"] and \
-                onapp_vms[vm]["virtual_machine"]["cpus"] == dict_server_spec["vcpus"] and \
-                formula == total_disk_size:
+                if onapp_vms[vm]["virtual_machine"]["memory"] == dict_server_spec["ram"] and \
+                    onapp_vms[vm]["virtual_machine"]["cpus"] == dict_server_spec["vcpus"] and \
+                    formula == total_disk_size:
 
-                match = True
-                break
+                    match = True
+                    break
 
-    if not match:
-        assert CHECK_FAILED, "error: some specs aren't tally"
+        if not match:
+            assert CHECK_FAILED, "error: some specs aren't tally"
+    
+    except:
+        assert CHECK_FAILED, "error: virtual machine is not found"
 
 use_step_matcher('parse')
 @then('the virtual machine ({name}) is deleted successfully')
 def step_impl(context, name):
 
+    hostname = helper.get_fixture("virtual_machine")[name]["virtual_machine"]["hostname"]
+    domain = helper.get_fixture("virtual_machine")[name]["virtual_machine"]["domain"]
+    vhi_vm_name = hostname + "." + domain
+
     config = helper.get_config()
-    output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server list -f json")
-    vm_list = json.loads(output.stdout)
 
-    fixture = helper.get_fixture("virtual_machine")[name]
-    hostname = fixture["virtual_machine"]["hostname"]
+    try: 
+        output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server {vhi_vm_name} -f json".format(vhi_vm_name=vhi_vm_name))
+        vm = json.loads(output.stdout)
 
-    match = False
-    for vm in vm_list:
-
-        if hostname in vm["name"]:
-            match = True
-            break
-
-    if match:
-        assert CHECK_FAILED, "error: virtual machine is not deleted"
+        if vm:
+            assert CHECK_FAILED, "error: virtual machine is not deleted"
+    except:
+        assert CHECK_FAILED, "error: virtual machine is not found"
 
 use_step_matcher('parse')
 @then('the log is seen in logging path ({path})')
@@ -310,22 +327,11 @@ use_step_matcher('parse')
 def step_impl(context, name, storage_policy):
 
     hostname = context.result[name]["virtual_machine"]["hostname"]
+    domain = context.result[name]["virtual_machine"]["domain"]
+    vhi_vm_name = hostname + "." + domain
+
     config = helper.get_config()["vhi"]
-    output = helper.open_vhi_ssh_connection(config, "service compute server list -f json")
-    vm_list = json.loads(output.stdout)
-
-    match = False
-    for vm in vm_list:
-
-        if hostname in vm["name"]:
-            hostname = vm["name"]
-            match = True
-            break
-
-    if not match:
-        assert CHECK_FAILED, "error: VM is not found in VHI portal"
-
-    output = helper.open_vhi_ssh_connection(config, "service compute server volume list --server %s -f json" % hostname)
+    output = helper.open_vhi_ssh_connection(config, "service compute server volume list --server %s -f json" % vhi_vm_name)
     arr_volume = json.loads(output.stdout)
     arr_device = []
 
@@ -347,70 +353,74 @@ use_step_matcher('parse')
 def stepm_impl(context, name, placement):
 
     hostname = context.result[name]["virtual_machine"]["hostname"]
-    config = helper.get_config()["vhi"]
+    domain = context.result[name]["virtual_machine"]["domain"]
+    vhi_vm_name = hostname + "." + domain
 
-    placement_output = helper.open_vhi_ssh_connection(config, "service compute placement list -f json")
-    placement_list = json.loads(placement_output.stdout)
+    config = helper.get_config()["vhi"]
     placement_name = helper.get_fixture("placement")[placement]["name"]
 
-    match = False
-    for p in placement_list:
-        if placement_name == p["name"]:
-            placement_id = p["id"]
-            match = True
-            break
-    
-    if not match:
+    try:
+        placement_output = helper.open_vhi_ssh_connection(config, "service compute placement show {placement_name} -f json".format(placement_name=placement_name))
+        placement_ = json.loads(placement_output.stdout)
+
+        if placement_:
+            placement_id = placement_["id"]
+
+    except:
         assert CHECK_FAILED, "error: placement is not found"
     
-    vm_output = helper.open_vhi_ssh_connection(config, "service compute server list --long -f json")
-    vm_list = json.loads(vm_output.stdout)
+    try:
+        vm_output = helper.open_vhi_ssh_connection(config, "service compute server show {vhi_vm_name} -f json".format(vhi_vm_name=vhi_vm_name))
+        vm = json.loads(vm_output.stdout)
     
-    match = False
-    for vm in vm_list:
-
-        if hostname in vm["name"]:
+        match = False
+        if vm:
             for p in vm["placements"]:
                 if p == placement_id:
                     match = True
                     break
 
-    if not match:
-        assert CHECK_FAILED, "error: vm is not placed in correct placement"
+        if not match:
+            assert CHECK_FAILED, "error: vm is not placed in correct placement"
+    except:
+        assert CHECK_FAILED, "error: virtual machine is not found"
 
 use_step_matcher('parse')
 @then('I should not see the virtual machine ({name}) in VHI portal')
 def step_impl(context, name):
 
     hostname = context.result[name]["virtual_machine"]["hostname"]
+    domain = context.result[name]["virtual_machine"]["domain"]
+    vhi_vm_name = hostname + "." + domain
+
     config = helper.get_config()
-    output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server list -f json")
-    vm_list = json.loads(output.stdout)
     
-    match = False
-
-    if vm_list: 
-        for vm in vm_list:
-            if hostname not in vm["name"]:
-                match = True
-                break
-
-        if not match:
+    try:
+        output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server show {vhi_vm_name} -f json".format(vhi_vm_name=vhi_vm_name))
+        vm = json.loads(output.stdout)
+    
+        if vm:
             assert CHECK_FAILED, "error: the virtual machine is found in VHI portal"
+
+    except:
+        # we do nothing if virtual machine is not found
+        pass
 
 use_step_matcher('parse')
 @then('I should see the hotplug is enabled in virtual machine ({name})')
 def step_impl(context, name):
     
     hostname = context.result[name]["virtual_machine"]["hostname"]
+    domain = context.result[name]["virtual_machine"]["domain"]
+    vhi_vm_name = hostname + "." + domain
+
     config = helper.get_config()
-    output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server list --long -f json")
-    vm_list = json.loads(output.stdout)
+    output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server show {vhi_vm_name} -f json".format(vhi_vm_name=vhi_vm_name))
+    vm = json.loads(output.stdout)
     
     match = False
-    for vm in vm_list:
-
-        if hostname in vm["name"] and vm["allow_live_resize"]:
+    if vm:
+        if vm["allow_live_resize"]:
             match = True
 
     if not match:
@@ -421,14 +431,16 @@ use_step_matcher('parse')
 def step_impl(context, name):
     
     hostname = context.result[name]["virtual_machine"]["hostname"]
+    domain = context.result[name]["virtual_machine"]["domain"]
+    vhi_vm_name = hostname + "." + domain
+
     config = helper.get_config()
-    output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server list --long -f json")
-    vm_list = json.loads(output.stdout)
+    output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server show {vhi_vm_name} -f json".format(vhi_vm_name=vhi_vm_name))
+    vm = json.loads(output.stdout)
     
     match = False
-    for vm in vm_list:
-
-        if hostname in vm["name"] and not vm.get("allow_live_resize"):
+    if vm:
+        if not vm.get("allow_live_resize"):
             match = True
 
     if not match:

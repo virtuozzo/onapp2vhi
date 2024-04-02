@@ -829,22 +829,17 @@ def step_impl(context, name):
 
     fixture = helper.get_fixture("virtual_machine")
     hostname = fixture[name]["virtual_machine"]["hostname"]
+    domain = fixture[name]["virtual_machine"]["domain"]
+    vm_name = hostname + "." + domain
     
     config = helper.get_config()
-    output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server list -f json")
-    vm_list = json.loads(output.stdout)
+    output = helper.open_vhi_ssh_connection(config["vhi"], "service compute server show {vm_name} -f json".format(vm_name=vm_name))
+    vm = json.loads(output.stdout)
 
-    match = False
-    for vm in vm_list:
-
-        if hostname in vm["name"]:
-            match = True
-
-            _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute server delete {vm_name}".format(vm_name=vm["name"]))
-            break
-    
-    # we proceed with the rest of the steps even if the vm is not found
-    if not match:
+    if vm:
+        _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute server delete {vm_name}".format(vm_name=vm["name"]))
+    else:
+        # we proceed with the rest of the steps even if the vm is not found
         pass
 
 use_step_matcher('parse')
@@ -926,13 +921,11 @@ def step_impl(context, name, size):
     project_list = json.loads(output.stdout)
 
     # to get placement ID
-    placement_output = helper.open_vhi_ssh_connection(config, "service compute placement list -f json")
-    placement_list = json.loads(placement_output.stdout)
+    placement_output = helper.open_vhi_ssh_connection(config, "service compute placement show %s -f json" % placement_name)
+    placement = json.loads(placement_output.stdout)
 
-    for placement in placement_list:
-        if placement["name"] == placement_name:
-            placement_id = placement["id"]
-            break
+    if placement:
+        placement_id = placement["id"]
 
     for project in project_list:
         if project["name"] == data["vinfra_project"]:

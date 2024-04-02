@@ -68,7 +68,7 @@ class Network:
 
             for network in response:
                 for subnet in network["subnets"]:
-                    if subnet["cidr"] == self.cidr:
+                    if subnet["cidr"] == self.cidr and subnet["allocation_pools"]:
                         [pools] = subnet["allocation_pools"]
                         start = pools["start"]
                         end = pools["end"]
