@@ -1,4 +1,4 @@
-## unreleased (dd/mm/yyyy)
+## v.1.1.3 (02/04/2024)
 
 ### Fixes
 - O2V-237: fix vm xml parsing
