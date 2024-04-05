@@ -1,3 +1,8 @@
+## unreleased (dd/mm/yyyy)
+
+### Fixes
+- O2V-239: fixed handling for destroying an already removed vm
+
 ## v.1.1.3 (02/04/2024)
 
 ### Fixes
