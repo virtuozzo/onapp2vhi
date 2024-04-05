@@ -423,9 +423,15 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
     logs.info(f"{_spaces}{live_migration}STEP #12 -- VHI: Stop just migrated OnApp VM on VHI hypervisor --",
               header=True)
     exit_status, output = _vhi_hv_ssh.execute(f"virsh destroy {vm_idn}")
-    if not exit_status_code_handler(exit_code=exit_status,
-                                    message=f'[live_migrate.py | STEP 12] VM "virsh destroy" on VHI node failed. {output}'):
-        return False
+    if exit_status:
+        if not ("Domain not found" in output):
+            exit_status_code_handler(exit_code=exit_status,
+                                     message='[live_migrate.py | STEP 12] VM '
+                                             '"virsh destroy" on VHI node failed. '
+                                             f'{output}')
+            return False
+        else:
+            logs.warn(f'VM {vm_idn} already removed.')
 
     # -- STEP 13 --
     logs.info(f"{_spaces}{live_migration}STEP #13 -- VHI: Deactivate VM disks at OnApp hypervisor --",
