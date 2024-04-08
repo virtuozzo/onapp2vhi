@@ -20,7 +20,7 @@ def after_scenario(context, scenario):
 
         for identifier in context.entity_to_delete["onapp_vm"]:
             data = context.cp.search(entity_plural, args=identifier)
-
+            
             if data:
                 id = data[0][entity_singular]["id"]
 
@@ -31,6 +31,11 @@ def after_scenario(context, scenario):
 
                     if suspension_response.status_code != 201:
                         assert False, "error: unable to activate the VM (%s) in onapp cloud" % data[0][entity_singular]["label"]
+                
+                else:
+                    # to indicate the migration failure
+                    failure = True
+                    print("Noted that VM in onapp is not suspended, migration does not complete successfully")
 
                 print("VM (%s) found in Onapp cloud, proceed to delete..." % data[0][entity_singular]["label"])
 
@@ -132,3 +137,6 @@ def after_scenario(context, scenario):
 
                 _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute network delete %s" % "network_" + network)
                 print("network named {network_name} has been removed".format(network_name="network_" + network))
+
+        if "failure" in locals():
+            assert False, "error: migration does not complete successfully"

@@ -146,3 +146,24 @@ Scenario: Hot migration with incorrect user
   | username |
   | ultron   |
   Then I should not see the virtual machine (linux-vm-with-startup-static1) in VHI portal
+
+@package_installation
+Scenario: Hot migration without user's SSH key with guest-tools disabled
+  Given I am a cloud user (ultron)
+  When I create a virtual machine (linux-vm-with-startup-static1)
+  Then CP API (create) should return status code 201
+  And I wait for 2 minutes
+  And the virtual machine (linux-vm-with-startup-static1) is built successfully
+
+  # To test for new migrated user, we delete the existing user account
+  When I delete the existing user account (ultron) from the VHI portal
+  And I set the logging path (ultron_log/log)
+  And I migrate the virtual machine (linux-vm-with-startup-static1) with following details
+  | vz guest tools install | cloud init install |
+  | false                  | true               |
+  Then I wait for 10 seconds
+  And I should see the virtual machine (linux-vm-with-startup-static1) is ACTIVE in VHI portal
+  And the virtual machine (linux-vm-with-startup-static1) should have correct CPU, RAM and storage
+  And the virtual machine (linux-vm-with-startup-static1) should not have guest-tools installed
+  And the virtual machine (linux-vm-with-startup-static1) should have cloud-init installed
+  And the log is seen in logging path (ultron_log/log)
