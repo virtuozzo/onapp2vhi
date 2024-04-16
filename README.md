@@ -187,7 +187,7 @@
   ```
 
 - Currently, migration tool provides next commands:
-  * **Providers**:
+  * **Commands**:
     * `create_service_user` - command will create special user under the hood for migration and save his credentials into config file
     * `list-onapp-users` - get and show all user at OnApp cloud
     * `list-onapp-vms` - get and show all virtual machines at OnApp cloud
@@ -278,6 +278,7 @@
       - `--user=user_id` - stands for `User ID` at OnApp side
       - `--vm=vm_identifier_1,vm_identifier_2` - comma separated `list` of Virtual Machines to be migrated(can be
         empty, then all VM's will be migrated for specified user)
+      - `--vm-ssh-port` - optional custom virtual server ssh port number (default: 22)
       - `--project=my_project` - stands for pre-created project `NAME` at VHI side
       - `--cloud_init_install` - Boolean flag, default value is `true`, set `false` to **NOT** install cloud_init
       - `--vz_guest_tools_install` - Boolean flag, default value is `true`, set `false` to **NOT** install vz-guest-tools
@@ -289,7 +290,7 @@
 
           Full possible flags:
           ```
-          onapp2vhi migrate --user=7 --vm=sydarelogizozd,sy43relogizozd --storage_policy=not_default --project=my_project --vz_guest_tools_install=false --cloud_init_install=false --placement=some_placement --flavor=4cpu_32gb --hotplug
+          onapp2vhi migrate --user=7 --vm=sydarelogizozd,sy43relogizozd --vm-ssh-port 2722 --storage_policy=not_default --project=my_project --vz_guest_tools_install=false --cloud_init_install=false --placement=some_placement --flavor=4cpu_32gb --hotplug
           ```
 
           User + VM + disable cloud-init installation:
