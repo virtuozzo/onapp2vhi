@@ -34,6 +34,7 @@ logs = OnAppVHILogger()
 
 
 def vm_live_migrate(cfg: OnApp2VHIConfig,
+                    vm_ssh_port: int,
                     vdom: str,
                     vproj: str,
                     idn: str,

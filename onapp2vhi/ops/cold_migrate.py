@@ -31,6 +31,7 @@ logs = OnAppVHILogger()
 
 
 def vm_cold_migrate(cfg: OnApp2VHIConfig,
+                    vm_ssh_port: int,
                     vdom: str,
                     vproj: str,
                     idn: str,

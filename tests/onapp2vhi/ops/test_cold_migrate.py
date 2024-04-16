@@ -92,7 +92,13 @@ class TestVmColdMigration(unittest.TestCase):
             'flavor': "flavor_1_1"
         }
 
-        result = vm_cold_migrate(self.mock_cfg, mock_vdom, mock_vproj, mock_idn, mock_properties, mock_vhi)
+        result = vm_cold_migrate(self.mock_cfg,
+                                 22,
+                                 mock_vdom,
+                                 mock_vproj,
+                                 mock_idn,
+                                 mock_properties,
+                                 mock_vhi)
         self.assertFalse(result)
 
     @patch("os.unlink")
@@ -186,6 +192,7 @@ class TestVmColdMigration(unittest.TestCase):
         ]
 
         result = vm_cold_migrate(self.mock_cfg,
+                                 22,
                                  mock_vdom,
                                  mock_vproj,
                                  mock_idn,
@@ -291,6 +298,7 @@ class TestVmColdMigration(unittest.TestCase):
         ]
 
         result = vm_cold_migrate(self.mock_cfg,
+                                 22,
                                  mock_vdom,
                                  mock_vproj,
                                  mock_idn,
