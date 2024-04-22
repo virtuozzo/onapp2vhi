@@ -10,6 +10,7 @@ from onapp2vhi.utilities.template import CONFIG_TEMPLATE
 from onapp2vhi.utilities.logs.logger import setup_logger
 from onapp2vhi.inc.vinfra_wrapper import VinfraFlavor
 from onapp2vhi.utilities.config_cli import ConfigCli
+from onapp2vhi.ops.migrate import migrate_impl
 
 
 cfg = None
@@ -174,6 +175,11 @@ def create_service_user():
     help="Comma separated virtual machines 'oih783gcvy,982h3buisb,893hviun'",
 )
 @click.option(
+    "--vm-ssh-port",
+    default=22,
+    help="SSH port number to virtual machines",
+)
+@click.option(
     "--project", default="", help="Project where all objects will be migrated"
 )
 @click.option(
@@ -211,6 +217,7 @@ def create_service_user():
 def migrate(
     user="",
     vm="",
+    vm_ssh_port=22,
     project="",
     vz_guest_tools_install="true",
     cloud_init_install="true",
@@ -219,12 +226,11 @@ def migrate(
     flavor="",
     hotplug=False
 ):
-    from onapp2vhi.ops.migrate import migrate_impl
-
     migrate_impl(
         cfg,
         user=user,
         vm=vm,
+        vm_ssh_port=vm_ssh_port,
         project=project,
         vz_guest_tools_install=vz_guest_tools_install,
         cloud_init_install=cloud_init_install,

@@ -47,6 +47,7 @@ def _prepare_cloud_init_msg(cloud_init_install: dict, vm_properties: dict):
 def migrate_impl(cfg: OnApp2VHIConfig,
                  user='',
                  vm='',
+                 vm_ssh_port=22,
                  project='',
                  vz_guest_tools_install='true',
                  cloud_init_install='',
@@ -195,6 +196,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
             else:
                 _num += 1
                 _vm_number = _num
+            _vm["vm_ssh_port"] = vm_ssh_port
             vh = VmHandler(**_vm)
             vh.vz_guest_tools = vz_guest_tools
             vh.cloud_init = cloud_init
@@ -246,6 +248,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                 continue
 
             result_vm = vm_migrate(cfg,
+                                   vm_ssh_port=vm_ssh_port,
                                    idn=_idn,
                                    vproj=vhi.project_name,
                                    vdom=cfg.vhi_conf['vinfra_domain'],
