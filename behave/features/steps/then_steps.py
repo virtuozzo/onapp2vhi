@@ -499,14 +499,14 @@ def step_impl(context, name, verb, package):
 
     if verb == "not have":
 
-        if data[package].lower() == "not installed":
+        if data[package].lower() in ["not installed", "false"]:
             pass
         else:
             assert CHECK_FAILED, "error: {package} is installed".format(package=package)
 
     else:
 
-        if data[package].lower() == "installed":
+        if data[package].lower() in ["installed", "true"]:
             pass
         else:
             assert CHECK_FAILED, "error: {package} is not installed".format(package=package)
