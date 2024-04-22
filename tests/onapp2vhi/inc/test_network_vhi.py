@@ -186,6 +186,24 @@ class TestNetwork(unittest.TestCase):
         self.assertFalse(network.is_present())
 
     @patch("onapp2vhi.inc.network_vhi.SSH", autospec=True)
+    def test_is_present_fail_no_allocation_pools(self, mock_ssh):
+        network_data = {
+            "id": 69,
+            "cidr": "8.8.8.0/24",
+            "vinfra_project": "test_project",
+            "start_address": "8.8.8.20",
+            "end_address": "8.8.8.40",
+        }
+        test_data = (
+            '[{"subnets": [{"cidr": "8.8.8.0/24", "allocation_pools": '
+            '[]}, {"cidr": "4.4.4.0/24"} ], "id": 69}]'
+        )
+
+        network = Network(self.cfg, **network_data)
+        network._ssh.execute.return_value = (0, test_data)
+        self.assertFalse(network.is_present())
+
+    @patch("onapp2vhi.inc.network_vhi.SSH", autospec=True)
     def test_attach_to_virtual_server(self, mock_ssh):
         network_data = {
             "id": 69,
