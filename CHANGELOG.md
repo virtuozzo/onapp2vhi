@@ -1,5 +1,8 @@
 ## unreleased (dd/mm/yyyy)
 
+### Feature
+- O2V-248: adding custom VS ssh port number option
+
 ### Fixes
 - O2V-239: fixed handling for destroying an already removed vm
 

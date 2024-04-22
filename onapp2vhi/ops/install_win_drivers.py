@@ -71,7 +71,7 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, vm_handler, idn: str, vm_proper
                       os.path.join(package_path, "scripts"))
 
     if _cloud_init:
-        cmd = f'scp -P{cfg.onapp_conf["hv_ssh_port"]} {Helper.SCP_OPTS.value} {cloudbase_init_path}' \
+        cmd = f'scp -P{vm_handler.vm_ssh_port} {Helper.SCP_OPTS.value} {cloudbase_init_path}' \
               f' Administrator@{_vm_ip_addr}:C:/ 2>/dev/null'
         [exit_status, output] = ssh_run(cmd)
         if not exit_status_code_handler(
@@ -89,7 +89,7 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, vm_handler, idn: str, vm_proper
                       os.path.join(package_path, "scripts"))
 
     if vm_handler.vz_guest_tools:
-        cmd = f'scp -P{cfg.onapp_conf["hv_ssh_port"]} {Helper.SCP_OPTS.value}' \
+        cmd = f'scp -P{vm_handler.vm_ssh_port} {Helper.SCP_OPTS.value}' \
               f' {vz_guest_tool_path} Administrator@{_vm_ip_addr}:C:/ 2>/dev/null'
         [exit_status, output] = ssh_run(cmd)
         if not exit_status_code_handler(
@@ -110,7 +110,7 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, vm_handler, idn: str, vm_proper
     if not result:
         return False
 
-    cmd = f'scp -P{cfg.onapp_conf["hv_ssh_port"]} {Helper.SCP_OPTS.value} {windows_reconfig.file}' \
+    cmd = f'scp -P{vm_handler.vm_ssh_port} {Helper.SCP_OPTS.value} {windows_reconfig.file}' \
           f' Administrator@{_vm_ip_addr}:C:/vhi_rebuild_network.bat 2>/dev/null'
     [exit_status, output] = ssh_run(cmd)
     if not exit_status_code_handler(
@@ -122,7 +122,7 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, vm_handler, idn: str, vm_proper
         return False
     windows_reconfig.delete_file()
 
-    cmd = f'scp -P{cfg.onapp_conf["hv_ssh_port"]} {Helper.SCP_OPTS.value} {onapp_bat}' \
+    cmd = f'scp -P{vm_handler.vm_ssh_port} {Helper.SCP_OPTS.value} {onapp_bat}' \
           f' Administrator@{_vm_ip_addr}:C:/onapp.bat 2>/dev/null'
     [exit_status, output] = ssh_run(cmd)
     if not exit_status_code_handler(
@@ -135,7 +135,7 @@ def vm_install_win_drivers(cfg: OnApp2VHIConfig, vm_handler, idn: str, vm_proper
 
     # -- STEP 5 --
     logs.info(f'{_spaces}{_dri_msg}STEP #5 -- OnApp: INSTALL DRIVERS for VM[IP:{_vm_ip_addr}] --', header=True)
-    _vm_ssh = SSH(**{'host': _vm_ip_addr, 'username': 'Administrator', 'ssh_key': cfg.ssh_key})
+    _vm_ssh = SSH(**{'host': _vm_ip_addr, 'port': vm_handler.vm_ssh_port, 'username': 'Administrator', 'ssh_key': cfg.ssh_key})
     _vm_ssh.connect_timeout = 20
     _vm_ssh.channel_timeout = 20
     if _cloud_init:

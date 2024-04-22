@@ -139,6 +139,7 @@ class TestLiveMigrate(TestCase):
         ]
 
         result = vm_live_migrate(self.mock_cfg,
+                                 22,
                                  mock_vdom,
                                  mock_vproj,
                                  mock_idn,
@@ -236,6 +237,7 @@ class TestLiveMigrate(TestCase):
         ]
 
         result = vm_live_migrate(self.mock_cfg,
+                                 22,
                                  mock_vdom,
                                  mock_vproj,
                                  mock_idn,

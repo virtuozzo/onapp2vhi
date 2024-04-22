@@ -714,6 +714,8 @@ class VmHandler:
     LINUX_OS = 'linux'
 
     def __init__(self, **kwargs):
+        logs.debug(f"vm handler args = {kwargs}")
+        self.vm_ssh_port = kwargs.get("vm_ssh_port", 22)
         self._booted = kwargs.get("booted", "")
         self._ip_addr = kwargs.get("ip_addr", "")
         self._os = kwargs.get("operating_system", "")
@@ -735,7 +737,7 @@ class VmHandler:
         from onapp2vhi.ops.install_win_drivers_offline import vm_install_win_drivers_offline
         from onapp2vhi.inc.helper import Helper
         if self._booted:
-            _cmd = (f'timeout 150s ssh {Helper.SSH_OPTS.value} -p 22'
+            _cmd = (f'timeout 150s ssh {Helper.SSH_OPTS.value} -p {self.vm_ssh_port}'
                     f' {self._user}@{self._ip_addr} -t "hostname; exit;"')
             (rc, ou) = ssh_run(command=_cmd)
             if not rc:

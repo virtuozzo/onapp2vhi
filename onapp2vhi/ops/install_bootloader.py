@@ -40,7 +40,7 @@ def vm_install_bootloader(cfg: OnApp2VHIConfig, vm_handler, idn: str, vm_propert
                 break
 
     # -- STEP 2 --
-    _vm_ssh = SSH(**{'host': _vm_ip_addr, 'connect_timeout': 10, 'channel_timeout': 10, 'ssh_key': cfg.ssh_key})
+    _vm_ssh = SSH(**{'host': _vm_ip_addr, 'port': vm_handler.vm_ssh_port, 'connect_timeout': 10, 'channel_timeout': 10, 'ssh_key': cfg.ssh_key})
     logs.info(f'{_spaces}{_boot_msg}STEP #2 -- OnApp: Check if VM is running at OnApp hypervisor --', header=True)
     _hv_ssh = SSH(**{'host': _vm_hv_ip, 'ssh_key': cfg.ssh_key})
     exit_status, output = _hv_ssh.execute(f'virsh list | grep {VM_IDn}')
@@ -73,7 +73,7 @@ def vm_install_bootloader(cfg: OnApp2VHIConfig, vm_handler, idn: str, vm_propert
 
     for file, path in scripts_info.items():
         [exit_status, output] = ssh_run(
-            command=f'scp {_scp_opts} {file} root@{_vm_ip_addr}:{path}'
+            command=f'scp -P{vm_handler.vm_ssh_port} {_scp_opts} {file} root@{_vm_ip_addr}:{path}'
         )
         if not exit_status_code_handler(
                 exit_code=exit_status,
