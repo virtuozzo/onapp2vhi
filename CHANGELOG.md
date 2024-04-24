@@ -4,6 +4,7 @@
 - O2V-248: adding custom VS ssh port number option
 
 ### Fixes
+- O2V-243: missing Installation vz-guest-tools status in the migration log
 - O2V-239: fixed handling for destroying an already removed vm
 
 ## v.1.1.3 (02/04/2024)
