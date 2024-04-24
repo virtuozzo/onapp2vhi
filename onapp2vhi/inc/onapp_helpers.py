@@ -1,6 +1,5 @@
 import copy
 import json
-import re
 import xml.etree.ElementTree as KVMxml
 
 from onapp2vhi.inc.rest_client import OnAppRequests, OnAppRequestsException
@@ -22,6 +21,7 @@ from onapp2vhi.inc.vinfra_wrapper import (
     VinfraServer,
 )
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+from onapp2vhi.onapp.onappstore import OnAppStore, OnAppStoreFailed
 
 logs = OnAppVHILogger()
 
@@ -855,6 +855,7 @@ def activate_disk(cfg: OnApp2VHIConfig, vm_idn: str, vm_ohv_ip: str, multiply_di
     """
     logs.info(f"{_spaces}-- OnApp: HV ACTIVATING DISK --", header=True)
     hv_ssh = SSH(**{"host": vm_ohv_ip, 'ssh_key': cfg.ssh_key})
+    onappstore = OnAppStore(hv_ssh)
     ovm_dsk = disk
     ds_type = None
     store_idn = None
@@ -872,27 +873,20 @@ def activate_disk(cfg: OnApp2VHIConfig, vm_idn: str, vm_ohv_ip: str, multiply_di
     if ds_type == 'is':
         # Here We are working on Hypervisor side Port is 22 and HV IP
         logs.debug(f'{_spaces}-- OnApp HV: get frontend UUID')
-        exit_status, output = hv_ssh.execute(command='onappstore getid')
-        try:
-            frontend_uuid = re.findall('\d+', re.findall('uuid=\d+', output)[0])[0]
-        except IndexError:
-            logs.error(f"The UUID was not found. Output:\n\t{output}")
-            return False
+        onappstore.get_id()
 
         # Get Disk Info
         logs.debug(f'{_spaces}-- OnApp HV: Get Disk Info')
-        exit_status, output = hv_ssh.execute(command=f'onappstore diskinfo uuid={disk_idn}')
         try:
-            disk_status = re.search(r"\bstatus=(\d+)", output)
-            status = int(disk_status.group(1))
-        except IndexError:
-            logs.error(f"The status was not found. Output:\n\t{output}")
+            status = onappstore.disk_info(disk_idn)
+        except OnAppStoreFailed as e:
+            logs.error(repr(e))
             return False
 
         # If disk is offline, activate it
         logs.debug(msg=f'Disk Status: {status}', separator=True)
         if not status:
-            hv_ssh.execute(command=f'onappstore online uuid={disk_idn} frontend_uuid={frontend_uuid}')
+            onappstore.online(disk_idn)
         return True
 
     elif ds_type == 'lvm':
@@ -918,6 +912,7 @@ def deactivate_disk(cfg: OnApp2VHIConfig, vm_idn: str, vm_ohv_ip: str, **kwargs)
     else:
         disk_idn = kwargs.get('disk_idn', '')
         ds_type = kwargs.get('datastore_type', '')
+
     if ds_type == 'lvm':
         if not kwargs:
             onappvm_primary_disk = get_onapp_vm_disks(cfg, vm_idn=vm_idn, primary=True)
@@ -932,11 +927,12 @@ def deactivate_disk(cfg: OnApp2VHIConfig, vm_idn: str, vm_ohv_ip: str, **kwargs)
 
     elif ds_type == 'is':
         logs.info(f"{_spaces}-- OnApp: HV DEACTIVATING DISK [{disk_idn}|{ds_type}] --", header=True)
-        exit_status, output = hv_ssh.execute(command=f'onappstore offline uuid={disk_idn}')
-        if not exit_status_code_handler(exit_code=exit_status, message=f'Disk deactivation failed. Output\n\t{output}'):
-            return False
+        onappstore = OnAppStore(hv_ssh)
+        onappstore.acquire(disk_idn, '12345')
+        onappstore.offline(disk_idn, '12345')
+        onappstore.release(disk_idn)
 
-        return True
+    return True
 
 
 def create_new_vhi_vm(cfg: OnApp2VHIConfig,
