@@ -462,7 +462,7 @@ def get_guest_tool_cloud_init(migration_log_path, onapp_vm_identifier):
     with conn_onapp.cd(config["onapp"]["migration_tool_dir"] + migration_log_path):
             
         try:
-            log_exists = vars(conn_onapp.run("grep -R %s */*.log" % onapp_vm_identifier, hide=True))["stdout"]
+            log_exists = vars(conn_onapp.run("grep -RH %s */*.log" % onapp_vm_identifier, hide=True))["stdout"]
 
             if log_exists:
                 log_location = log_exists[0:log_exists.find(":")]
