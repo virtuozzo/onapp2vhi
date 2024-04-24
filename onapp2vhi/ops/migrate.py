@@ -238,7 +238,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                            f'\t\t- Identifier: "{_idn}"\n'
                            f'\t\t- Installation Cloud-init: {_cloud_init_log}\n'
                            f'\t\t- Installation bootloader: {result}\n'
-                           f'\t\t- Installation vz-guest-tools : {vh.guest_tools_result}\n'
+                           f'\t\t- Installation vz-guest-tools : {vh.vz_guest_tools}\n'
                            f'\t- - - - - - - - - - - - - - - - -\n')
                 logs.write_log(file_path=f"{_file_name.format(user=user['user_login'])}_{_pid}_user_{user['id']}",
                                msg=msg.format(user['user_login'],
@@ -264,7 +264,7 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                        f'\t\t- Identifier: "{_idn}"\n'
                        f'\t\t- Installation Cloud-init: {_cloud_init_log}\n'
                        f'\t\t- Installation bootloader: {result}\n'
-                       f'\t\t- Installation vz-guest-tools : {vh.guest_tools_result}\n'
+                       f'\t\t- Installation vz-guest-tools : {vh.vz_guest_tools}\n'
                        f'\t- - - - - - - - - - - - - - - - -\n')
         # --Step 5 -- #
         # -- Finish Migration Session and put down logs  -- #
