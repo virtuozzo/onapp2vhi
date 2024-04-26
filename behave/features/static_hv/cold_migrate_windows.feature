@@ -15,6 +15,8 @@ Scenario: Cold migration without user's SSH key
   Then I wait for 10 seconds
   And I should see the virtual machine (windows-vm-without-startup-static1) is SHUTOFF in VHI portal
   And the virtual machine (windows-vm-without-startup-static1) should have correct CPU, RAM and storage
+  And the virtual machine (windows-vm-without-startup-static1) should have guest-tools installed
+  And the virtual machine (windows-vm-without-startup-static1) should have cloud-init installed
 
 Scenario: Cold migration with user's SSH key
   Given I am a cloud user (uda)
@@ -137,7 +139,8 @@ Scenario: Cold migration with user's SSH key with second network interface (IPv4
   And the virtual machine (windows-vm-without-startup-static1) should have correct CPU, RAM and storage
 
 @flavor
-Scenario: Cold migration with pre-existing flavor
+@package_installation
+Scenario: Cold migration with pre-existing flavor with cloud-init and guest-tools disabled
   Given I am a cloud user (ultron)
   When I create a virtual machine (windows-vm-without-startup-static1)
   Then CP API (create) should return status code 201
@@ -145,8 +148,10 @@ Scenario: Cold migration with pre-existing flavor
   And the virtual machine (windows-vm-without-startup-static1) is built successfully
 
   When I migrate the virtual machine (windows-vm-without-startup-static1) with following details
-  | flavor        |
-  | behave_4_8192 |
+  | flavor        | vz guest tools install | cloud init install |
+  | behave_4_8192 | false                  | false              |
   Then I wait for 10 seconds
   And I should see the virtual machine (windows-vm-without-startup-static1) is SHUTOFF in VHI portal
   And the virtual machine (windows-vm-without-startup-static1) should have correct storage migrated, CPU and RAM same as flavor (behave_4_8192) stated
+  And the virtual machine (windows-vm-without-startup-static1) should not have guest-tools installed
+  And the virtual machine (windows-vm-without-startup-static1) should not have cloud-init installed

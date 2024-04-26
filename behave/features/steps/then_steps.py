@@ -445,3 +445,68 @@ def step_impl(context, name):
 
     if not match:
         assert CHECK_FAILED, "error: hotplug is not disabled"
+
+def get_guest_tool_cloud_init(migration_log_path, onapp_vm_identifier):
+
+    config = helper.get_config()
+    data = {}
+
+    if not migration_log_path:
+        migration_log_path = "/migration_logs/"
+    else:
+        migration_log_path = "/" + migration_log_path.replace("--log-output-path", "").replace(" ", "") + "/migration_logs/"
+
+    from fabric import Connection
+    conn_onapp = Connection(host=config["onapp"]["host"], user=config["onapp"]["user"], port=config["onapp"]["port"], forward_agent=True)
+    
+    with conn_onapp.cd(config["onapp"]["migration_tool_dir"] + migration_log_path):
+            
+        try:
+            log_exists = vars(conn_onapp.run("grep -RH %s */*.log" % onapp_vm_identifier, hide=True))["stdout"]
+
+            if log_exists:
+                log_location = log_exists[0:log_exists.find(":")]
+
+                arr_properties = ["Installation Cloud-init", "Installation vz-guest-tools"]
+
+                for item in arr_properties:
+
+                    if item == "Installation Cloud-init":
+                        package = "cloud-init"
+                    elif item == "Installation vz-guest-tools":
+                        package = "guest-tools"
+
+                    data[package] = vars(conn_onapp.run("echo $(awk -F \":\" '/{item}/ {{print $2}}' {log_location})"\
+                                                     .format(item=item, log_location=log_location), hide=True))["stdout"].replace("\n", "")
+
+        except:
+            assert CHECK_FAILED, "error: there is an error in the migration path: %s" % migration_log_path
+
+    return data
+
+use_step_matcher('re')
+@then('the virtual machine \((?P<name>[\w\W]+)\) should (?P<verb>not have|have) (?P<package>guest-tools|cloud-init) installed')
+def step_impl(context, name, verb, package):
+
+    fixture = helper.get_fixture("virtual_machine")
+    vm_identifier = context.cp.search("virtual_machines", args=fixture[name]["virtual_machine"]["label"])[0]["virtual_machine"]["identifier"]
+
+    if hasattr(context, "log_path"):
+        data = get_guest_tool_cloud_init(context.log_path, vm_identifier)
+
+    elif not hasattr(context, "log_path"):
+        data = get_guest_tool_cloud_init("", vm_identifier)
+
+    if verb == "not have":
+
+        if data[package].lower() in ["not installed", "false"]:
+            pass
+        else:
+            assert CHECK_FAILED, "error: {package} is installed".format(package=package)
+
+    else:
+
+        if data[package].lower() in ["installed", "true"]:
+            pass
+        else:
+            assert CHECK_FAILED, "error: {package} is not installed".format(package=package)

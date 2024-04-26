@@ -18,7 +18,10 @@ Scenario: Hot migration without user's SSH key
   And the virtual machine (windows-vm-with-startup-static1) should have correct CPU, RAM and storage
   And the log is seen in logging path (ultron_log/log)
   And I should see the hotplug is disabled in virtual machine (windows-vm-with-startup-static1)
+  And the virtual machine (windows-vm-with-startup-static1) should have guest-tools installed
+  And the virtual machine (windows-vm-with-startup-static1) should have cloud-init installed
 
+@package_installation
 Scenario: Hot migration with user's SSH key
   Given I am a cloud user (uda)
   When I create a virtual machine (windows-vm-with-startup-static1)
@@ -28,11 +31,15 @@ Scenario: Hot migration with user's SSH key
 
   # To test for new migrated user, we delete the existing user account
   When I delete the existing user account (uda) from the VHI portal
-  And I migrate the virtual machine (windows-vm-with-startup-static1)
+  And I migrate the virtual machine (windows-vm-with-startup-static1) with following details
+  | vz guest tools install | cloud init install |
+  | false                  | true               |
   Then I wait for 10 seconds
   And I should see the virtual machine (windows-vm-with-startup-static1) is ACTIVE in VHI portal
   And the virtual machine (windows-vm-with-startup-static1) should have correct CPU, RAM and storage
   And I should see the hotplug is disabled in virtual machine (windows-vm-with-startup-static1)
+  And the virtual machine (windows-vm-with-startup-static1) should not have guest-tools installed
+  And the virtual machine (windows-vm-with-startup-static1) should have cloud-init installed
 
 @placement
 @storage_policy
