@@ -6,6 +6,7 @@
 ### Fixes
 - O2V-243: missing Installation vz-guest-tools status in the migration log
 - O2V-239: fixed handling for destroying an already removed vm
+- O2V-247: fixed failed IS offline when disk cache is enabled
 
 ## v.1.1.3 (02/04/2024)
 
