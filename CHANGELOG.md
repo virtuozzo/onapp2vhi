@@ -1,4 +1,4 @@
-## unreleased (dd/mm/yyyy)
+## v1.1.4 (09/05/2024)
 
 ### Feature
 - O2V-248: adding custom VS ssh port number option
