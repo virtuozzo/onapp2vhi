@@ -203,10 +203,12 @@ Scenario: Cold migration with multiple vm with storage policy and placement spec
   And the virtual machine (linux-vm-without-startup-static1) should have correct CPU, RAM and storage
   And the virtual machine (linux-vm-without-startup-static1) is using the correct storage policy (behave-storage-policy) in its volume
   And the virtual machine (linux-vm-without-startup-static1) is placed in the corrent placement (behave-hard-placement)
+
   And I should see the virtual machine (linux-vm-without-startup-static2) is SHUTOFF in VHI portal
   And the virtual machine (linux-vm-without-startup-static2) should have correct CPU, RAM and storage
   And the virtual machine (linux-vm-without-startup-static2) is using the correct storage policy (behave-storage-policy) in its volume
   And the virtual machine (linux-vm-without-startup-static2) is placed in the corrent placement (behave-hard-placement)
+
 
 @negative
 Scenario: Cold migration without VM IP
@@ -250,3 +252,22 @@ Scenario: Cold migration with pre-existing flavor
   | behave_1_512 |
   Then I should see the virtual machine (linux-vm-without-startup-static1) is SHUTOFF in VHI portal
   And the virtual machine (linux-vm-without-startup-static1) should have correct storage migrated, CPU and RAM same as flavor (behave_1_512) stated
+
+@package_installation
+Scenario: Cold migration without user's SSH key with guest-tools and cloud-init disabled
+  Given I am a cloud user (ultron)
+  When I create a virtual machine (linux-vm-without-startup-static1)
+  Then CP API (create) should return status code 201
+  And I wait for 2 minutes
+  And the virtual machine (linux-vm-without-startup-static1) is built successfully
+
+  # To test for new migrated user, we delete the existing user account
+  When I delete the existing user account (ultron) from the VHI portal
+  And I migrate the virtual machine (linux-vm-without-startup-static1) with following details
+  | vz guest tools install | cloud init install |
+  | false                  | false              |
+  Then I wait for 10 seconds
+  And I should see the virtual machine (linux-vm-without-startup-static1) is SHUTOFF in VHI portal
+  And the virtual machine (linux-vm-without-startup-static1) should have correct CPU, RAM and storage
+  And the virtual machine (linux-vm-without-startup-static1) should not have guest-tools installed
+  And the virtual machine (linux-vm-without-startup-static1) should not have cloud-init installed

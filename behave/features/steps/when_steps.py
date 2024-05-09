@@ -698,7 +698,7 @@ def step_impl(context, name):
         command = context.log_path + basic_command + details
     else:
         command = basic_command + details
-    
+
     print(command)
 
     if "negative" not in context.tags:

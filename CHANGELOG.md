@@ -1,3 +1,14 @@
+## v1.1.4 (09/05/2024)
+
+### Feature
+- O2V-248: adding custom VS ssh port number option
+
+### Fixes
+- O2V-243: missing Installation vz-guest-tools status in the migration log
+- O2V-239: fixed handling for destroying an already removed vm
+- O2V-247: fixed failed IS offline when disk cache is enabled
+- O2V-245: re-fix OnApp <= 6.3 missing primary ip field
+
 ## v.1.1.3 (02/04/2024)
 
 ### Fixes

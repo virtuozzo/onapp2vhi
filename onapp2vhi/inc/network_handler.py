@@ -50,15 +50,18 @@ def get_network_configuration(cfg: OnApp2VHIConfig, virtual_server_identifier: s
         data['network_identifier'] = network_identifier
         data["ipv4"] = next((ip_address['ipv4'] for ip_address in vs_ip_addresses), False)
         if version <= 6.3 and nic['network_interface']['primary'] is True:
-            data["primary_ip"] = [vs_ip_addresses[0]['address']]
+            pass
         elif version > 6.3:
             data["primary_ip"] = [
                 ip_address['address'] for ip_address in vs_ip_addresses
                 if ip_address["primary"]
             ]
         data["primary"] = True if nic['network_interface']['primary'] else False
-        data["ip_addresses"] = [ip_address['address'] for ip_address in vs_ip_addresses
-                                if ip_address['address'] != data["primary_ip"]]
+        if data.get("primary_ip", None):
+            data["ip_addresses"] = [ip_address['address'] for ip_address in vs_ip_addresses
+                                    if ip_address['address'] != data["primary_ip"]]
+        else:
+            data["ip_addresses"] = [ip_address['address'] for ip_address in vs_ip_addresses]
         data["mac_address"] = nic["network_interface"]["mac_address"]
         data["network_id"] = get_network_id_by_identifier(cfg, network_identifier)
         data['network_nameserver'] = get_network_nameserver(cfg, data['network_id'], ipv4=True)
@@ -66,7 +69,7 @@ def get_network_configuration(cfg: OnApp2VHIConfig, virtual_server_identifier: s
         data["ip_range_id"] = next((ip_address['ip_range_id'] for ip_address in vs_ip_addresses))
         data['ip_net'] = get_ip_net(cfg, data['network_id'], data['ip_net_id'])
         data['ip_range'] = get_ip_range(cfg, data['network_id'], data['ip_net_id'], data["ip_range_id"])
-        if data["primary_ip"]:
+        if data.get("primary_ip", None):
             data["ip_addresses"].insert(0, data["primary_ip"][0])  # the primary IP should be first
             data["ip_addresses"] = list(set(data["ip_addresses"]))  # remove IP addr duplications
         else:
@@ -77,6 +80,7 @@ def get_network_configuration(cfg: OnApp2VHIConfig, virtual_server_identifier: s
         vs_network_interfaces.add(nic)
 
     for network in vs_network_interfaces.get_all():
+        logs.debug(f'processing {network}')
         vhi_network = Network(
             cfg,
             id='',
@@ -97,6 +101,7 @@ def get_network_configuration(cfg: OnApp2VHIConfig, virtual_server_identifier: s
         if not network.ip_addresses:
             logs.warn("Network interface without IP address. It won't be used")
             continue
+        logs.debug(f'network_ip_addresses = {network.ip_addresses}')
 
         ip_addresses = "".join([f"fixed-ip='{ip}'," for ip in network.ip_addresses])
         if not vhi_network.is_present():
@@ -121,4 +126,6 @@ def get_network_configuration(cfg: OnApp2VHIConfig, virtual_server_identifier: s
                 networks_cmd.insert(0, network_interface_cmd)
             else:
                 networks_cmd.append(network_interface_cmd)
+
+        logs.debug(f'networks command = {networks_cmd}')
     return ''.join(networks_cmd)
