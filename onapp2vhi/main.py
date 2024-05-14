@@ -11,6 +11,7 @@ from onapp2vhi.utilities.logs.logger import setup_logger
 from onapp2vhi.inc.vinfra_wrapper import VinfraFlavor
 from onapp2vhi.utilities.config_cli import ConfigCli
 from onapp2vhi.ops.migrate import migrate_impl
+from onapp2vhi.ops.update import update_vz_tools as update_vz_tools_impl
 
 
 cfg = None
@@ -239,3 +240,8 @@ def migrate(
         flavor=flavor,
         cpu_hotplug=hotplug
     )
+
+
+@run.command()
+def update_vz_tools():
+    update_vz_tools_impl(cfg)
