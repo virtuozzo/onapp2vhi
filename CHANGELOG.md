@@ -1,3 +1,10 @@
+## unrelease (dd/mm/yyyy)
+
+### Feature
+- O2V-249: added command `update-vz-tools`
+  - add command to update migration tool vz-guest-tools copy using
+    version found in VHI controller node
+
 ## v1.1.4 (09/05/2024)
 
 ### Feature
