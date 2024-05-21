@@ -8,7 +8,7 @@ TIMEOUT = 120
 use_step_matcher('parse')
 @then('CP API ({action}) should return status code {status_code}')
 def step_impl(context, action, status_code):
-    
+
     if hasattr(context, 'response'):
         if context.response.status_code != int(status_code):
             assert CHECK_FAILED, "error: status code returned is {actual}, with error message: {error}"\
@@ -510,3 +510,13 @@ def step_impl(context, name, verb, package):
             pass
         else:
             assert CHECK_FAILED, "error: {package} is not installed".format(package=package)
+
+use_step_matcher('parse')
+@then('the virtual machine ({name}) is booted successfully')
+def step_impl(context, name):
+
+    fixture = helper.get_fixture("virtual_machine")
+    booted = context.cp.search("virtual_machines", args=fixture[name]["virtual_machine"]["label"])[0]["virtual_machine"]["booted"]
+
+    if not booted:
+        assert CHECK_FAILED, "error: server is not booted"
