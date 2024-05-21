@@ -10,6 +10,7 @@ Scenario: Hot migration without user's SSH key
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
   And the virtual machine (linux-vm-with-startup-static1) is built successfully
+  And the virtual machine (linux-vm-with-startup-static1) is booted successfully
 
   # To test for new migrated user, we delete the existing user account
   When I delete the existing user account (ultron) from the VHI portal
@@ -27,6 +28,7 @@ Scenario: Hot migration with user's SSH key
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
   And the virtual machine (linux-vm-with-startup-static1) is built successfully
+  And the virtual machine (linux-vm-with-startup-static1) is booted successfully
 
   When I migrate the virtual machine (linux-vm-with-startup-static1)
   Then I wait for 10 seconds
@@ -51,6 +53,7 @@ Scenario: Hot migration with user's SSH key with storage policy and placement sp
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
   And the virtual machine (linux-vm-with-startup-static1) is built successfully
+  And the virtual machine (linux-vm-with-startup-static1) is booted successfully
 
   When I migrate the virtual machine (linux-vm-with-startup-static1) with following details
   | storage policy        | placement             | hotplug |
@@ -78,6 +81,7 @@ Scenario: Hot migration with user's SSH key with second network interface (IPv4)
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
   And the virtual machine (linux-vm-with-startup-static1) is built successfully
+  And the virtual machine (linux-vm-with-startup-static1) is booted successfully
 
   When I add a network interface (behave-network-interface-ipv4) with network join (behave-network-join-993) at compute zone (Static Compute Zone) to the virtual machine (linux-vm-with-startup-static1)
   Then CP API (create) should return status code 201
@@ -88,6 +92,7 @@ Scenario: Hot migration with user's SSH key with second network interface (IPv4)
   When I reboot the virtual machine (linux-vm-with-startup-static1) in Onapp cloud
   Then CP API (reboot) should return status code 201
   And I wait for 90 seconds
+  And the virtual machine (linux-vm-with-startup-static1) is booted successfully
 
   When I migrate the virtual machine (linux-vm-with-startup-static1)
   Then I wait for 10 seconds
@@ -114,6 +119,7 @@ Scenario: Hot migration with user's SSH key with second network interface (IPv4 
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
   And the virtual machine (linux-vm-with-startup-static1) is built successfully
+  And the virtual machine (linux-vm-with-startup-static1) is booted successfully
 
   When I add a network interface (behave-network-interface-ipv4-ipv6) with network join (behave-network-join-997) at compute zone (Static Compute Zone) to the virtual machine (linux-vm-with-startup-static1)
   Then CP API (create) should return status code 201
@@ -127,6 +133,7 @@ Scenario: Hot migration with user's SSH key with second network interface (IPv4 
   When I reboot the virtual machine (linux-vm-with-startup-static1) in Onapp cloud
   Then CP API (reboot) should return status code 201
   And I wait for 90 seconds
+  And the virtual machine (linux-vm-with-startup-static1) is booted successfully
 
   When I migrate the virtual machine (linux-vm-with-startup-static1)
   Then I wait for 10 seconds
@@ -141,6 +148,7 @@ Scenario: Hot migration with incorrect user
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
   And the virtual machine (linux-vm-with-startup-static1) is built successfully
+  And the virtual machine (linux-vm-with-startup-static1) is booted successfully
 
   When I migrate the virtual machine (linux-vm-with-startup-static1) with following details
   | username |
@@ -154,6 +162,7 @@ Scenario: Hot migration without user's SSH key with guest-tools disabled
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
   And the virtual machine (linux-vm-with-startup-static1) is built successfully
+  And the virtual machine (linux-vm-with-startup-static1) is booted successfully
 
   # To test for new migrated user, we delete the existing user account
   When I delete the existing user account (ultron) from the VHI portal
