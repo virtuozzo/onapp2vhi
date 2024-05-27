@@ -320,5 +320,27 @@
 
 ---
 
-
-
+- ### Known issues:
+    - Debian 9 (Stretch) VS requires `grub2` package to be installed before VS can be migrated successfully (not installed by default). i.e.:
+    ```
+    # apt-cache policy grub2
+    grub2:
+      Installed: (none)
+      Candidate: 2.02~beta3-5+deb9u2
+      Version table:
+         2.02~beta3-5+deb9u2 500
+            500 http://archive.debian.org/debian stretch/main amd64 Packages
+    # grub-install --version
+    grub-install (GNU GRUB 0.97)
+    ```
+    - At the time of this writing live Debian 9 repositories are no longer available so `/etc/apt/sources.list` should be adjusted to the following:
+    ```
+    deb http://archive.debian.org/debian/ stretch main contrib non-free
+    deb http://archive.debian.org/debian/ stretch-proposed-updates main contrib non-free
+    deb http://archive.debian.org/debian-security stretch/updates main contrib non-free
+    ```
+    - Install `grub2` package. Follow the prompted instruction and reboot VS on completion before VS is migrated. i.e.:
+    ```
+    # apt update; apt install grub2
+    # reboot
+    ```
