@@ -5,6 +5,9 @@
   - add command to update migration tool vz-guest-tools copy using
     version found in VHI controller node
 
+### Fixes
+- O2V-251: add documentation to known issues for debian 9
+
 ## v1.1.4 (09/05/2024)
 
 ### Feature
