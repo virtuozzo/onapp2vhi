@@ -7,6 +7,8 @@
 
 ### Fixes
 - O2V-251: add documentation to known issues for debian 9
+- O2V-252: remove redundant ip set operation; all ips set at virtual
+           server creation time.
 
 ## v1.1.4 (09/05/2024)
 
