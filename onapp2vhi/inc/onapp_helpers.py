@@ -966,7 +966,6 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
     """
     _vhi_vm_id = ''
     hostname_domain = f'{hostname}.{domain}'.lower()
-    onappvm_pri_ips = onapp_nics[0]['ips']
     extra_disks = ""
 
     if cfg.vhi_conf.get("remove_disk_on_termination") == "no":
@@ -1014,26 +1013,6 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
     if not exit_status_code_handler(exit_code=exit_status,
                                     message=f'VM is not created. Output:\n\t{output}'):
         return False
-
-    if len(onappvm_pri_ips) > 1:
-        logs.info(f"{_spaces}-- VHI: allocate and assign extra VHI VM's IP addresses to primary NIC--")
-        _ips_params = ''
-        for ip in onappvm_pri_ips:
-            _ips_params += f"--fixed-ip ip-address={ip} "
-        exit_status, output = vhi_ssh.execute(f"{vinfra_access} service compute server iface "
-                                              f"list --server {_vhi_vm_id} -f json")
-        if not exit_status_code_handler(exit_code=exit_status,
-                                        message=f'Listing network interfaces failed. Output:\n\t{output}'):
-            return False
-
-        _vhi_nic0_id = json.loads(output)[0]["id"]
-        exit_status, output = vhi_ssh.execute(
-            f"{vinfra_access} service compute server iface set {_ips_params} --server "
-            f"{_vhi_vm_id} {_vhi_nic0_id} -f json"
-        )
-        if not exit_status_code_handler(exit_code=exit_status,
-                                        message=f'VM iface is not set. Output:\n\t{output}'):
-            return False
 
     return _vhi_vm_id
 

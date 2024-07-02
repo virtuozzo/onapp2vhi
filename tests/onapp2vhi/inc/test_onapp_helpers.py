@@ -1506,53 +1506,6 @@ class CreateNewVhiVmTestCase(OnAppHelpersTestCase):
                                    'test-server', 'localdomain', 'default')
         self.assertEqual(result, expected)
 
-    def test_create_multi_ips_list_iface_failed(self):
-        mock_disks = [{ 'size': '5',},]
-        mock_nics = [{ 'ips': ['1.1.1.1', '2.2.2.2'],},]
-
-        def mock_ssh_execute(command:str, real_data=False):
-            if 'service compute server create' in command:
-                return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
-            elif 'for ((i=1;i<=100;i++))' in command:
-                return (0, 'done')
-            elif 'service compute server iface list' in command:
-                return (1, 'list iface failed!')
-
-            raise RuntimeError(f'Unhandled command: {command}')
-
-        self.mock_ssh.execute.side_effect = mock_ssh_execute
-
-        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
-                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
-                                   'test-server', 'localdomain', 'default')
-        self.assertFalse(result)
-
-    def test_create_multi_ips_set_iface_failed(self):
-        mock_disks = [{ 'size': '5',},]
-        mock_nics = [{ 'ips': ['1.1.1.1', '2.2.2.2'],},]
-
-        def mock_ssh_execute(command:str, real_data=False):
-            if 'service compute server create' in command:
-                return (0, json.dumps({'id': '1111-2222-3333-444444444444'}))
-            elif 'for ((i=1;i<=100;i++))' in command:
-                return (0, 'done')
-            elif 'service compute server iface list' in command:
-                return (
-                    0,
-                    json.dumps([ { 'id': 'eth0', }, { 'id': 'eth1', } ])
-                )
-            elif 'service compute server iface set' in command:
-                return (1, 'not ok')
-
-            raise RuntimeError(f'Unhandled command: {command}')
-
-        self.mock_ssh.execute.side_effect = mock_ssh_execute
-
-        result = create_new_vhi_vm(self.mock_cfg, self.mock_ssh, 'vinfra vhi-creds', 'abcdef',
-                                   'public2', 'vhi_image.qow', mock_disks, 'flavor_1_128', mock_nics,
-                                   'test-server', 'localdomain', 'default')
-        self.assertFalse(result)
-
 
 class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
 
