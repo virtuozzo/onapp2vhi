@@ -104,7 +104,7 @@ Scenario: HOT migration without user's SSH key with guest-tools and cloud-init d
   | vz guest tools install | cloud init install |
   | false                  | false              |
   Then I wait for 10 seconds
-  And I should see the virtual machine (linux-vm-without-startup-cloudboot1) is ACTIVE in VHI portal
+  And I should see the virtual machine (linux-vm-with-startup-cloudboot1) is ACTIVE in VHI portal
   And the virtual machine (linux-vm-with-startup-cloudboot1) should have correct CPU, RAM and storage
   And the virtual machine (linux-vm-with-startup-cloudboot1) should not have guest-tools installed
   And the virtual machine (linux-vm-with-startup-cloudboot1) should not have cloud-init installed
