@@ -59,6 +59,15 @@ vinfra_domain_pass = domain_pass
 ssh_key = /path/to/your/ssh_key/id_rsa
 """
 
+class VinfraErrorTestCase(TestCase):
+
+    def test_password_in_command_is_hidden(self):
+        command = "vinfra --password '1234'"
+        output = 'some output'
+        msg = str(VinfraError(command, 1, output))
+        self.assertNotIn('1234', msg)
+        self.assertIn('*hidden*', msg)
+
 
 class VinfraBaseConstructorTestCase(TestCase):
 

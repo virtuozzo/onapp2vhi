@@ -2,13 +2,14 @@ from typing import Optional, Dict
 
 from onapp2vhi.inc.ssh_connector import SSH, CONNECT_TIMEOUT, CHANNEL_TIMEOUT
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+from onapp2vhi.utilities.logs.logger import hide_password
 
 
 class VinfraError(Exception):
 
     def __init__(self, command, exit_code, output):
         super().__init__()
-        self.command = command
+        self.command = hide_password(command)
         self.exit_code = exit_code
         self.output = output
 
