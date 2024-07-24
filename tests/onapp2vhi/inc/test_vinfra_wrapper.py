@@ -422,6 +422,16 @@ class VinfraServiceComputeNetworkTestCase(VinfraServiceComputeTestCase):
         )
         self.assertEqual(result, 'mock_result')
 
+    def test_show(self):
+        self.mock_ssh.execute.return_value = (0, 'mock_result')
+
+        result = self.command.show('dummy_network')
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute network show dummy_network --long -f json"
+        )
+        self.assertEqual(result, 'mock_result')
+
 
 class VinfraServiceComputeServerTestCase(VinfraServiceComputeTestCase):
 

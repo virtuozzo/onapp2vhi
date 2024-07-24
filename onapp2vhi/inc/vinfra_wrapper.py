@@ -170,8 +170,9 @@ class VinfraServiceComputeNetwork(VinfraServiceCompute):
     def set(self):
         raise NotImplementedError('method set not yet implemented')
 
-    def show(self):
-        raise NotImplementedError('method show not yet impmlemented')
+    def show(self, network: str):
+        cmd = self.vinfra_root + f' show {network}'
+        return self.execute(cmd, long=True)
 
 
 class VinfraServiceComputeServer(VinfraServiceCompute):
