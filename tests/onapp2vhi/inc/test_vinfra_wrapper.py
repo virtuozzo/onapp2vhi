@@ -10,7 +10,7 @@ from onapp2vhi.inc.vinfra_wrapper import (
     VinfraNode,
     VinfraImage,
     VinfraDomain,
-    VinfraServer,
+    VinfraServiceComputeServer,
     VinfraServerInterface,
     VinfraSecurityGroups,
     VinfraSGRules,
@@ -400,14 +400,14 @@ class VinfraDomainTestCase(VinfraBaseTestCase):
                                                    "domain")
 
 
-class VinfraServerTestCase(VinfraServiceComputeTestCase):
+class VinfraServiceComputeServerTestCase(VinfraServiceComputeTestCase):
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
     def _create_command(self, mock_ssh_ctor):
         self.mock_ssh = Mock(spec=SSH)
         mock_ssh_ctor.return_value = self.mock_ssh
 
-        self.command = VinfraServer(self.mock_config)
+        self.command = VinfraServiceComputeServer(self.mock_config)
 
     def test_vinfra_root(self):
         self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='admin' "
@@ -448,7 +448,7 @@ class VinfraServerTestCase(VinfraServiceComputeTestCase):
         self.assertEquals(results, 'show_results')
 
 
-class VinfraServerInterfaceTestCase(VinfraServerTestCase):
+class VinfraServerInterfaceTestCase(VinfraServiceComputeServerTestCase):
 
     @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
     def _create_command(self, mock_ssh_ctor):

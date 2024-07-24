@@ -150,7 +150,7 @@ class VinfraDomain(VinfraBase):
         self.vinfra_root += ' domain'
 
 
-class VinfraServer(VinfraServiceCompute):
+class VinfraServiceComputeServer(VinfraServiceCompute):
 
     def __init__(self, cfg: OnApp2VHIConfig, service_user: bool = False):
         super().__init__(cfg, service_user=service_user)
@@ -187,10 +187,11 @@ class VinfraServer(VinfraServiceCompute):
         return self.execute(cmd)
 
 
-class VinfraServerInterface(VinfraServer):
+#TODO rename to VinfraServiceComputeServerInterface
+class VinfraServerInterface(VinfraServiceComputeServer):
 
     def __init__(self, cfg: OnApp2VHIConfig):
-        VinfraServer.__init__(self, cfg)
+        super().__init__(cfg)
         self.vinfra_root += ' iface'
 
     def set(self, iface: str, vm_name: str = None, spoofing: bool = False, **kwargs):
@@ -242,6 +243,7 @@ class VinfraServerInterface(VinfraServer):
         return self.execute(cmd)
 
 
+#TODO rename to VinfraServiceComputeSecurityGroup
 class VinfraSecurityGroups(VinfraServiceCompute):
 
     def __init__(self, cfg: OnApp2VHIConfig):
@@ -287,6 +289,7 @@ class VinfraSecurityGroups(VinfraServiceCompute):
         return self.execute(cmd)
 
 
+#TODO rename to VinfraServiceComputeSecurityGroupRule
 class VinfraSGRules(VinfraServiceCompute):
 
     def __init__(self, cfg: OnApp2VHIConfig):
