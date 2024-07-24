@@ -150,6 +150,30 @@ class VinfraDomain(VinfraBase):
         self.vinfra_root += ' domain'
 
 
+class VinfraServiceComputeNetwork(VinfraServiceCompute):
+
+    def __init__(self, cfg: OnApp2VHIConfig):
+        super().__init__(cfg)
+        self.vinfra_root += ' network'
+
+    def create(self):
+        raise NotImplementedError('method create not yet implemented')
+
+    def delete(self):
+        raise NotImplementedError('method delete not yet implemented')
+
+    def list(self):
+        # TODO: add filter by (name, id, project, type), for now list all
+        cmd = self.vinfra_root + ' list'
+        return self.execute(cmd, long=True)
+
+    def set(self):
+        raise NotImplementedError('method set not yet implemented')
+
+    def show(self):
+        raise NotImplementedError('method show not yet impmlemented')
+
+
 class VinfraServiceComputeServer(VinfraServiceCompute):
 
     def __init__(self, cfg: OnApp2VHIConfig, service_user: bool = False):

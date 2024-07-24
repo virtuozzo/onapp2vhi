@@ -10,6 +10,7 @@ from onapp2vhi.inc.vinfra_wrapper import (
     VinfraNode,
     VinfraImage,
     VinfraDomain,
+    VinfraServiceComputeNetwork,
     VinfraServiceComputeServer,
     VinfraServerInterface,
     VinfraSecurityGroups,
@@ -398,6 +399,28 @@ class VinfraDomainTestCase(VinfraBaseTestCase):
         self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='admin' "
                                                    "--vinfra-password='ui_admin_password' "
                                                    "domain")
+
+
+class VinfraServiceComputeNetworkTestCase(VinfraServiceComputeTestCase):
+
+    def _create_command(self):
+        with patch('onapp2vhi.inc.vinfra_wrapper.SSH', return_value=self.mock_ssh):
+            self.command = VinfraServiceComputeNetwork(self.mock_config)
+
+    def test_vinfra_root(self):
+        self.assertEqual(self.command.vinfra_root, "vinfra --vinfra-username='admin' "
+                                                   "--vinfra-password='ui_admin_password' "
+                                                   "service compute network")
+
+    def test_list(self):
+        self.mock_ssh.execute.return_value = (0, 'mock_result')
+
+        result = self.command.list()
+        self.mock_ssh.execute.assert_called_with(
+            "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
+            "service compute network list --long -f json"
+        )
+        self.assertEqual(result, 'mock_result')
 
 
 class VinfraServiceComputeServerTestCase(VinfraServiceComputeTestCase):
