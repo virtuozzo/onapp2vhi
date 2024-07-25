@@ -1,7 +1,11 @@
 import unittest
 from mock import patch, mock_open, Mock
 
-from onapp2vhi.ops.migrate import migrate_impl
+from onapp2vhi.ops.migrate import (
+    migrate_impl,
+    select_vm_network_configuration,
+    MigrationError
+)
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.inc.rest_client import OnAppRequests
 from onapp2vhi.inc.vinfra_wrapper import (
@@ -132,3 +136,29 @@ class TestMigrationImpl(unittest.TestCase):
                                       project='test',
                                       network='invalid_network')
                 self.assertFalse(result)
+
+
+class SelectVmNetworkConfigurationTestCase(unittest.TestCase):
+
+    def test_supply_network_parameter(self):
+        mock_config = Mock(spec=OnApp2VHIConfig)
+        result = select_vm_network_configuration(mock_config, 'a_vm', 'some_vhi_project',
+                                                 'fake_network')
+        self.assertEqual(result, '--network id=fake_network')
+
+    def test_empty_network_parameter(self):
+        with patch('onapp2vhi.ops.migrate.get_network_configuration',
+                   return_value='real_network_config'):
+            mock_config = Mock(spec=OnApp2VHIConfig)
+            result = select_vm_network_configuration(mock_config, 'a_vm',
+                                                     'some_vhi_project', '')
+            self.assertEqual(result, 'real_network_config')
+
+    def test_no_network_configration(self):
+        with self.assertRaises(MigrationError):
+            with patch('onapp2vhi.ops.migrate.get_network_configuration',
+                       return_value=''):
+                mock_config = Mock(spec=OnApp2VHIConfig)
+                result = select_vm_network_configuration(mock_config, 'a_vm',
+                                                         'some_vhi_project', '')
+                self.assertEqual(result, 'real_network_config')

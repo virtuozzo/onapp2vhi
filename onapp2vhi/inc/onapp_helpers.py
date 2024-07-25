@@ -935,6 +935,7 @@ def deactivate_disk(cfg: OnApp2VHIConfig, vm_idn: str, vm_ohv_ip: str, **kwargs)
     return True
 
 
+# TODO: move this into package onapp2vhi.vhi
 def create_new_vhi_vm(cfg: OnApp2VHIConfig,
                       vhi_ssh: SSH,
                       vinfra_access: str,

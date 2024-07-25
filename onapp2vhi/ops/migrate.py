@@ -5,6 +5,7 @@ import json
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.vhi_ssh_keys import VhiSshKeys
 from onapp2vhi.inc.vhi_helpers import Vhi
+from onapp2vhi.inc.network_handler import get_network_configuration
 from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.onapp_helpers import (
     prepare_vhi_migration_data,
@@ -25,6 +26,10 @@ logs = OnAppVHILogger()
 
 
 SENTINEL = object()
+
+
+class MigrationError(Exception):
+    pass
 
 
 def _prepare_cloud_init_msg(cloud_init_install: dict, vm_properties: dict):
@@ -298,3 +303,18 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                                       vm_msg))
     logs.info(f"{Helper.EQUAL.value} VHI: Script finished successfully {Helper.EQUAL.value}", separator=True)
     logs.info("\n")
+
+
+def select_vm_network_configuration(cfg: OnApp2VHIConfig,
+                                    vm_id: str,
+                                    vhi_project: str,
+                                    network: str):
+    _network = ''
+    if not network:
+        _network = get_network_configuration(cfg, virtual_server_identifier=vm_id,
+                                             vinfra_project=vhi_project)
+        if not _network:
+            raise MigrationError("The network issue is hit. Could you please check logs.")
+    else:
+        _network = f'--network id={network}'
+    return _network
