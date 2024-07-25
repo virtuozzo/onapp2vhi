@@ -215,17 +215,25 @@ def create_service_user():
     expose_value=True,
     help="Enable VM CPU and RAM hot plug",
 )
+@click.option(
+    "--network",
+    required=False,
+    type=str,
+    help="target appliance network on VHI"
+)
+# TODO! convert vz_guest_tools_install & clout_init_install to actual value
 def migrate(
-    user="",
-    vm="",
-    vm_ssh_port=22,
-    project="",
-    vz_guest_tools_install="true",
-    cloud_init_install="true",
-    placement="",
-    storage_policy="",
-    flavor="",
-    hotplug=False
+    user: str = "",
+    vm: str = "",
+    vm_ssh_port: int = 22,
+    project: str = "",
+    vz_guest_tools_install: str = "true",
+    cloud_init_install: str = "true",
+    placement: str = "",
+    storage_policy: str = "",
+    flavor: str = "",
+    hotplug: bool = False,
+    network: str = ""
 ):
     migrate_impl(
         cfg,
@@ -238,7 +246,8 @@ def migrate(
         placement=placement,
         storage_policy=storage_policy,
         flavor=flavor,
-        cpu_hotplug=hotplug
+        cpu_hotplug=hotplug,
+        network=network
     )
 
 

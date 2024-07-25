@@ -4,6 +4,10 @@ from mock import patch, mock_open, Mock
 from onapp2vhi.ops.migrate import migrate_impl
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.inc.rest_client import OnAppRequests
+from onapp2vhi.inc.vinfra_wrapper import (
+    VinfraError,
+    VinfraServiceComputeNetwork
+)
 
 TEST_CONFIG = """
 [onapp]
@@ -46,7 +50,15 @@ ssh_key = path/to/your/ssh_key/id_rsa
 """
 
 
-class TestVmColdMigration(unittest.TestCase):
+class TestMigrationImpl(unittest.TestCase):
+
+    @staticmethod
+    def mock_onapprequests_get(params):
+        if params == 'virtual_machines/1234':
+            return {"virtual_machine": {"user_id": 123}}
+        if params == 'virtual_machines/123':
+            return {"virtual_machine": {"user_id": 123}}
+        raise NotImplementedError(f'unhandled onapprequest.get(\'{params})\')')
 
     @patch("builtins.open", mock_open(read_data=TEST_CONFIG))
     def setUp(self):
@@ -64,9 +76,7 @@ class TestVmColdMigration(unittest.TestCase):
                                         mock_onapprequests):
 
         mock_onapprequests.return_value = self.mock_onapprequests
-        self.mock_onapprequests.get.side_effect = [
-            {"virtual_machine": {"user_id": 123}}
-        ]
+        self.mock_onapprequests.get.side_effect = TestMigrationImpl.mock_onapprequests_get
         mock_vhi.return_value.create_user.return_value = ("test", "tests")
         mock_data = [
             {
@@ -84,3 +94,41 @@ class TestVmColdMigration(unittest.TestCase):
         mock_vhi_data.return_value = mock_data
         result = migrate_impl(self.mock_cfg, user="123", vm="123", project="test")
         self.assertFalse(result)
+
+    def test_migrate_with_invalid_network_param(self):
+        self.mock_onapprequests.get.side_effect = TestMigrationImpl.mock_onapprequests_get
+
+        mock_vinfraservicecomputenetwork= Mock(spec=VinfraServiceComputeNetwork)
+        mock_vinfraservicecomputenetwork.show.side_effect = VinfraError('some_command', 1, 'some error')
+
+        with patch("onapp2vhi.inc.onapp_helpers.OnAppRequests",
+                   return_value=self.mock_onapprequests):
+
+            with patch("onapp2vhi.ops.migrate.VinfraServiceComputeNetwork",
+                       return_value = mock_vinfraservicecomputenetwork):
+
+                result = migrate_impl(self.mock_cfg,
+                                      user='123',
+                                      vm='1234',
+                                      project='test',
+                                      network='invalid_network')
+                self.assertFalse(result)
+
+    def test_migrate_with_network_param_with_unparsable_reply(self):
+        self.mock_onapprequests.get.side_effect = TestMigrationImpl.mock_onapprequests_get
+
+        mock_vinfraservicecomputenetwork= Mock(spec=VinfraServiceComputeNetwork)
+        mock_vinfraservicecomputenetwork.show.return_value = ""
+
+        with patch("onapp2vhi.inc.onapp_helpers.OnAppRequests",
+                   return_value=self.mock_onapprequests):
+
+            with patch("onapp2vhi.ops.migrate.VinfraServiceComputeNetwork",
+                       return_value = mock_vinfraservicecomputenetwork):
+
+                result = migrate_impl(self.mock_cfg,
+                                      user='123',
+                                      vm='1234',
+                                      project='test',
+                                      network='invalid_network')
+                self.assertFalse(result)

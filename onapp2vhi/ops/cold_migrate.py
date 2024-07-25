@@ -38,7 +38,8 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig,
                     vm_properties: dict,
                     vhi_obj,
                     placement='',
-                    cpu_hotplug=False):
+                    cpu_hotplug: bool = False,
+                    network: str = ''):
     # ToDo
     #  verify IP address before running script
     if not idn:

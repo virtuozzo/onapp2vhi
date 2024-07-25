@@ -41,7 +41,8 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
                     vm_properties: dict,
                     vhi_obj,
                     placement='',
-                    cpu_hotplug=False):
+                    cpu_hotplug=False,
+                    network: str = ''):
     if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
