@@ -133,6 +133,10 @@ def migrate_impl(cfg: OnApp2VHIConfig,
         logs.warn(msg=warn_msg)
     _custom_project = project
 
+    # if not supplied, default to value in config file
+    if not network:
+        network = cfg.vhi_conf.get("network", '')
+
     # check target network if specified
     if network:
         try:
