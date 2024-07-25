@@ -173,7 +173,7 @@ class VinfraServiceComputeNetwork(VinfraServiceCompute):
 
     def show(self, network: str):
         cmd = self.vinfra_root + f' show {network}'
-        return self.execute(cmd, long=True)
+        return self.execute(cmd)
 
 
 class VinfraServiceComputeServer(VinfraServiceCompute):

@@ -59,6 +59,7 @@ vinfra_domain_pass = domain_pass
 ssh_key = /path/to/your/ssh_key/id_rsa
 """
 
+
 class VinfraErrorTestCase(TestCase):
 
     def test_password_in_command_is_hidden(self):
@@ -437,7 +438,7 @@ class VinfraServiceComputeNetworkTestCase(VinfraServiceComputeTestCase):
         result = self.command.show('dummy_network')
         self.mock_ssh.execute.assert_called_with(
             "vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' "
-            "service compute network show dummy_network --long -f json"
+            "service compute network show dummy_network -f json"
         )
         self.assertEqual(result, 'mock_result')
 
