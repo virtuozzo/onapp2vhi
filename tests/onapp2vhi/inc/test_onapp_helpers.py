@@ -22,7 +22,7 @@ from onapp2vhi.inc.onapp_helpers import (
     GenerateXmlConfig,
 )
 from onapp2vhi.inc.vinfra_wrapper import (
-    VinfraServer,
+    VinfraServiceComputeServer,
 )
 from onapp2vhi.inc.rest_client import OnAppRequests, OnAppRequestsException
 from onapp2vhi.utilities.config import OnApp2VHIConfig
@@ -1512,9 +1512,9 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
     def setUp(self):
         super().setUp()
         self.mock_onapprequests = Mock(spec=OnAppRequests)
-        self.mock_vinfraserver = Mock(spec=VinfraServer)
+        self.mock_vinfraserver = Mock(spec=VinfraServiceComputeServer)
 
-    @patch('onapp2vhi.inc.onapp_helpers.VinfraServer')
+    @patch('onapp2vhi.inc.onapp_helpers.VinfraServiceComputeServer')
     @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
     def test_prepare_migration_data_all_users(self, mock_onapprequests, mock_vinfraserver):
         mock_onapprequests.return_value = self.mock_onapprequests
@@ -1612,7 +1612,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
         self.assertTrue(isinstance(result, list))
         self.assertEqual(result, expected)
 
-    @patch('onapp2vhi.inc.onapp_helpers.VinfraServer')
+    @patch('onapp2vhi.inc.onapp_helpers.VinfraServiceComputeServer')
     @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
     def test_prepare_migration_data_all_users_no_vm(self, mock_onapprequests, mock_vinfraserver):
         mock_onapprequests.return_value = self.mock_onapprequests
@@ -1732,7 +1732,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
         self.assertTrue(isinstance(result, list))
         self.assertEqual(result, expected)
 
-    @patch('onapp2vhi.inc.onapp_helpers.VinfraServer')
+    @patch('onapp2vhi.inc.onapp_helpers.VinfraServiceComputeServer')
     @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
     def test_prepare_migration_data_for_a_user(self, mock_onapprequests, mock_vinfraserver):
         mock_onapprequests.return_value = self.mock_onapprequests
@@ -1835,7 +1835,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
         self.assertTrue(isinstance(result, list))
         self.assertEqual(result, expected)
 
-    @patch('onapp2vhi.inc.onapp_helpers.VinfraServer')
+    @patch('onapp2vhi.inc.onapp_helpers.VinfraServiceComputeServer')
     @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
     def test_prepare_migration_data_user_not_found(self, mock_onapprequests, mock_vinfraserver):
         mock_onapprequests.return_value = self.mock_onapprequests
@@ -1884,7 +1884,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
         result = prepare_vhi_migration_data(self.mock_cfg, 1)
         self.assertFalse(result)
 
-    @patch('onapp2vhi.inc.onapp_helpers.VinfraServer')
+    @patch('onapp2vhi.inc.onapp_helpers.VinfraServiceComputeServer')
     @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
     def test_prepare_migration_data_user_has_no_vm(self, mock_onapprequests, mock_vinfraserver):
         mock_onapprequests.return_value = self.mock_onapprequests
@@ -1917,7 +1917,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
         result = prepare_vhi_migration_data(self.mock_cfg, 1)
         self.assertFalse(result)
 
-    @patch('onapp2vhi.inc.onapp_helpers.VinfraServer')
+    @patch('onapp2vhi.inc.onapp_helpers.VinfraServiceComputeServer')
     @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
     def test_prepare_migration_data_with_vm_id(self, mock_onapprequests, mock_vinfraserver):
         mock_onapprequests.return_value = self.mock_onapprequests
@@ -2015,7 +2015,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
         result = prepare_vhi_migration_data(self.mock_cfg, vm_idn='abcdef')
         self.assertEqual(result, expected)
 
-    @patch('onapp2vhi.inc.onapp_helpers.VinfraServer')
+    @patch('onapp2vhi.inc.onapp_helpers.VinfraServiceComputeServer')
     @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
     def test_prepare_migration_data_with_vm_not_found(self, mock_onapprequests, mock_vinfraserver):
         mock_onapprequests.return_value = self.mock_onapprequests
@@ -2037,7 +2037,7 @@ class PrepareVhiMigrationDataTestCase(OnAppHelpersTestCase):
         result = prepare_vhi_migration_data(self.mock_cfg, vm_idn='abcdef')
         self.assertFalse(result)
 
-    @patch("onapp2vhi.inc.onapp_helpers.VinfraServer")
+    @patch("onapp2vhi.inc.onapp_helpers.VinfraServiceComputeServer")
     @patch("onapp2vhi.inc.onapp_helpers.OnAppRequests")
     def test_prepare_migration_data_with_multiple_vm_id(
         self, mock_onapprequests, mock_vinfraserver

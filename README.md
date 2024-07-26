@@ -280,6 +280,7 @@
         empty, then all VM's will be migrated for specified user)
       - `--vm-ssh-port` - optional custom virtual server ssh port number (default: 22)
       - `--project=my_project` - stands for pre-created project `NAME` at VHI side
+      - `--network=<network name / ID> - stands for appliance network name or ID in VHI
       - `--cloud_init_install` - Boolean flag, default value is `true`, set `false` to **NOT** install cloud_init
       - `--vz_guest_tools_install` - Boolean flag, default value is `true`, set `false` to **NOT** install vz-guest-tools
       - `--storage_policy` - Defaults to string `default` when not provided. When it is specified, it refers to storage policy defined in VHI to be used in the VM creation.

@@ -90,9 +90,10 @@ def hide_password(msg):
     pattern1 = r"(?<=password=[\"'])(.*?)(?=[\"'])"
     pattern2 = r"(?<=password\":[\"'])(.*?)(?=[\"'])"
     pattern3 = r"(?<=password: [\"'])(.*?)(?=[\"'])"
+    pattern4 = r"(?<=password [\"'])(.*?)(?=[\"'])"
 
     pattern_all = re.compile(
-        f"{pattern1}|{pattern2}|{pattern3}", flags=re.IGNORECASE
+        f"{pattern1}|{pattern2}|{pattern3}|{pattern4}", flags=re.IGNORECASE
     )
     try:
         new_msg = re.sub(pattern_all, "*hidden*", msg)

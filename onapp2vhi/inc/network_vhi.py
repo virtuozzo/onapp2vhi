@@ -7,6 +7,7 @@ from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.utilities.regex import JSON_REGEX
 
 
+#TODO: refactor this to use VinfraServiceComputeNetwork
 class Network:
     def __init__(self, cfg: OnApp2VHIConfig, **kwargs):
         self._ssh = SSH(host=cfg.vhi_conf['cp_ip'],

@@ -18,7 +18,7 @@ from onapp2vhi.inc.vinfra_wrapper import (
     VinfraSGRules,
     VinfraProject,
     VinfraServerInterface,
-    VinfraServer,
+    VinfraServiceComputeServer,
 )
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.onapp.onappstore import OnAppStore, OnAppStoreFailed
@@ -327,7 +327,7 @@ def _get_primary_vm_ip(cfg: OnApp2VHIConfig, vm: dict):
 
 
 def _vhi_virtual_machine_list(cfg: OnApp2VHIConfig):
-    _vs = VinfraServer(cfg, service_user=False)
+    _vs = VinfraServiceComputeServer(cfg, service_user=False)
     server_list = _vs.list_server()
     server_list = json.loads(server_list)
     return [vm['name'] for vm in server_list if vm['domain_id'] == cfg.vhi_conf['domain_id']]
@@ -935,6 +935,7 @@ def deactivate_disk(cfg: OnApp2VHIConfig, vm_idn: str, vm_ohv_ip: str, **kwargs)
     return True
 
 
+# TODO: move this into package onapp2vhi.vhi
 def create_new_vhi_vm(cfg: OnApp2VHIConfig,
                       vhi_ssh: SSH,
                       vinfra_access: str,
