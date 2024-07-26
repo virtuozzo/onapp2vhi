@@ -96,8 +96,13 @@ class TestMigrationImpl(unittest.TestCase):
             },
         ]
         mock_vhi_data.return_value = mock_data
-        result = migrate_impl(self.mock_cfg, user="123", vm="123", project="test")
-        self.assertFalse(result)
+        mock_vinfraservicecomputenetwork = Mock(spec=VinfraServiceComputeNetwork)
+        mock_vinfraservicecomputenetwork.show.return_value = "[{}]"
+
+        with patch("onapp2vhi.ops.migrate.VinfraServiceComputeNetwork",
+                   return_value=mock_vinfraservicecomputenetwork):
+            result = migrate_impl(self.mock_cfg, user="123", vm="123", project="test")
+            self.assertFalse(result)
 
     def test_migrate_with_invalid_network_param(self):
         self.mock_onapprequests.get.side_effect = TestMigrationImpl.mock_onapprequests_get
