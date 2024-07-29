@@ -2,6 +2,7 @@ import os
 import json
 import re
 import xml.etree.ElementTree as KVMxml
+from time import time, sleep
 
 from onapp2vhi.inc.ssh_connector import ssh_run, SSH
 from onapp2vhi.inc.onapp_helpers import (
@@ -21,12 +22,14 @@ from onapp2vhi.inc.vhi_helpers import (
     get_vhi_hv_ip
 )
 from onapp2vhi.inc.utils import exit_status_code_handler
-from onapp2vhi.inc.network_handler import get_network_configuration
 from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.inc.vinfra_wrapper import VinfraCommand, VinfraError
-from time import time, sleep
+from .migrate import (
+    select_vm_network_configuration,
+    MigrationError
+)
 
 VHI_VM_CREATION_TIMEOUT = 300
 
@@ -41,7 +44,8 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
                     vm_properties: dict,
                     vhi_obj,
                     placement='',
-                    cpu_hotplug=False):
+                    cpu_hotplug=False,
+                    network: str = ''):
     if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -190,9 +194,10 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
             break
 
     _vhi_vm_id = ''
-    _network = get_network_configuration(cfg, virtual_server_identifier=vm_idn, vinfra_project=_vhiproj)
-    if not _network:
-        logs.error("The network issue is hit. Could you please check logs.")
+    try:
+        _network = select_vm_network_configuration(cfg, vm_idn, _vhiproj, network)
+    except MigrationError as e:
+        logs.error(e)
         return False
 
     logs.debug(f'NETWORK PARAMS: {_network}', separator=True)

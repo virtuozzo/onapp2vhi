@@ -1,3 +1,17 @@
+## v1.1.5 (29/07/2024)
+
+### Feature
+- O2V-249: added command `update-vz-tools`
+  - add command to update migration tool vz-guest-tools copy using
+    version found in VHI controller node
+- O2V-257: added back `--network` parameter for target vm network for migration
+  - config value vhi[network] is used if present in config
+
+### Fixes
+- O2V-251: add documentation to known issues for debian 9
+- O2V-252: remove redundant ip set operation; all ips set at virtual
+           server creation time.
+
 ## v1.1.4 (09/05/2024)
 
 ### Feature

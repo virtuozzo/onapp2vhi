@@ -65,7 +65,7 @@ class TestLiveMigrate(TestCase):
     @patch("onapp2vhi.ops.live_migrate.transfer_firewall_rules_to_sg")
     @patch("onapp2vhi.ops.live_migrate.get_iface_from_specific_vs")
     @patch("onapp2vhi.ops.live_migrate.create_new_vhi_vm")
-    @patch("onapp2vhi.ops.live_migrate.get_network_configuration")
+    @patch("onapp2vhi.ops.live_migrate.select_vm_network_configuration")
     @patch("onapp2vhi.ops.live_migrate.get_onapp_vm_disks")
     @patch("onapp2vhi.ops.live_migrate.get_onapp_vm_nics")
     @patch("onapp2vhi.ops.live_migrate.get_onapp_vm_flavor")
@@ -75,7 +75,7 @@ class TestLiveMigrate(TestCase):
                         mock_get_onapp_vm_flavor,
                         mock_get_onapp_vm_nics,
                         mock_get_onapp_vm_disks,
-                        mock_get_network_configuration,
+                        mock_select_vm_network_configuration,
                         mock_create_new_vhi_vm,
                         mock_get_iface_from_specific_vs,
                         mock_transfer_firewall_rules_to_sg,
@@ -159,7 +159,7 @@ class TestLiveMigrate(TestCase):
     @patch("onapp2vhi.ops.live_migrate.transfer_firewall_rules_to_sg")
     @patch("onapp2vhi.ops.live_migrate.get_iface_from_specific_vs")
     @patch("onapp2vhi.ops.live_migrate.create_new_vhi_vm")
-    @patch("onapp2vhi.ops.live_migrate.get_network_configuration")
+    @patch("onapp2vhi.ops.live_migrate.select_vm_network_configuration")
     @patch("onapp2vhi.ops.live_migrate.get_onapp_vm_disks")
     @patch("onapp2vhi.ops.live_migrate.get_onapp_vm_nics")
     @patch("onapp2vhi.ops.live_migrate.get_onapp_vm_flavor")
@@ -169,7 +169,7 @@ class TestLiveMigrate(TestCase):
                                                   mock_get_onapp_vm_flavor,
                                                   mock_get_onapp_vm_nics,
                                                   mock_get_onapp_vm_disks,
-                                                  mock_get_network_configuration,
+                                                  mock_select_vm_network_configuration,
                                                   mock_create_new_vhi_vm,
                                                   mock_get_iface_from_specific_vs,
                                                   mock_transfer_firewall_rules_to_sg,

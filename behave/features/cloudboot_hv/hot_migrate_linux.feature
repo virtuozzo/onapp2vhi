@@ -10,6 +10,7 @@ Scenario: Hot migration without user's SSH key
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
   And the virtual machine (linux-vm-with-startup-cloudboot1) is built successfully
+  And the virtual machine (linux-vm-with-startup-cloudboot1) is booted successfully
 
   # To test for new migrated user, we delete the existing user account
   When I delete the existing user account (ultron) from the VHI portal
@@ -26,6 +27,7 @@ Scenario: Hot migration with user's SSH key
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
   And the virtual machine (linux-vm-with-startup-cloudboot1) is built successfully
+  And the virtual machine (linux-vm-with-startup-cloudboot1) is booted successfully
 
   When I migrate the virtual machine (linux-vm-with-startup-cloudboot1)
   Then I wait for 10 seconds
@@ -48,6 +50,7 @@ Scenario: Hot migration with user's SSH key with storage policy and placement sp
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
   And the virtual machine (linux-vm-with-startup-cloudboot1) is built successfully
+  And the virtual machine (linux-vm-with-startup-cloudboot1) is booted successfully
 
   When I migrate the virtual machine (linux-vm-with-startup-cloudboot1) with following details
   | storage policy        | placement             |
@@ -74,6 +77,7 @@ Scenario: Hot migration with user's SSH key with second network interface (IPv6)
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
   And the virtual machine (linux-vm-with-startup-cloudboot1) is built successfully
+  And the virtual machine (linux-vm-with-startup-cloudboot1) is booted successfully
 
   When I add a network interface (behave-network-interface-ipv6) with network join (behave-network-join-994) at compute zone (CloudBoot Compute Zone) to the virtual machine (linux-vm-with-startup-cloudboot1)
   Then CP API (create) should return status code 201
@@ -97,6 +101,7 @@ Scenario: HOT migration without user's SSH key with guest-tools and cloud-init d
   Then CP API (create) should return status code 201
   And I wait for 2 minutes
   And the virtual machine (linux-vm-with-startup-cloudboot1) is built successfully
+  And the virtual machine (linux-vm-with-startup-cloudboot1) is booted successfully
 
   # To test for new migrated user, we delete the existing user account
   When I delete the existing user account (ultron) from the VHI portal
@@ -104,7 +109,7 @@ Scenario: HOT migration without user's SSH key with guest-tools and cloud-init d
   | vz guest tools install | cloud init install |
   | false                  | false              |
   Then I wait for 10 seconds
-  And I should see the virtual machine (linux-vm-without-startup-cloudboot1) is ACTIVE in VHI portal
+  And I should see the virtual machine (linux-vm-with-startup-cloudboot1) is ACTIVE in VHI portal
   And the virtual machine (linux-vm-with-startup-cloudboot1) should have correct CPU, RAM and storage
   And the virtual machine (linux-vm-with-startup-cloudboot1) should not have guest-tools installed
   And the virtual machine (linux-vm-with-startup-cloudboot1) should not have cloud-init installed

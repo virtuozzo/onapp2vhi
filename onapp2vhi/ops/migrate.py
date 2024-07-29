@@ -1,9 +1,11 @@
 import os
 import sys
+import json
 
 from onapp2vhi.inc.helper import Helper
 from onapp2vhi.inc.vhi_ssh_keys import VhiSshKeys
 from onapp2vhi.inc.vhi_helpers import Vhi
+from onapp2vhi.inc.network_handler import get_network_configuration
 from onapp2vhi.utilities.logs.logger import OnAppVHILogger
 from onapp2vhi.inc.onapp_helpers import (
     prepare_vhi_migration_data,
@@ -14,11 +16,20 @@ from onapp2vhi.inc.onapp_helpers import (
     verify_vm_user
 )
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+from onapp2vhi.inc.vinfra_wrapper import (
+    VinfraError,
+    VinfraServiceComputeNetwork
+)
+from onapp2vhi.utilities.regex import JSON_REGEX
 
 logs = OnAppVHILogger()
 
 
 SENTINEL = object()
+
+
+class MigrationError(Exception):
+    pass
 
 
 def _prepare_cloud_init_msg(cloud_init_install: dict, vm_properties: dict):
@@ -45,16 +56,17 @@ def _prepare_cloud_init_msg(cloud_init_install: dict, vm_properties: dict):
 
 
 def migrate_impl(cfg: OnApp2VHIConfig,
-                 user='',
-                 vm='',
-                 vm_ssh_port=22,
-                 project='',
-                 vz_guest_tools_install='true',
-                 cloud_init_install='',
-                 placement='',
-                 storage_policy='',
-                 flavor='',
-                 cpu_hotplug=False
+                 user: str = '',
+                 vm: str = '',
+                 vm_ssh_port: int = 22,
+                 project: str = '',
+                 vz_guest_tools_install: str = 'true',
+                 cloud_init_install: str = '',
+                 placement: str = '',
+                 storage_policy: str = '',
+                 flavor: str = '',
+                 cpu_hotplug: bool = False,
+                 network: str = ''
                  ):
     """
     Migrate all resources from OnApp to VHI:
@@ -120,6 +132,25 @@ def migrate_impl(cfg: OnApp2VHIConfig,
     if not vz_guest_tools or not cloud_init['install']:
         logs.warn(msg=warn_msg)
     _custom_project = project
+
+    # if not supplied, default to value in config file
+    if not network:
+        network = cfg.vhi_conf.get("network", '')
+
+    # check target network if specified
+    if network:
+        try:
+            output = VinfraServiceComputeNetwork(cfg).show(network)
+            m = JSON_REGEX.match(output)
+            if not m:
+                logs.error(f'Failed to parse output: {output}')
+                return False
+
+            _ = json.loads(m.group(0))
+        except VinfraError as e:
+            logs.error(e.output)
+            return False
+
     # --Step 1--#
     # --OnApp: Get User, VM's information--#
     vhi_users_data = prepare_vhi_migration_data(cfg, user_idn=user_idn, vm_idn=vm)
@@ -255,7 +286,8 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                                    vm_properties=_vm_properties,
                                    vhi_obj=vhi,
                                    placement=placement,
-                                   cpu_hotplug=cpu_hotplug)
+                                   cpu_hotplug=cpu_hotplug,
+                                   network=network)
 
             vm_msg += (f'\t{_vm_number}. Migration Status = {result_vm}\n'
                        f'\t\t- IP "{_vm["ip_addr"]}"\n'
@@ -275,3 +307,18 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                                       vm_msg))
     logs.info(f"{Helper.EQUAL.value} VHI: Script finished successfully {Helper.EQUAL.value}", separator=True)
     logs.info("\n")
+
+
+def select_vm_network_configuration(cfg: OnApp2VHIConfig,
+                                    vm_id: str,
+                                    vhi_project: str,
+                                    network: str):
+    _network = ''
+    if not network:
+        _network = get_network_configuration(cfg, virtual_server_identifier=vm_id,
+                                             vinfra_project=vhi_project)
+        if not _network:
+            raise MigrationError("The network issue is hit. Could you please check logs.")
+    else:
+        _network = f'--network id={network}'
+    return _network

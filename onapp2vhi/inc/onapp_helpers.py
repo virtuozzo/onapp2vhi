@@ -18,7 +18,7 @@ from onapp2vhi.inc.vinfra_wrapper import (
     VinfraSGRules,
     VinfraProject,
     VinfraServerInterface,
-    VinfraServer,
+    VinfraServiceComputeServer,
 )
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.onapp.onappstore import OnAppStore, OnAppStoreFailed
@@ -327,7 +327,7 @@ def _get_primary_vm_ip(cfg: OnApp2VHIConfig, vm: dict):
 
 
 def _vhi_virtual_machine_list(cfg: OnApp2VHIConfig):
-    _vs = VinfraServer(cfg, service_user=False)
+    _vs = VinfraServiceComputeServer(cfg, service_user=False)
     server_list = _vs.list_server()
     server_list = json.loads(server_list)
     return [vm['name'] for vm in server_list if vm['domain_id'] == cfg.vhi_conf['domain_id']]
@@ -935,6 +935,7 @@ def deactivate_disk(cfg: OnApp2VHIConfig, vm_idn: str, vm_ohv_ip: str, **kwargs)
     return True
 
 
+# TODO: move this into package onapp2vhi.vhi
 def create_new_vhi_vm(cfg: OnApp2VHIConfig,
                       vhi_ssh: SSH,
                       vinfra_access: str,
@@ -966,7 +967,6 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
     """
     _vhi_vm_id = ''
     hostname_domain = f'{hostname}.{domain}'.lower()
-    onappvm_pri_ips = onapp_nics[0]['ips']
     extra_disks = ""
 
     if cfg.vhi_conf.get("remove_disk_on_termination") == "no":
@@ -1014,26 +1014,6 @@ def create_new_vhi_vm(cfg: OnApp2VHIConfig,
     if not exit_status_code_handler(exit_code=exit_status,
                                     message=f'VM is not created. Output:\n\t{output}'):
         return False
-
-    if len(onappvm_pri_ips) > 1:
-        logs.info(f"{_spaces}-- VHI: allocate and assign extra VHI VM's IP addresses to primary NIC--")
-        _ips_params = ''
-        for ip in onappvm_pri_ips:
-            _ips_params += f"--fixed-ip ip-address={ip} "
-        exit_status, output = vhi_ssh.execute(f"{vinfra_access} service compute server iface "
-                                              f"list --server {_vhi_vm_id} -f json")
-        if not exit_status_code_handler(exit_code=exit_status,
-                                        message=f'Listing network interfaces failed. Output:\n\t{output}'):
-            return False
-
-        _vhi_nic0_id = json.loads(output)[0]["id"]
-        exit_status, output = vhi_ssh.execute(
-            f"{vinfra_access} service compute server iface set {_ips_params} --server "
-            f"{_vhi_vm_id} {_vhi_nic0_id} -f json"
-        )
-        if not exit_status_code_handler(exit_code=exit_status,
-                                        message=f'VM iface is not set. Output:\n\t{output}'):
-            return False
 
     return _vhi_vm_id
 

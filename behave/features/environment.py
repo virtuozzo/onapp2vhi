@@ -138,5 +138,5 @@ def after_scenario(context, scenario):
                 _ = helper.open_vhi_ssh_connection(config["vhi"], "service compute network delete %s" % "network_" + network)
                 print("network named {network_name} has been removed".format(network_name="network_" + network))
 
-        if "failure" in locals():
+        if "failure" in locals() and "negative" not in context.tags:
             assert False, "error: migration does not complete successfully"

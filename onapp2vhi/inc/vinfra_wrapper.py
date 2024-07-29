@@ -2,13 +2,14 @@ from typing import Optional, Dict
 
 from onapp2vhi.inc.ssh_connector import SSH, CONNECT_TIMEOUT, CHANNEL_TIMEOUT
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+from onapp2vhi.utilities.logs.logger import hide_password
 
 
 class VinfraError(Exception):
 
     def __init__(self, command, exit_code, output):
         super().__init__()
-        self.command = command
+        self.command = hide_password(command)
         self.exit_code = exit_code
         self.output = output
 
@@ -150,7 +151,32 @@ class VinfraDomain(VinfraBase):
         self.vinfra_root += ' domain'
 
 
-class VinfraServer(VinfraServiceCompute):
+class VinfraServiceComputeNetwork(VinfraServiceCompute):
+
+    def __init__(self, cfg: OnApp2VHIConfig):
+        super().__init__(cfg)
+        self.vinfra_root += ' network'
+
+    def create(self):
+        raise NotImplementedError('method create not yet implemented')
+
+    def delete(self):
+        raise NotImplementedError('method delete not yet implemented')
+
+    def list(self):
+        # TODO: add filter by (name, id, project, type), for now list all
+        cmd = self.vinfra_root + ' list'
+        return self.execute(cmd, long=True)
+
+    def set(self):
+        raise NotImplementedError('method set not yet implemented')
+
+    def show(self, network: str):
+        cmd = self.vinfra_root + f' show {network}'
+        return self.execute(cmd)
+
+
+class VinfraServiceComputeServer(VinfraServiceCompute):
 
     def __init__(self, cfg: OnApp2VHIConfig, service_user: bool = False):
         super().__init__(cfg, service_user=service_user)
@@ -187,10 +213,11 @@ class VinfraServer(VinfraServiceCompute):
         return self.execute(cmd)
 
 
-class VinfraServerInterface(VinfraServer):
+#TODO rename to VinfraServiceComputeServerInterface
+class VinfraServerInterface(VinfraServiceComputeServer):
 
     def __init__(self, cfg: OnApp2VHIConfig):
-        VinfraServer.__init__(self, cfg)
+        super().__init__(cfg)
         self.vinfra_root += ' iface'
 
     def set(self, iface: str, vm_name: str = None, spoofing: bool = False, **kwargs):
@@ -242,6 +269,7 @@ class VinfraServerInterface(VinfraServer):
         return self.execute(cmd)
 
 
+#TODO rename to VinfraServiceComputeSecurityGroup
 class VinfraSecurityGroups(VinfraServiceCompute):
 
     def __init__(self, cfg: OnApp2VHIConfig):
@@ -287,6 +315,7 @@ class VinfraSecurityGroups(VinfraServiceCompute):
         return self.execute(cmd)
 
 
+#TODO rename to VinfraServiceComputeSecurityGroupRule
 class VinfraSGRules(VinfraServiceCompute):
 
     def __init__(self, cfg: OnApp2VHIConfig):

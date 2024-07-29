@@ -113,7 +113,7 @@ class TestVmColdMigration(unittest.TestCase):
     @patch("onapp2vhi.ops.cold_migrate.transfer_firewall_rules_to_sg")
     @patch("onapp2vhi.ops.cold_migrate.get_iface_from_specific_vs")
     @patch("onapp2vhi.ops.cold_migrate.create_new_vhi_vm")
-    @patch("onapp2vhi.ops.cold_migrate.get_network_configuration")
+    @patch("onapp2vhi.ops.cold_migrate.select_vm_network_configuration")
     @patch("onapp2vhi.ops.cold_migrate.get_onapp_vm_disks")
     @patch("onapp2vhi.ops.cold_migrate.get_onapp_vm_nics")
     @patch("onapp2vhi.ops.cold_migrate.get_onapp_vm_flavor")
@@ -123,7 +123,7 @@ class TestVmColdMigration(unittest.TestCase):
                                                             mock_get_onapp_vm_flavor,
                                                             mock_get_onapp_vm_nics,
                                                             mock_get_onapp_vm_disks,
-                                                            mock_get_network_configuration,
+                                                            mock_select_vm_network_configuration,
                                                             mock_create_new_vhi_vm,
                                                             mock_get_iface_from_specific_vs,
                                                             mock_transfer_firewall_rules_to_sg,
@@ -178,7 +178,7 @@ class TestVmColdMigration(unittest.TestCase):
                 'result': 'ok',
             }]),
         ]
-        mock_get_network_configuration.side_effect = [
+        mock_select_vm_network_configuration.side_effect = [
             { 'result': 'ok', }
         ]
         mock_create_new_vhi_vm.side_effect = [
@@ -212,7 +212,7 @@ class TestVmColdMigration(unittest.TestCase):
     @patch("onapp2vhi.ops.cold_migrate.transfer_firewall_rules_to_sg")
     @patch("onapp2vhi.ops.cold_migrate.get_iface_from_specific_vs")
     @patch("onapp2vhi.ops.cold_migrate.create_new_vhi_vm")
-    @patch("onapp2vhi.ops.cold_migrate.get_network_configuration")
+    @patch("onapp2vhi.ops.cold_migrate.select_vm_network_configuration")
     @patch("onapp2vhi.ops.cold_migrate.get_onapp_vm_disks")
     @patch("onapp2vhi.ops.cold_migrate.get_onapp_vm_nics")
     @patch("onapp2vhi.ops.cold_migrate.get_onapp_vm_flavor")
@@ -222,7 +222,7 @@ class TestVmColdMigration(unittest.TestCase):
                                   mock_get_onapp_vm_flavor,
                                   mock_get_onapp_vm_nics,
                                   mock_get_onapp_vm_disks,
-                                  mock_get_network_configuration,
+                                  mock_select_vm_network_configuration,
                                   mock_create_new_vhi_vm,
                                   mock_get_iface_from_specific_vs,
                                   mock_transfer_firewall_rules_to_sg,
@@ -284,7 +284,7 @@ class TestVmColdMigration(unittest.TestCase):
                 'result': 'ok',
             }]),
         ]
-        mock_get_network_configuration.side_effect = [
+        mock_select_vm_network_configuration.side_effect = [
             { 'result': 'ok', }
         ]
         mock_create_new_vhi_vm.side_effect = [
