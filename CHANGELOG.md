@@ -1,3 +1,8 @@
+## unrelease (dd/mm/yyyy)
+
+### Fixes
+- O2V-255: fix ipv6 firewall rule transfer
+
 ## v1.1.5 (29/07/2024)
 
 ### Feature
