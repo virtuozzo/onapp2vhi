@@ -1,4 +1,4 @@
-## unrelease (dd/mm/yyyy)
+## v1.1.5 (29/07/2024)
 
 ### Feature
 - O2V-249: added command `update-vz-tools`
