@@ -1,6 +1,7 @@
 import re
 import json
 from json.decoder import JSONDecodeError
+import ipaddress
 
 from onapp2vhi.inc.ssh_connector import SSH
 from onapp2vhi.utilities.config import OnApp2VHIConfig
@@ -52,7 +53,7 @@ class Network:
             return response
         return False
 
-    def is_present(self):
+    def is_present(self) -> bool:
         cmd = f"{self._vinfra_options} service compute network list --long -f json"
         exit_status, output = self._ssh.execute(cmd)
         if not exit_status:
@@ -77,6 +78,35 @@ class Network:
                         if (start == self.start_address) and (
                             end == self.end_address
                         ):
+                            self.id = network["id"]
+                            return True
+        return False
+
+    def is_ips_in_range(self) -> bool:
+        cmd = f"{self._vinfra_options} service compute network list --long -f json"
+        exit_status, output = self._ssh.execute(cmd)
+        if not exit_status:
+            try:
+                m = JSON_REGEX.match(output)
+                if not m:
+                    print(f"Failed to parse json.\n {output}")
+                    return False
+
+                response = json.loads(m.group(0))
+            except json.decoder.JSONDecodeError as error:
+                print(f"Failed to parse JSON.\n {error}")
+                return False
+
+            for network in response:
+                for subnet in network["subnets"]:
+                    if subnet["cidr"] == self.cidr and subnet["allocation_pools"]:
+                        [pools] = subnet["allocation_pools"]
+                        start = ipaddress.ip_address(pools["start"])
+                        end = ipaddress.ip_address(pools["end"])
+
+                        if all((ipaddress.ip_address(ip_addr) >= start)
+                               and (ipaddress.ip_address(ip_addr) <= end)
+                               for ip_addr in self.ip_addresses):
                             self.id = network["id"]
                             return True
         return False
