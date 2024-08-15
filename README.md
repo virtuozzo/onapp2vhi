@@ -287,6 +287,8 @@
       - `--placement` - Defaults to string `default` when not provided. When it is specified, it refers to placement defined in VHI to be used in the VM creation.
       - `--flavor` - Flavor defined in VHI for VM creation. Defaults to string `default` when not provided, where it will use current OnApp VM specification for a flavor.
       - `--hotplug` - Enable VM CPU and RAM hot plug for the create VHI VM
+      - `--strict-ip-pool-match` - strictly matches appliance network ip pool range between OnApp and VHI
+      - `--no-network-create` - prevents tool from creating a new virtual network for migrating virtual servers
         - **Examples**:
 
           Full possible flags:
