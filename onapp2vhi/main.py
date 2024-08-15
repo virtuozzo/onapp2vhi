@@ -221,6 +221,20 @@ def create_service_user():
     type=str,
     help="target appliance network on VHI"
 )
+@click.option(
+    "--strict-ip-pool-match",
+    required=False,
+    is_flag=True,
+    expose_value=True,
+    help="enable strict ip pool range match on target network"
+)
+@click.option(
+    "--no-network-create",
+    required=False,
+    is_flag=True,
+    expose_value=True,
+    help="prevent new network creation on VHI"
+)
 # TODO! convert vz_guest_tools_install & clout_init_install to actual value
 def migrate(
     user: str = "",
@@ -233,7 +247,9 @@ def migrate(
     storage_policy: str = "",
     flavor: str = "",
     hotplug: bool = False,
-    network: str = ""
+    network: str = "",
+    strict_ip_pool_match: bool = False,
+    no_network_create: bool = False
 ):
     migrate_impl(
         cfg,
@@ -247,7 +263,9 @@ def migrate(
         storage_policy=storage_policy,
         flavor=flavor,
         cpu_hotplug=hotplug,
-        network=network
+        network=network,
+        strict_ip_pool_match=strict_ip_pool_match,
+        no_network_create=no_network_create
     )
 
 
