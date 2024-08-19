@@ -45,7 +45,9 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
                     vhi_obj,
                     placement='',
                     cpu_hotplug=False,
-                    network: str = ''):
+                    network: str = '',
+                    strict_ip_pool_match: bool = False,
+                    no_network_create: bool = False):
     if not idn:
         logs.info('You need to pass OnApp VM identifier value through --vm-identifier=? parameter ')
         return False
@@ -195,7 +197,8 @@ def vm_live_migrate(cfg: OnApp2VHIConfig,
 
     _vhi_vm_id = ''
     try:
-        _network = select_vm_network_configuration(cfg, vm_idn, _vhiproj, network)
+        _network = select_vm_network_configuration(
+            cfg, vm_idn, _vhiproj, network, strict_ip_pool_match, no_network_create)
     except MigrationError as e:
         logs.error(e)
         return False

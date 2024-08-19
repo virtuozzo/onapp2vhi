@@ -1,10 +1,14 @@
 import re
 import json
 from json.decoder import JSONDecodeError
+import ipaddress
 
 from onapp2vhi.inc.ssh_connector import SSH
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.utilities.regex import JSON_REGEX
+from onapp2vhi.utilities.logs.logger import OnAppVHILogger
+
+logs = OnAppVHILogger()
 
 
 #TODO: refactor this to use VinfraServiceComputeNetwork
@@ -52,7 +56,7 @@ class Network:
             return response
         return False
 
-    def is_present(self):
+    def is_present(self) -> bool:
         cmd = f"{self._vinfra_options} service compute network list --long -f json"
         exit_status, output = self._ssh.execute(cmd)
         if not exit_status:
@@ -79,6 +83,56 @@ class Network:
                         ):
                             self.id = network["id"]
                             return True
+        return False
+
+    def is_ips_in_range(self) -> bool:
+        logs.info(f'searching: {self.cidr}')
+        ip_addresses = set(ipaddress.ip_address(ip_addr) for ip_addr in self.ip_addresses)
+
+        cmd = f"{self._vinfra_options} service compute network list --long -f json"
+        exit_status, output = self._ssh.execute(cmd)
+        if not exit_status:
+            try:
+                m = JSON_REGEX.match(output)
+                if not m:
+                    print(f"Failed to parse json.\n {output}")
+                    return False
+
+                response = json.loads(m.group(0))
+            except json.decoder.JSONDecodeError as error:
+                print(f"Failed to parse JSON.\n {error}")
+                return False
+
+            for network in response:
+                validated_ip_addresses = set()
+
+                if self.cidr == network['cidr']:
+                    logs.info(f'checking: {network["cidr"]}, {network["id"]}')
+                    for subnet in network["subnets"]:
+                        if subnet["allocation_pools"]:
+                            [pools] = subnet["allocation_pools"]
+                            start = ipaddress.ip_address(pools["start"])
+                            end = ipaddress.ip_address(pools["end"])
+                            subnet_network = ipaddress.ip_network(subnet["cidr"])
+
+                            for ip_address in ip_addresses:
+                                if ip_address.version == subnet_network.version:
+                                    if ip_address >= start and ip_address <= end:
+                                        validated_ip_addresses.add(ip_address)
+                                    else:
+                                        logs.debug(f'{ip_address} not in {subnet_network}')
+
+                    logs.debug(f'{network["cidr"]}: '
+                               f'ips validated {validated_ip_addresses}, '
+                               f'not validated {ip_addresses - validated_ip_addresses}')
+
+                    if validated_ip_addresses == ip_addresses:
+                        logs.info(f'selected: {network["cidr"]}, {network["id"]}')
+                        self.id = network['id']
+                        return True
+                else:
+                    logs.info(f'skipping: {network["cidr"]}, {network["id"]}')
+
         return False
 
     def create(self):

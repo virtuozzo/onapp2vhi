@@ -34,8 +34,8 @@ vinfra_domain = Migration
 vinfra_project = migproj
 vinfra_user = user_login
 vinfra_pass = user_pwd
-vinfra_domain_user = ''
-vinfra_domain_pass = ''
+vinfra_domain_user = domain_user
+vinfra_domain_pass = domain_password
 
  Network ID for migration VM's, you can get it on VHI cloud
 migration_network_id = 5afcb27b-1c92-4561-a81c-fcf4f89bd543
@@ -483,7 +483,8 @@ Next columns are deprecated: enable_dhcp, dns_nameservers, allocation_pools, gat
         mock_onapprequests2.return_value = self.mock_onapprequests
         mock_ssh.return_value = self.mock_ssh
 
-        result = get_network_configuration(self.mock_cfg, 'abcdef', 'test-project')
+        result = get_network_configuration(
+            self.mock_cfg, 'abcdef', 'test-project', strict_ip_pool_match=True)
         self.assertIn('id=271f403b-0222-4257-8e36-9c6a04857369', result)
         self.assertIn("fixed-ip='10.119.0.7'", result)
         self.assertIn("fixed-ip='2a01:a240:a240::2'", result)

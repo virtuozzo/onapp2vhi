@@ -21,15 +21,13 @@ from onapp2vhi.inc.vinfra_wrapper import (
     VinfraServiceComputeNetwork
 )
 from onapp2vhi.utilities.regex import JSON_REGEX
+from .error import MigrationError
+
 
 logs = OnAppVHILogger()
 
 
 SENTINEL = object()
-
-
-class MigrationError(Exception):
-    pass
 
 
 def _prepare_cloud_init_msg(cloud_init_install: dict, vm_properties: dict):
@@ -66,7 +64,9 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                  storage_policy: str = '',
                  flavor: str = '',
                  cpu_hotplug: bool = False,
-                 network: str = ''
+                 network: str = '',
+                 strict_ip_pool_match: bool = False,
+                 no_network_create: bool = False
                  ):
     """
     Migrate all resources from OnApp to VHI:
@@ -287,7 +287,9 @@ def migrate_impl(cfg: OnApp2VHIConfig,
                                    vhi_obj=vhi,
                                    placement=placement,
                                    cpu_hotplug=cpu_hotplug,
-                                   network=network)
+                                   network=network,
+                                   strict_ip_pool_match=strict_ip_pool_match,
+                                   no_network_create=no_network_create)
 
             vm_msg += (f'\t{_vm_number}. Migration Status = {result_vm}\n'
                        f'\t\t- IP "{_vm["ip_addr"]}"\n'
@@ -312,11 +314,16 @@ def migrate_impl(cfg: OnApp2VHIConfig,
 def select_vm_network_configuration(cfg: OnApp2VHIConfig,
                                     vm_id: str,
                                     vhi_project: str,
-                                    network: str):
+                                    network: str,
+                                    strict_ip_pool_match: bool = False,
+                                    no_network_create: bool = False) -> str:
     _network = ''
     if not network:
-        _network = get_network_configuration(cfg, virtual_server_identifier=vm_id,
-                                             vinfra_project=vhi_project)
+        _network = get_network_configuration(cfg,
+                                             virtual_server_identifier=vm_id,
+                                             vinfra_project=vhi_project,
+                                             strict_ip_pool_match=strict_ip_pool_match,
+                                             no_network_create=no_network_create)
         if not _network:
             raise MigrationError("The network issue is hit. Could you please check logs.")
     else:

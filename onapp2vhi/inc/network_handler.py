@@ -16,11 +16,16 @@ from onapp2vhi.inc.network_onapp import (
     get_hypervisor_network_join,
 )
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+from onapp2vhi.ops.error import MigrationError
 
 logs = OnAppVHILogger()
 
 
-def get_network_configuration(cfg: OnApp2VHIConfig, virtual_server_identifier: str, vinfra_project: str):
+def get_network_configuration(cfg: OnApp2VHIConfig,
+                              virtual_server_identifier: str,
+                              vinfra_project: str,
+                              strict_ip_pool_match: bool = False,
+                              no_network_create: bool = False) -> str:
     data = {}
     networks_cmd = []
     version = onapp_version(cfg)
@@ -104,7 +109,19 @@ def get_network_configuration(cfg: OnApp2VHIConfig, virtual_server_identifier: s
         logs.debug(f'network_ip_addresses = {network.ip_addresses}')
 
         ip_addresses = "".join([f"fixed-ip='{ip}'," for ip in network.ip_addresses])
-        if not vhi_network.is_present():
+
+        if (strict_ip_pool_match and vhi_network.is_present()) or \
+           (not strict_ip_pool_match and vhi_network.is_ips_in_range()):
+            # use the network
+            network_interface_cmd = f" --network id={vhi_network.id},{ip_addresses}mac='{vhi_network.mac_address}'," \
+                                    f"spoofing-protection-disable "
+            if network.primary:
+                logs.info("The virtual server primary interface has been found", header=True)
+                networks_cmd.insert(0, network_interface_cmd)
+            else:
+                networks_cmd.append(network_interface_cmd)
+        elif not no_network_create:
+            # create new network and use that instead
             logs.warn(f"The Network not found: {vhi_network.cidr}")
             if vhi_network.ip_version == 6:
                 logs.error(
@@ -119,13 +136,7 @@ def get_network_configuration(cfg: OnApp2VHIConfig, virtual_server_identifier: s
                            "spoofing-protection-disable ")
             networks_cmd.append(network_cmd)
         else:
-            network_interface_cmd = f" --network id={vhi_network.id},{ip_addresses}mac='{vhi_network.mac_address}'," \
-                                    f"spoofing-protection-disable "
-            if network.primary:
-                logs.info("The virtual server primary interface has been found", header=True)
-                networks_cmd.insert(0, network_interface_cmd)
-            else:
-                networks_cmd.append(network_interface_cmd)
+            raise MigrationError(f'Network {vhi_network.cidr} not found with --strict-ip-pool-check={strict_ip_pool_match} and --no-network-create={no_network_create}')
 
         logs.debug(f'networks command = {networks_cmd}')
     return ''.join(networks_cmd)
