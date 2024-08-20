@@ -74,15 +74,15 @@ class Network:
             for network in response:
                 for subnet in network["subnets"]:
                     if subnet["cidr"] == self.cidr and subnet["allocation_pools"]:
-                        [pools] = subnet["allocation_pools"]
-                        start = pools["start"]
-                        end = pools["end"]
+                        for pool in subnet["allocation_pools"]:
+                            start = pool["start"]
+                            end = pool["end"]
 
-                        if (start == self.start_address) and (
-                            end == self.end_address
-                        ):
-                            self.id = network["id"]
-                            return True
+                            if (start == self.start_address) and (
+                                end == self.end_address
+                            ):
+                                self.id = network["id"]
+                                return True
         return False
 
     def is_ips_in_range(self) -> bool:
@@ -110,17 +110,17 @@ class Network:
                     logs.info(f'checking: {network["cidr"]}, {network["id"]}')
                     for subnet in network["subnets"]:
                         if subnet["allocation_pools"]:
-                            [pools] = subnet["allocation_pools"]
-                            start = ipaddress.ip_address(pools["start"])
-                            end = ipaddress.ip_address(pools["end"])
-                            subnet_network = ipaddress.ip_network(subnet["cidr"])
+                            for pool in subnet["allocation_pools"]:
+                                start = ipaddress.ip_address(pool["start"])
+                                end = ipaddress.ip_address(pool["end"])
+                                subnet_network = ipaddress.ip_network(subnet["cidr"])
 
-                            for ip_address in ip_addresses:
-                                if ip_address.version == subnet_network.version:
-                                    if ip_address >= start and ip_address <= end:
-                                        validated_ip_addresses.add(ip_address)
-                                    else:
-                                        logs.debug(f'{ip_address} not in {subnet_network}')
+                                for ip_address in ip_addresses:
+                                    if ip_address.version == subnet_network.version:
+                                        if ip_address >= start and ip_address <= end:
+                                            validated_ip_addresses.add(ip_address)
+                                        else:
+                                            logs.debug(f'{ip_address} not in {subnet_network}')
 
                     logs.debug(f'{network["cidr"]}: '
                                f'ips validated {validated_ip_addresses}, '
