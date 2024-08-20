@@ -7,6 +7,7 @@
      ip pool range between OnApp and VHI
   - `--no-network-create` flag added to prevent tool from creating a new
     virtual network for migrating virtual servers
+- O2V-265: support parsing multiple allocation pools on VHI network
 
 ## v1.1.5 (29/07/2024)
 
