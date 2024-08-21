@@ -1,3 +1,14 @@
+## v1.1.6 (21/08/2024)
+
+### Fixes
+- O2V-255: fix ipv6 firewall rule transfer
+- O2V-269: remove strict ip pool matching check by default
+  - `--strict-ip-pool-match` flag added to strictly match appliance network
+     ip pool range between OnApp and VHI
+  - `--no-network-create` flag added to prevent tool from creating a new
+    virtual network for migrating virtual servers
+- O2V-265: support parsing multiple allocation pools on VHI network
+
 ## v1.1.5 (29/07/2024)
 
 ### Feature

@@ -1,6 +1,7 @@
 import copy
 import json
 import xml.etree.ElementTree as KVMxml
+import ipaddress
 
 from onapp2vhi.inc.rest_client import OnAppRequests, OnAppRequestsException
 from onapp2vhi.inc.helper import Helper
@@ -582,7 +583,7 @@ def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
     :param accept: "ACCEPT"
     :return:
     """
-    sgr_data = {"ethertype": "IPv4"}  # VHI only supports IPv4, so this variable hardcoded
+    sgr_data = {}
     sg = VinfraSecurityGroups(cfg)
     sgr = VinfraSGRules(cfg)
     proj = VinfraProject(cfg)
@@ -636,6 +637,8 @@ def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
         for rule in accept_only_rules:
             logs.debug(f"Rule position is: {rule.position}")
             data = copy.deepcopy(sgr_data)
+            ip_addr = ipaddress.ip_address(rule.address.split('/')[0])
+            data["ethertype"] = f'IPv{ip_addr.version}'
             data["protocol"] = rule.protocol
             data["remote-ip"] = rule.address
             if rule.port:  # some protocols do not need to specify ports
