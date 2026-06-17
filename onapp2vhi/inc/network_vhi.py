@@ -106,32 +106,29 @@ class Network:
             for network in response:
                 validated_ip_addresses = set()
 
-                if self.cidr == network['cidr']:
-                    logs.info(f'checking: {network["cidr"]}, {network["id"]}')
-                    for subnet in network["subnets"]:
-                        if subnet["allocation_pools"]:
-                            for pool in subnet["allocation_pools"]:
-                                start = ipaddress.ip_address(pool["start"])
-                                end = ipaddress.ip_address(pool["end"])
-                                subnet_network = ipaddress.ip_network(subnet["cidr"])
+                logs.info(f'checking: {network["cidr"]}, {network["id"]}')
+                for subnet in network["subnets"]:
+                    if subnet["allocation_pools"]:
+                        for pool in subnet["allocation_pools"]:
+                            start = ipaddress.ip_address(pool["start"])
+                            end = ipaddress.ip_address(pool["end"])
+                            subnet_network = ipaddress.ip_network(subnet["cidr"])
 
-                                for ip_address in ip_addresses:
-                                    if ip_address.version == subnet_network.version:
-                                        if ip_address >= start and ip_address <= end:
-                                            validated_ip_addresses.add(ip_address)
-                                        else:
-                                            logs.debug(f'{ip_address} not in {subnet_network}')
+                            for ip_address in ip_addresses:
+                                if ip_address.version == subnet_network.version:
+                                    if ip_address >= start and ip_address <= end:
+                                        validated_ip_addresses.add(ip_address)
+                                    else:
+                                        logs.debug(f'{ip_address} not in {subnet_network}')
 
-                    logs.debug(f'{network["cidr"]}: '
-                               f'ips validated {validated_ip_addresses}, '
-                               f'not validated {ip_addresses - validated_ip_addresses}')
+                logs.debug(f'{network["cidr"]}: '
+                           f'ips validated {validated_ip_addresses}, '
+                           f'not validated {ip_addresses - validated_ip_addresses}')
 
-                    if validated_ip_addresses == ip_addresses:
-                        logs.info(f'selected: {network["cidr"]}, {network["id"]}')
-                        self.id = network['id']
-                        return True
-                else:
-                    logs.info(f'skipping: {network["cidr"]}, {network["id"]}')
+                if validated_ip_addresses == ip_addresses:
+                    logs.info(f'selected: {network["cidr"]}, {network["id"]}')
+                    self.id = network['id']
+                    return True
 
         return False
 
