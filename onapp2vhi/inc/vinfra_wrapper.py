@@ -318,8 +318,8 @@ class VinfraSecurityGroups(VinfraServiceCompute):
 #TODO rename to VinfraServiceComputeSecurityGroupRule
 class VinfraSGRules(VinfraServiceCompute):
 
-    def __init__(self, cfg: OnApp2VHIConfig):
-        VinfraServiceCompute.__init__(self, cfg)
+    def __init__(self, cfg: OnApp2VHIConfig, **kwargs):
+        super().__init__(cfg, **kwargs)
         self.vinfra_root += ' security-group rule'
 
     def create(self, sg_name: str, **kwargs):

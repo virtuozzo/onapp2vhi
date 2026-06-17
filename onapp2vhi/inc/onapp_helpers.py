@@ -585,7 +585,7 @@ def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
     """
     sgr_data = {}
     sg = VinfraSecurityGroups(cfg)
-    sgr = VinfraSGRules(cfg)
+    sgr = VinfraSGRules(cfg, domain_service_user=True, access_domain=True)
     proj = VinfraProject(cfg)
 
     primary_nic = get_primary_nic(cfg, vm_idn=vm_idn)
