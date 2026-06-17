@@ -116,6 +116,10 @@ def vm_install_bootloader_offline(cfg: OnApp2VHIConfig, vm_handler, idn: str, vm
     # -- STEP 8 --
     logs.info(f'{_spaces}{_boot_msg}STEP #8 -- OnApp: Shutdown VM on Hypervisor --', header=True)
 
+    logs.info(f'{_spaces}{_boot_msg}STEP #8 -- Restore grub script placeholders --', header=True)
+    _hv_ssh.execute(f"sed -i 's/{vm_idn}/identifier/g' {install_script}"
+                    f" && sed -i 's/{vm_idn}/identifier/g' /onapp/tools/scripts/recovery.xml.mg")
+
     exit_status, output = _hv_ssh.execute(f"virsh shutdown {vm_idn}")
     while exit_status != 1:
         time.sleep(10)
