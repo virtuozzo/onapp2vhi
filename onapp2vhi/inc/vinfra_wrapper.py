@@ -27,7 +27,8 @@ class VinfraBase:
                  domain_service_user: bool = False,
                  connect_timeout: int = CONNECT_TIMEOUT,
                  channel_timeout: int = CHANNEL_TIMEOUT,
-                 cp_ip: bool = False):
+                 cp_ip: bool = False,
+                 project: str = ''):
         self.cp_ip = cp_ip
         _host = cfg.vhi_conf['hv_ip']
         if not self.cp_ip:
@@ -43,6 +44,8 @@ class VinfraBase:
             self.vinfra_root = cfg.DOMAIN_AUTH
         if access_domain:
             self.vinfra_root += f" --vinfra-domain={cfg.vhi_conf['vinfra_domain']}"
+        if project:
+            self.vinfra_root += f" --vinfra-project='{project}'"
 
     def execute(self, cmd: str, long: bool = False, json: bool = True) -> str:
         if long:
@@ -88,13 +91,15 @@ class VinfraServiceCompute(VinfraBase):
                  domain_service_user: bool = False,
                  connect_timeout: int = CONNECT_TIMEOUT,
                  access_domain: bool = False,
-                 channel_timeout: int = CHANNEL_TIMEOUT):
+                 channel_timeout: int = CHANNEL_TIMEOUT,
+                 project: str = ''):
         super().__init__(cfg,
                          service_user=service_user,
                          access_domain=access_domain,
                          domain_service_user=domain_service_user,
                          connect_timeout=connect_timeout,
-                         channel_timeout=channel_timeout)
+                         channel_timeout=channel_timeout,
+                         project=project)
         self.vinfra_root += ' service compute'
 
 
