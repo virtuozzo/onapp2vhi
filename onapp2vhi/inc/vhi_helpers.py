@@ -302,11 +302,14 @@ class Vhi:
 
     def create_service_user(self):
         """
-        Creates new user and assign to him Service User role to be able
-        to do any manipulations with compute resources within Domain
-        If such user is created it will just take it creds from cfg/config.cfg file
-        Manually command:
-        `vinfra domain user set migration_user@onapp.test.com --assign-domain Default compute --domain=Default`
+        Creates service users for migration:
+          - Always creates a domain_admin user for the configured domain
+            (including Default): dom_migration_user_<domain>
+            Credentials saved to vinfra_domain_user / vinfra_domain_pass.
+          - Also ensures system migration_user exists in Default domain
+            Credentials saved to vinfra_user / vinfra_pass.
+
+        If such users already exist, credentials are verified/refreshed in config.
         :return:
         """
         v_user = VinfraUser(self.cfg)
@@ -322,10 +325,11 @@ class Vhi:
         if self.cfg.vhi_conf['vinfra_user'] != _service_user_payload['name']:
             self.cfg.update(section="vhi", option="vinfra_user", value=_service_user_payload['name'])
 
-        if self.vinfra_domain != 'Default':
-            domain_user = self._create_domain_service_user()
-            if not domain_user:
-                return False
+        # Always create a domain_admin user (including Default), same as for custom domains.
+        # Credentials go to vinfra_domain_user / vinfra_domain_pass and are used by DOMAIN_AUTH.
+        domain_user = self._create_domain_service_user()
+        if not domain_user:
+            return False
 
         result = self._verify_user_exists(user_email=_service_user_payload['email'],
                                           domain='Default')

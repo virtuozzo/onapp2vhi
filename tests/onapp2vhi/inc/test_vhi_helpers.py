@@ -774,19 +774,24 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
     def test_create_migration_user_ok_correct_migration_user_domain_default(self, mock_ssh_ctor):
         self.vhi.vinfra_domain = 'Default'
         self.mock_hv_user_ssh.execute.side_effect = [
+            (0, json.dumps([])),                                        # domain user not created
             (0, json.dumps([])),                                        # migration user not created
         ]
         self.mock_cp_user_ssh.execute.side_effect = [
+            (0, json.dumps({'result': 'ok'})),  # domain user create ok
+            (0, json.dumps({'result': 'ok'})),  # domain user set ok
             (0, json.dumps({'email': 'migration_helper@user.com',
                             'name': 'migration_user',
-                            'system_permissions': 'compute'})),  # create ok
+                            'system_permissions': 'compute'})),  # migration user create ok
         ]
         self.mock_node_ssh.execute.side_effect = [
             (0, json.dumps([{'result': 'ok'}])),
         ]
         mock_ssh_ctor.side_effect = [
             self.mock_cp_user_ssh,  # in create_service_user
-            self.mock_hv_user_ssh,  # in _verify_user_exists
+            self.mock_cp_user_ssh,  # in _create_domain_service_user
+            self.mock_hv_user_ssh,  # in _verify_user_exists (domain user)
+            self.mock_hv_user_ssh,  # in _verify_user_exists (migration user)
             self.mock_node_ssh,     # verify service user with node list
         ]
         self.assertTrue(self.vhi.create_service_user())
@@ -798,7 +803,11 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
     def test_migration_user_wrong_password_password_update_ok(self, mock_ssh_ctor):
         self.vhi.vinfra_domain = 'Default'
         self.mock_hv_user_ssh.execute.side_effect = [
+            (0, json.dumps([{'email': 'Default@user.com'}])),           # domain user present
             (0, json.dumps([{'email': 'migration_helper@user.com'}])),  # migration user present
+        ]
+        self.mock_image_ssh.execute.side_effect = [
+            (0, json.dumps([{'result': 'ok'}])),
         ]
         self.mock_node_ssh.execute.side_effect = [
             (1, json.dumps([{'result': 'not ok, wrong password'}])),
@@ -806,7 +815,10 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
         ]
         mock_ssh_ctor.side_effect = [
             self.mock_cp_user_ssh,  # in create_service_user
-            self.mock_hv_user_ssh,  # in _verify_user_exists
+            self.mock_cp_user_ssh,  # in _create_domain_service_user
+            self.mock_hv_user_ssh,  # in _verify_user_exists (domain user)
+            self.mock_image_ssh,    # verify domain user with image list
+            self.mock_hv_user_ssh,  # in _verify_user_exists (migration user)
             self.mock_node_ssh,     # verify service user with node list
             self.mock_node_ssh,     # verify service user with node list
         ]
@@ -817,7 +829,11 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
     def test_migration_user_wrong_password_password_update_failed(self, mock_ssh_ctor):
         self.vhi.vinfra_domain = 'Default'
         self.mock_hv_user_ssh.execute.side_effect = [
+            (0, json.dumps([{'email': 'Default@user.com'}])),           # domain user present
             (0, json.dumps([{'email': 'migration_helper@user.com'}])),  # migration user present
+        ]
+        self.mock_image_ssh.execute.side_effect = [
+            (0, json.dumps([{'result': 'ok'}])),
         ]
         self.mock_node_ssh.execute.side_effect = [
             (1, json.dumps([{'result': 'not ok, wrong password'}])),
@@ -825,7 +841,10 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
         ]
         mock_ssh_ctor.side_effect = [
             self.mock_cp_user_ssh,  # in create_service_user
-            self.mock_hv_user_ssh,  # in _verify_user_exists
+            self.mock_cp_user_ssh,  # in _create_domain_service_user
+            self.mock_hv_user_ssh,  # in _verify_user_exists (domain user)
+            self.mock_image_ssh,    # verify domain user with image list
+            self.mock_hv_user_ssh,  # in _verify_user_exists (migration user)
             self.mock_node_ssh,     # verify service user with node list
             self.mock_node_ssh,     # verify service user with node list
         ]

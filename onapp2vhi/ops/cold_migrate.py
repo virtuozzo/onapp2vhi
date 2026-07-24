@@ -107,9 +107,7 @@ def vm_cold_migrate(cfg: OnApp2VHIConfig,
     onappvm_pri_mac = _onapp_nics[0]['mac']
 
     # Here we generate vinfra access to create VM
-    vinfra_access = f"{cfg.ADMIN_AUTH} --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
-    if cfg.vhi_conf['vinfra_domain'] != 'Default':
-        vinfra_access = f"{cfg.DOMAIN_AUTH}  --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
+    vinfra_access = f"{cfg.DOMAIN_AUTH}  --vinfra-domain='{_vhidom}' --vinfra-project='{_vhiproj}'"
     _vhi_ssh = SSH(**{'host': cfg.vhi_conf['cp_ip'],
                       'port': int(cfg.vhi_conf['cloud_ssh_port']),
                       'ssh_key': cfg.ssh_key})
