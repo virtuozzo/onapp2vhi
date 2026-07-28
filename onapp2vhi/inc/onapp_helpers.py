@@ -54,7 +54,7 @@ DataStoreZone = namedtuple('DataStoreZone', 'name storage_policy')
 def _find_by(find: str, obj: dict):
     """
     Find some object in the list
-    :param find: str - "user_name=AQA Roman Holovko"
+    :param find: str - "user_name=AQA Example User"
     :param obj: {'1': 1}
     :return:
     """
@@ -87,7 +87,7 @@ def _create_obj_list(obj_list: list, obj_name: str, default_props: list, find=''
     :param obj_list: [{'1': 1}, {'2': 1}, {'3': 1}]
     :param obj_name: "virtual_machine", "user"
     :param default_props: ['id', 'label', . . .]
-    :param find: str - "user_name=AQA Roman Holovko"
+    :param find: str - "user_name=AQA Example User"
     :return:
     """
     new_list = []

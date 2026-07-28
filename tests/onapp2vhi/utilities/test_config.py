@@ -8,7 +8,7 @@ from onapp2vhi.utilities.config import AttributeDict, OnApp2VHIConfig
 
 TEST_CFG = """
 [onapp]
-host = 69.168.239.170
+host = 127.0.0.1
 url = http://onapp
 api_key = here_is_yours_admin_api_key
 email = onapp@gmail.com
@@ -17,18 +17,18 @@ hv_ssh_port = 22
 
 [vhi]
 url = https://vhi
-panel_url = https://cvhi.onappdev.com:8800
+panel_url = https://cvhi.onapp.virtuozzo.com:8800
 api_path = /api/v2
 login = admin
 admin_ui_pwd = ui_admin_password
-hv_ip = 10.63.0.64
-cp_ip = 10.63.0.63
+hv_ip = 10.0.0.2
+cp_ip = 127.0.0.1
 network = public2
 cloud_ssh_port = 2222
 hv_ssh_port = 22
 linux_image = debian-10-openstack-amd64.qcow2
 windows_image = windows2012
-domain_id = 58fa18b2cefc4bad8a52f11008dfbf72
+domain_id = 00000000000000000000000000000000
 vinfra_domain = Migration
 vinfra_project = migproj
 vinfra_user = user_login
@@ -107,7 +107,7 @@ class TestSingleton(unittest.TestCase):
         with patch("builtins.open", mock_open(read_data=TEST_CFG)):
             first_instance = OnApp2VHIConfig.load_config("test.ini")
             self.assertEqual(
-                first_instance.onapp_conf["host"], "69.168.239.170"
+                first_instance.onapp_conf["host"], "127.0.0.1"
             )
 
         with patch("builtins.open", mock_open(read_data=TEST_CFG_2)):

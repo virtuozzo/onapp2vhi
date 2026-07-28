@@ -2,15 +2,15 @@
 # rename this file to config.yaml
 # command: ln -s <this config.yaml path> <your config path>
 # onapp:
-#   host: onapp2vhi.onappdev.com
+#   host: onapp2vhi.onapp.virtuozzo.com
 #   user: your_name
 #   port: port_number
 #   migration_tool_dir: /your/path/to/onapp2vhi/
 #   virtual_env: /your/path/to/venv/bin/activate
 
 # vhi:
-#    host: onapp2vhicp.onappdev.com
+#    host: onapp2vhicp.onapp.virtuozzo.com
 #    user: root
 #    vinfra_portal: https://backend-api.svc.vstoragedomain:8888
 #    vinfra_username: admin
-#    vinfra_password: 4OnApp13777
+#    vinfra_password: your_admin_password

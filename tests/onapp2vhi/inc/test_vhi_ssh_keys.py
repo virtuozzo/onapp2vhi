@@ -7,7 +7,7 @@ from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 TEST_CFG = """
 [onapp]
-host = 69.168.239.170
+host = 127.0.0.1
 url = http://onapp
 api_key = here_is_yours_admin_api_key
 email = onapp@gmail.com
@@ -16,18 +16,18 @@ hv_ssh_port = 22
 
 [vhi]
 url = https://vhi
-panel_url = https://cvhi.onappdev.com:8800
+panel_url = https://cvhi.onapp.virtuozzo.com:8800
 api_path = /api/v2
 login = admin
 admin_ui_pwd = ui_admin_password
-hv_ip = 10.63.0.64
-cp_ip = 10.63.0.63
+hv_ip = 10.0.0.2
+cp_ip = 127.0.0.1
 network = public2
 cloud_ssh_port = 2222
 hv_ssh_port = 22
 linux_image = debian-10-openstack-amd64.qcow2
 windows_image = windows2012
-domain_id = 58fa18b2cefc4bad8a52f11008dfbf72
+domain_id = 00000000000000000000000000000000
 vinfra_domain = Migration
 vinfra_project = migproj
 vinfra_user = user_login
@@ -137,7 +137,7 @@ class TestVhiSshKeys(unittest.TestCase):
         )
 
         mock_requests.post(
-            "https://cvhi.onappdev.com:8800/api/v2/accounts/projects/69/auth/",
+            "https://cvhi.onapp.virtuozzo.com:8800/api/v2/accounts/projects/69/auth/",
             cookies={"session1": "test_cookies"},
         )
 
@@ -157,13 +157,13 @@ class TestVhiSshKeys(unittest.TestCase):
         mock_requests.get(
             (
                 "https://vhi/api/v2/domains/"
-                "58fa18b2cefc4bad8a52f11008dfbf72/projects"
+                "00000000000000000000000000000000/projects"
             ),
             json={"data": [{"id": "69", "name": "test_project_name"}]},
         )
 
         mock_requests.post(
-            "https://cvhi.onappdev.com:8800/api/v2/accounts/projects/69/auth/",
+            "https://cvhi.onapp.virtuozzo.com:8800/api/v2/accounts/projects/69/auth/",
             cookies={"session1": "test_cookies"},
         )
 
@@ -199,12 +199,12 @@ class TestVhiSshKeys(unittest.TestCase):
         )
 
         mock_requests.post(
-            "https://cvhi.onappdev.com:8800/api/v2/accounts/projects/69/auth/",
+            "https://cvhi.onapp.virtuozzo.com:8800/api/v2/accounts/projects/69/auth/",
             cookies={"session1": "test_cookies"},
         )
 
         mock_requests.get(
-            "https://cvhi.onappdev.com:8800/api/v2/compute/keys",
+            "https://cvhi.onapp.virtuozzo.com:8800/api/v2/compute/keys",
             json={
                 "data": [{"name": "name_ofk_key", "public_key": "testkeys1"}]
             },
@@ -229,12 +229,12 @@ class TestVhiSshKeys(unittest.TestCase):
         )
 
         mock_requests.post(
-            "https://cvhi.onappdev.com:8800/api/v2/accounts/projects/69/auth/",
+            "https://cvhi.onapp.virtuozzo.com:8800/api/v2/accounts/projects/69/auth/",
             cookies={"session1": "test_cookies"},
         )
 
         mock_requests.get(
-            "https://cvhi.onappdev.com:8800/api/v2/compute/keys",
+            "https://cvhi.onapp.virtuozzo.com:8800/api/v2/compute/keys",
             json={"data": {}},
         )
 
@@ -280,19 +280,19 @@ class TestVhiSshKeys(unittest.TestCase):
         )
 
         mock_requests.post(
-            "https://cvhi.onappdev.com:8800/api/v2/accounts/projects/69/auth/",
+            "https://cvhi.onapp.virtuozzo.com:8800/api/v2/accounts/projects/69/auth/",
             cookies={"session1": "test_cookies"},
         )
 
         mock_requests.get(
-            "https://cvhi.onappdev.com:8800/api/v2/compute/keys",
+            "https://cvhi.onapp.virtuozzo.com:8800/api/v2/compute/keys",
             json={
                 "data": [{"name": "name_ofk_key", "public_key": "testkeys1"}]
             },
         )
 
         mock_requests.post(
-            "https://cvhi.onappdev.com:8800/api/v2/compute/keys",
+            "https://cvhi.onapp.virtuozzo.com:8800/api/v2/compute/keys",
         )
 
         self.assertTrue(vhi_ssh_keys.create_vhi_ssh_keys())

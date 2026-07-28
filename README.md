@@ -52,73 +52,39 @@
     You are using pip version 21.3.1, however version 23.0.1 is available.
     You should consider upgrading via the 'pip install --upgrade pip' command.
     ```
-    - install onapp2vhi CLI tool from source:
+    - install onapp2vhi CLI tool from source (GitHub):
     ```
-    (myenv) [onapp@cp onapp2vhi]$ pip install git+ssh://git@bitbucket.org/virtuozzocore/onapp2vhi.git@v1.0.0
-    Collecting git+ssh://****@bitbucket.org/virtuozzocore/onapp2vhi.git@v1.0.0
-      Cloning ssh://****@bitbucket.org/virtuozzocore/onapp2vhi.git (to revision v1.0.0) to /tmp/pip-req-build-tcd_5faw
-      Running command git clone -q 'ssh://****@bitbucket.org/virtuozzocore/onapp2vhi.git' /tmp/pip-req-build-tcd_5faw
-      Running command git checkout -b v1.0.0 --track origin/v1.0.0
-      Switched to a new branch 'v1.0.0'
-      Branch v1.0.0 set up to track remote branch v1.0.0 from origin.
-      Resolved ssh://****@bitbucket.org/virtuozzocore/onapp2vhi.git to commit c7ff0d423fa5b6446eb8e69fca5af295f81a8e00
-      Installing build dependencies: started
-      Installing build dependencies: finished with status 'done'
-      Getting requirements to build wheel: started
-      Getting requirements to build wheel: finished with status 'done'
-      Preparing metadata (pyproject.toml): started
-      Preparing metadata (pyproject.toml): finished with status 'done'
-    Requirement already satisfied: requests==2.27.1 in ./venv/lib/python3.6/site-packages (from onapp2vhi==1.0.0) (2.27.1)
-    Requirement already satisfied: colorlog==4.8.0 in ./venv/lib/python3.6/site-packages (from onapp2vhi==1.0.0) (4.8.0)
-    Requirement already satisfied: importlib-resources==1.4.0 in ./venv/lib/python3.6/site-packages (from onapp2vhi==1.0.0) (1.4.0)
-    Requirement already satisfied: paramiko==3.1.0 in ./venv/lib/python3.6/site-packages (from onapp2vhi==1.0.0) (3.1.0)
-    Requirement already satisfied: click==7.1.2 in ./venv/lib/python3.6/site-packages (from onapp2vhi==1.0.0) (7.1.2)
-    Requirement already satisfied: importlib-metadata in ./venv/lib/python3.6/site-packages (from importlib-resources==1.4.0->onapp2vhi==1.0.0) (4.8.3)
-    Requirement already satisfied: zipp>=0.4 in ./venv/lib/python3.6/site-packages (from importlib-resources==1.4.0->onapp2vhi==1.0.0) (3.6.0)
-    Requirement already satisfied: cryptography>=3.3 in ./venv/lib/python3.6/site-packages (from paramiko==3.1.0->onapp2vhi==1.0.0) (40.0.2)
-    Requirement already satisfied: bcrypt>=3.2 in ./venv/lib/python3.6/site-packages (from paramiko==3.1.0->onapp2vhi==1.0.0) (4.0.1)
-    Requirement already satisfied: pynacl>=1.5 in ./venv/lib/python3.6/site-packages (from paramiko==3.1.0->onapp2vhi==1.0.0) (1.5.0)
-    Requirement already satisfied: idna<4,>=2.5 in ./venv/lib/python3.6/site-packages (from requests==2.27.1->onapp2vhi==1.0.0) (3.4)
-    Requirement already satisfied: charset-normalizer~=2.0.0 in ./venv/lib/python3.6/site-packages (from requests==2.27.1->onapp2vhi==1.0.0) (2.0.12)
-    Requirement already satisfied: urllib3<1.27,>=1.21.1 in ./venv/lib/python3.6/site-packages (from requests==2.27.1->onapp2vhi==1.0.0) (1.26.16)
-    Requirement already satisfied: certifi>=2017.4.17 in ./venv/lib/python3.6/site-packages (from requests==2.27.1->onapp2vhi==1.0.0) (2023.5.7)
-    Requirement already satisfied: cffi>=1.12 in ./venv/lib/python3.6/site-packages (from cryptography>=3.3->paramiko==3.1.0->onapp2vhi==1.0.0) (1.15.1)
-    Requirement already satisfied: typing-extensions>=3.6.4 in ./venv/lib/python3.6/site-packages (from importlib-metadata->importlib-resources==1.4.0->onapp2vhi==1.0.0) (4.1.1)
-    Requirement already satisfied: pycparser in ./venv/lib/python3.6/site-packages (from cffi>=1.12->cryptography>=3.3->paramiko==3.1.0->onapp2vhi==1.0.0) (2.21)
-    Building wheels for collected packages: onapp2vhi
-      Building wheel for onapp2vhi (pyproject.toml): started
-      Building wheel for onapp2vhi (pyproject.toml): finished with status 'done'
-      Created wheel for onapp2vhi: filename=onapp2vhi-1.0.0-py2.py3-none-any.whl size=4583729 sha256=1a7c49755c3b170aefe9ba960ecaad048c457827958bba3a4467ee707c9460da
-      Stored in directory: /tmp/pip-ephem-wheel-cache-ul0oapdk/wheels/e6/91/36/97eaffd224cca1ef714dad490b42599841e1454d3d1b5bc5a6
-    Successfully built onapp2vhi
-    Installing collected packages: onapp2vhi
-    Successfully installed onapp2vhi-1.0.0
+    # Virtuozzo Infrastructure (o2v-ps) — this branch
+    (myenv) [onapp@cp onapp2vhi]$ pip install git+https://github.com/virtuozzo/onapp2vhi.git@o2v-ps
+
+    # Latest release line (master)
+    (myenv) [onapp@cp onapp2vhi]$ pip install git+https://github.com/virtuozzo/onapp2vhi.git@master
     ```
   - create configuration file at `~/.config/onapp2vhi/config.ini` using the following template, provide credentials related to OnApp and VHI clouds
   ```
   [onapp]
-  host = 69.168.239.170
-  url = http://69.168.239.170
+  host = 127.0.0.1
+  url = http://127.0.0.1
   api_key = here_is_yours_admin_api_key
   email = your_mail@gmail.com
   cp_ssh_port = 2222
   hv_ssh_port = 22
 
   [vhi]
-  url = https://cvhi.onappdev.com:8888
-  panel_url = https://cvhi.onappdev.com:8800
+  url = https://cvhi.onapp.virtuozzo.com:8888
+  panel_url = https://cvhi.onapp.virtuozzo.com:8800
   api_path = /api/v2
   login = admin
   admin_ui_pwd = ui_admin_password
-  hv_ip = 10.63.0.64
-  cp_ip = 10.63.0.63
-  cp_ip_internal = 192.168.13.11
+  hv_ip = 10.0.0.2
+  cp_ip = 127.0.0.1
+  cp_ip_internal = 192.168.0.1
   network = public2
   cloud_ssh_port = 2222
   hv_ssh_port = 22
   linux_image = debian-10-openstack-amd64.qcow2
   windows_image = windows2012
-  domain_id = 58fa18b2cefc4bad8a52f11008dfbf72
+  domain_id = 00000000000000000000000000000000
   vinfra_domain = Migration
   vinfra_project = migproj
   vhi_storage_policy = default
@@ -130,10 +96,10 @@
 
 
   #Network ID for migration VM's, you can get it on VHI cloud
-  migration_network_id = 5afcb27b-1c92-4561-a81c-fcf4f89bd543
+  migration_network_id = 00000000-0000-0000-0000-000000000001
 
   #Security Group ID specified to use for 2nd, 3rd, ... NIC's
-  vhi_secondary_security_group = d37b9211-0ce6-4186-b73c-e7aa7325d505
+  vhi_secondary_security_group = 00000000-0000-0000-0000-000000000002
 
   [key]
   ssh_key = path/to/your/ssh_key/id_rsa

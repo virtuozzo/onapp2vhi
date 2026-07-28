@@ -8,28 +8,28 @@ from onapp2vhi.utilities.config import OnApp2VHIConfig
 
 TEST_CONFIG = """
 [onapp]
-host = dummy.onappdev.com
-url = http://dummy.onappdev.com
+host = dummy.onapp.virtuozzo.com
+url = http://dummy.onapp.virtuozzo.com
 api_key = dummy_api_key
 email = unittest@virtuozzo.com
 cp_ssh_port = 2222
 hv_ssh_port = 22
 
 [vhi]
-url = https://vhi.onappdev.com:8888
-panel_url = https://vhi-panel.onappdev.com:8800
+url = https://vhi.onapp.virtuozzo.com:8888
+panel_url = https://vhi-panel.onapp.virtuozzo.com:8800
 api_path = /api/v2
 login = admin
 admin_ui_pwd = ui_admin_password
-hv_ip = 10.63.0.64
-cp_ip = 10.63.0.63
+hv_ip = 10.0.0.2
+cp_ip = 127.0.0.1
 cp_ip_internal = 192.168.1.11
 network = public2
 cloud_ssh_port = 2222
 hv_ssh_port = 22
 linux_image = debian-10-openstack-amd64.qcow2
 windows_image = windows2012
-domain_id = 58fa18b2cefc4bad8a52f11008dfbf72
+domain_id = 00000000000000000000000000000000
 vinfra_domain = Migration
 vinfra_project = migproj
 vinfra_user = user_login
@@ -38,7 +38,7 @@ vinfra_domain_user = ''
 vinfra_domain_pass = ''
 
  Network ID for migration VM's, you can get it on VHI cloud
-migration_network_id = 5afcb27b-1c92-4561-a81c-fcf4f89bd543
+migration_network_id = 00000000-0000-0000-0000-000000000001
 
 vhi_secondary_security_group = 1234-1234fasd-safce0-adsfew
 

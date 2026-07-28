@@ -11,7 +11,7 @@ from onapp2vhi.inc.vinfra_wrapper import VinfraError
 
 TEST_CFG = """
 [onapp]
-host = 69.168.239.170
+host = 127.0.0.1
 url = http://onapp
 api_key = here_is_yours_admin_api_key
 email = onapp@gmail.com
@@ -20,18 +20,18 @@ hv_ssh_port = 22
 
 [vhi]
 url = https://vhi
-panel_url = https://cvhi.onappdev.com:8800
+panel_url = https://cvhi.onapp.virtuozzo.com:8800
 api_path = /api/v2
 login = admin
 admin_ui_pwd = ui_admin_password
-hv_ip = 10.63.0.64
-cp_ip = 10.63.0.63
+hv_ip = 10.0.0.2
+cp_ip = 127.0.0.1
 network = public2
 cloud_ssh_port = 2222
 hv_ssh_port = 22
 linux_image = debian-10-openstack-amd64.qcow2
 windows_image = windows2012
-domain_id = 58fa18b2cefc4bad8a52f11008dfbf72
+domain_id = 00000000000000000000000000000000
 vinfra_domain = Migration
 vinfra_project = migproj
 vinfra_user = user_login
@@ -297,16 +297,16 @@ class TestVhiHelpers(unittest.TestCase):
         # project exist
         mock_project_instance = mock_project.return_value
         mock_project_instance.projects.return_value =\
-            '[{"name": "project_roman.holovko@virtuozzo.com"}]'
+            '[{"name": "project_user@example.com"}]'
 
         user_data = {
-            "user_email": "roman.holovko@virtuozzo.com",
+            "user_email": "user@example.com",
             "id": 4,
-            "first_name": "Roman",
-            "last_name": "Holovko",
+            "first_name": "Example",
+            "last_name": "User",
             "password": "pwd",
-            "user_login": "roman_holovko@virtuozzo_com",
-            "project_name": "project_roman.holovko@virtuozzo.com",
+            "user_login": "user_example_com",
+            "project_name": "project_user@example.com",
             "quotas": {"cores": -1, "RAM": -1, "storage": -1},
         }
         self.assertTrue(self.vhi.create_project(user_data))
@@ -316,16 +316,16 @@ class TestVhiHelpers(unittest.TestCase):
         mock_project_instance = mock_project.return_value
         mock_project_instance.projects.return_value = '[{"name": "project_test"}]'
         mock_project_instance.create.return_value =\
-            '{"name": "project_roman.holovko@virtuozzo.com", "id": "4"}'
+            '{"name": "project_user@example.com", "id": "4"}'
 
         user_data = {
-            "user_email": "roman.holovko@virtuozzo.com",
+            "user_email": "user@example.com",
             "id": 4,
-            "first_name": "Roman",
-            "last_name": "Holovko",
+            "first_name": "Example",
+            "last_name": "User",
             "password": "pwd",
-            "user_login": "roman_holovko@virtuozzo_com",
-            "project_name": "project_roman.holovko@virtuozzo.com",
+            "user_login": "user_example_com",
+            "project_name": "project_user@example.com",
             "quotas": {"cores": -1, "RAM": -1, "storage": -1},
         }
 
@@ -339,16 +339,16 @@ class TestVhiHelpers(unittest.TestCase):
         mock_project_instance = mock_project.return_value
         mock_project_instance.projects.return_value = '[{"name": "project_test"}]'
         mock_project_instance.create.return_value =\
-            '{"name": "project_roman.holovko@virtuozzo.com", "id": "4"}'
+            '{"name": "project_user@example.com", "id": "4"}'
 
         user_data = {
-            "user_email": "roman.holovko@virtuozzo.com",
+            "user_email": "user@example.com",
             "id": 4,
-            "first_name": "Roman",
-            "last_name": "Holovko",
+            "first_name": "Example",
+            "last_name": "User",
             "password": "pwd",
-            "user_login": "roman_holovko@virtuozzo_com",
-            "project_name": "project_roman.holovko@virtuozzo.com",
+            "user_login": "user_example_com",
+            "project_name": "project_user@example.com",
             "quotas": {"cores": -1, "RAM": -1, "storage": 2},
         }
 
@@ -363,32 +363,32 @@ class TestVhiHelpers(unittest.TestCase):
     @patch("onapp2vhi.inc.vhi_helpers.VinfraUser", autospec=True)
     def test_create_user(self, mock_user):
         user_data = {
-            "user_email": "roman.holovko@virtuozzo.com",
+            "user_email": "user@example.com",
             "id": 4,
-            "first_name": "Roman",
-            "last_name": "Holovko",
+            "first_name": "Example",
+            "last_name": "User",
             "password": "pwd",
-            "user_login": "roman_holovko@virtuozzo_com",
-            "project_name": "project_roman.holovko@virtuozzo.com",
+            "user_login": "user_example_com",
+            "project_name": "project_user@example.com",
             "quotas": {"cores": -1, "RAM": -1, "storage": -1},
             "roles": [{"role": {"identifier": "staff"}}],
         }
 
         user_data_admin = {
-            "user_email": "roman.holovko@virtuozzo.com",
+            "user_email": "user@example.com",
             "id": 4,
-            "first_name": "Roman",
-            "last_name": "Holovko",
+            "first_name": "Example",
+            "last_name": "User",
             "password": "pwd",
-            "user_login": "roman_holovko@virtuozzo_com",
-            "project_name": "project_roman.holovko@virtuozzo.com",
+            "user_login": "user_example_com",
+            "project_name": "project_user@example.com",
             "quotas": {"cores": -1, "RAM": -1, "storage": -1},
             "roles": [{"role": {"identifier": "admin"}}],
         }
 
         # user exists
         mock_user_instance = mock_user.return_value
-        mock_user_instance.user_list.return_value = '[{"email": "roman.holovko@virtuozzo.com"}]'
+        mock_user_instance.user_list.return_value = '[{"email": "user@example.com"}]'
 
         result, passwd = self.vhi.create_user(user_data)
         self.assertTrue(result)
@@ -425,7 +425,7 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
             'hv_ip': 'dummyhv.unittest.test',
             'vinfra_project': 'test_proj',
             'vinfra_domain': 'behave',
-            'domain_id': '58fa18b2cefc4bad8a52f11008dfbf72',
+            'domain_id': '00000000000000000000000000000000',
             'cloud_ssh_port': 22,
             'vinfra_user': 'migration_user',
             'vinfra_domain_user': 'dom_migration_user_behave',
@@ -448,25 +448,25 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
         mock_ssh.return_value = self.mock_ssh
 
         self.user_data = {
-            "user_email": "roman.holovko@virtuozzo.com",
+            "user_email": "user@example.com",
             "id": 4,
-            "first_name": "Roman",
-            "last_name": "Holovko",
+            "first_name": "Example",
+            "last_name": "User",
             "password": "pwd",
-            "user_login": "roman_holovko@virtuozzo_com",
-            "project_name": "project_roman.holovko@virtuozzo.com",
+            "user_login": "user_example_com",
+            "project_name": "project_user@example.com",
             "quotas": {"cores": -1, "RAM": -1, "storage": -1},
             "roles": [{"role": {"identifier": "staff"}}],
         }
 
         self.user_data_admin = {
-            "user_email": "roman.holovko@virtuozzo.com",
+            "user_email": "user@example.com",
             "id": 4,
-            "first_name": "Roman",
-            "last_name": "Holovko",
+            "first_name": "Example",
+            "last_name": "User",
             "password": "pwd",
-            "user_login": "roman_holovko@virtuozzo_com",
-            "project_name": "project_roman.holovko@virtuozzo.com",
+            "user_login": "user_example_com",
+            "project_name": "project_user@example.com",
             "quotas": {"cores": -1, "RAM": -1, "storage": -1},
             "roles": [{"role": {"identifier": "admin"}}],
         }
@@ -727,7 +727,7 @@ class TestVhiHelpersNoVinfraMocks(unittest.TestCase):
     def test_create_user_user_exists(self, mock_ssh_ctor):
         # user exists
         self.mock_hv_user_ssh.execute.side_effect = [
-            (0, '[{"email": "roman.holovko@virtuozzo.com"}]'),  # list users reply
+            (0, '[{"email": "user@example.com"}]'),  # list users reply
         ]
         mock_ssh_ctor.side_effect = [
             self.mock_cp_user_ssh,     # in create_user()

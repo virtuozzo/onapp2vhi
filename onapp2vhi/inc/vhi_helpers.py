@@ -252,7 +252,7 @@ class Vhi:
     def _create_domain_service_user(self):
         """
         Create Domain Service User for specified Domain:
-            - echo -e "123456789@" | vinfra --vinfra-username='admin' --vinfra-password='4OnApp13777'
+            - echo -e "your_user_password" | vinfra --vinfra-username='admin' --vinfra-password='your_admin_password'
                  domain user create test123 --email "migration_helper@user.com" --domain-permissions domain_admin
                     --domain "MultiDomain"  --enable -f json
         Set Compute role to new user or to an existing one
@@ -409,13 +409,13 @@ class Vhi:
         """
         Create project on VHI side
         :param user_data: {
-            "user_email": "roman.holovko@virtuozzo.com",
+            "user_email": "user@example.com",
             "id": 4,
-            "first_name": "Roman",
-            "last_name": "Holovko",
+            "first_name": "Example",
+            "last_name": "User",
             "password": "pwd",
-                "user_login": "roman_holovko@virtuozzo_com",
-            "project_name": "project_roman.holovko@virtuozzo.com",
+                "user_login": "user_example_com",
+            "project_name": "project_user@example.com",
             "quotas": {
               "cores": -1,
               "RAM": -1,
@@ -486,13 +486,13 @@ class Vhi:
         """
         Create User on VHI side
         :param user_data: {
-            "user_email": "roman.holovko@virtuozzo.com",
+            "user_email": "user@example.com",
             "id": 4,
-            "first_name": "Roman",
-            "last_name": "Holovko",
+            "first_name": "Example",
+            "last_name": "User",
             "password": "pwd",
-                "user_login": "roman_holovko@virtuozzo_com",
-            "project_name": "project_roman.holovko@virtuozzo.com",
+                "user_login": "user_example_com",
+            "project_name": "project_user@example.com",
             "quotas": {
               "cores": -1,
               "RAM": -1,
