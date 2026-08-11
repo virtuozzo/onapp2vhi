@@ -167,10 +167,10 @@ Ensure the OnApp SSH public key is installed on all V/IS nodes.
 virtualenv -p python3 ~/myenv/
 source ~/myenv/bin/activate
 pip install --upgrade pip
-pip install git+ssh://git@bitbucket.org/virtuozzocore/onapp2vhi.git@v1.0.0
+pip install git+ssh://git@github.com/virtuozzo/onapp2vhi.git@o2v-ps
 ```
 
-Use the release tag or package source provided for your deployment.
+Install from the `o2v-ps` branch on GitHub (`virtuozzo/onapp2vhi`).
 
 ### Step 3 — Configure
 
