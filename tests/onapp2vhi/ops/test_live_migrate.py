@@ -60,7 +60,6 @@ class TestLiveMigrate(TestCase):
     @patch("onapp2vhi.ops.live_migrate.SSH")
     @patch("onapp2vhi.ops.live_migrate.suspend_vm")
     @patch("onapp2vhi.ops.live_migrate.get_vhi_hv_ip")
-    @patch("onapp2vhi.ops.live_migrate.check_sg_exists_in_project")
     @patch("onapp2vhi.ops.live_migrate.attach_security_group_to_nic_and_enable_spoofing")
     @patch("onapp2vhi.ops.live_migrate.transfer_firewall_rules_to_sg")
     @patch("onapp2vhi.ops.live_migrate.get_iface_from_specific_vs")
@@ -80,7 +79,6 @@ class TestLiveMigrate(TestCase):
                         mock_get_iface_from_specific_vs,
                         mock_transfer_firewall_rules_to_sg,
                         mock_attach_security_group_to_nic_and_enable_spoofing,
-                        mock_check_sg_exists_in_project,
                         mock_get_vhi_hv_ip,
                         mock_suspend_vm,
                         mock_ssh,
@@ -154,7 +152,6 @@ class TestLiveMigrate(TestCase):
     @patch("onapp2vhi.ops.live_migrate.SSH")
     @patch("onapp2vhi.ops.live_migrate.suspend_vm")
     @patch("onapp2vhi.ops.live_migrate.get_vhi_hv_ip")
-    @patch("onapp2vhi.ops.live_migrate.check_sg_exists_in_project")
     @patch("onapp2vhi.ops.live_migrate.attach_security_group_to_nic_and_enable_spoofing")
     @patch("onapp2vhi.ops.live_migrate.transfer_firewall_rules_to_sg")
     @patch("onapp2vhi.ops.live_migrate.get_iface_from_specific_vs")
@@ -174,7 +171,6 @@ class TestLiveMigrate(TestCase):
                                                   mock_get_iface_from_specific_vs,
                                                   mock_transfer_firewall_rules_to_sg,
                                                   mock_attach_security_group_to_nic_and_enable_spoofing,
-                                                  mock_check_sg_exists_in_project,
                                                   mock_get_vhi_hv_ip,
                                                   mock_suspend_vm,
                                                   mock_ssh,

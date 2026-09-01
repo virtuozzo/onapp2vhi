@@ -327,7 +327,7 @@ class VinfraSGRules(VinfraServiceCompute):
         super().__init__(cfg, **kwargs)
         self.vinfra_root += ' security-group rule'
 
-    def create(self, sg_name: str, **kwargs):
+    def create(self, sg_name: str, egress: bool = False, **kwargs):
         """
         https://docs.virtuozzo.com/virtuozzo_hybrid_infrastructure_4_6_admins_cmd_guide/index.html#vinfra-service-compute-security-group-rule-create.html
         --remote-group <remote-group>
@@ -355,8 +355,11 @@ class VinfraSGRules(VinfraServiceCompute):
             for key, value in kwargs.items():
                 param_list.append(f'--{key} {value}')
             cmd += ' ' + ' '.join(param_list)
-        # onapp supports only incoming traffic, so the default value will be ingress
-        return self.execute(f"{cmd} --ingress")
+        if egress:
+            cmd += ' --egress'
+        else:
+            cmd += ' --ingress'
+        return self.execute(f"{cmd} -f json")
 
     def list_sg_rules(self, sg_group: str = '', list_all: bool = False, **kwargs):
         """

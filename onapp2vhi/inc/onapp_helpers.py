@@ -570,6 +570,55 @@ def check_sg_exists_in_project(cfg: OnApp2VHIConfig, vhiproj: str, sg_id: str):
     return False
 
 
+def _add_allow_all_sg_rules(sgr: VinfraSGRules, sg_name: str):
+    """
+    Mirror OnApp default allow on V/IS: any-to-any ingress and egress for IPv4 and IPv6.
+    """
+    for ethertype, cidr, egress in (
+        ("IPv4", "0.0.0.0/0", False),
+        ("IPv6", "::/0", False),
+        ("IPv4", "0.0.0.0/0", True),
+        ("IPv6", "::/0", True),
+    ):
+        output = sgr.create(
+            sg_name=sg_name,
+            egress=egress,
+            **{"ethertype": ethertype,
+               "port-range-min": 1,
+               "port-range-max": 65535,
+               "remote-ip": cidr},
+        )
+        output = json.loads(output)
+        if not output:
+            logs.warn(msg=f"Allow-all rule was not set correctly for {ethertype} "
+                          f"{'egress' if egress else 'ingress'} {cidr}.")
+
+
+def _transfer_accept_rules_to_sg(sgr: VinfraSGRules, sg_name: str, accept_rules, sgr_data: dict):
+    for rule in accept_rules:
+        logs.debug(f"Rule position is: {rule.position}")
+        data = copy.deepcopy(sgr_data)
+        ip_addr = ipaddress.ip_address(rule.address.split('/')[0])
+        data["ethertype"] = f'IPv{ip_addr.version}'
+        data["protocol"] = rule.protocol
+        data["remote-ip"] = rule.address
+        if rule.port:  # some protocols do not need to specify ports
+            if len(rule.port.split(',')) > 1:  # some rules contain multiple ports
+                for port in list(set(rule.port.split(','))):  # iterate by unique ports only.
+                    data["port-range-min"] = port
+                    data["port-range-max"] = port
+
+                    output = sgr.create(sg_name=sg_name, **data)
+                    output = json.loads(output)
+            else:
+                data["port-range-min"] = rule.port
+                data["port-range-max"] = rule.port
+                output = sgr.create(sg_name=sg_name, **data)
+                output = json.loads(output)
+        if not output:
+            logs.warn(msg=f"Firewall rule: {rule} was not transferred correctly")
+
+
 def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
                                   vm_idn: str,
                                   vhiproj: str,
@@ -600,21 +649,13 @@ def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
     proj_id = json.loads(output)['id']
     sg_list = sg.list_security_group(**{'project': proj_id})
     sg_list = json.loads(sg_list)
-    if not firewall_rules_for_primary_nic:
-        logs.debug(msg='No rules for transfer!')
-        for sg in sg_list:
-            if sg['name'] == 'default':
-                # return only default security group ID
-                return sg['id']
 
-    # Verify whether SC exists on VHI side
-    if len(sg_list) > 1:
-        for _sg_obj in sg_list:
-            if security_group_name != _sg_obj['name']:
-                continue
+    for _sg_obj in sg_list:
+        if security_group_name != _sg_obj['name']:
+            continue
 
-            logs.warn(f'Security Group exists on VHI side NAME: {_sg_obj["name"]}| ID: {_sg_obj["id"]}')
-            return _sg_obj['id']
+        logs.warn(f'Security Group exists on VHI side NAME: {_sg_obj["name"]}| ID: {_sg_obj["id"]}')
+        return _sg_obj['id']
 
     # Create new SG
     _description = f'Security group created from the VS: {vm_idn} with primary NIC: {primary_nic.nic_idn}'
@@ -633,46 +674,18 @@ def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
 
     # https://virtuozzo.atlassian.net/wiki/spaces/PROD/pages/2616033301/WiP+-+Compare+OnApp+firewall+rules+with+Virtuozzo+security+groups#The-first-scenario%3A-The-default-firewall-rule-of-OnApp-VS-is-Drop
     accept_only_rules = [rule for rule in firewall_rules_for_primary_nic if rule.command == accept]
-    if primary_nic.default_firewall_rule in (drop, accept) and accept_only_rules:
-        for rule in accept_only_rules:
-            logs.debug(f"Rule position is: {rule.position}")
-            data = copy.deepcopy(sgr_data)
-            ip_addr = ipaddress.ip_address(rule.address.split('/')[0])
-            data["ethertype"] = f'IPv{ip_addr.version}'
-            data["protocol"] = rule.protocol
-            data["remote-ip"] = rule.address
-            if rule.port:  # some protocols do not need to specify ports
-                if len(rule.port.split(',')) > 1:  # some rules contain multiple ports
-                    for port in list(set(rule.port.split(','))):  # iterate by unique ports only.
-                        data["port-range-min"] = port
-                        data["port-range-max"] = port
+    default_is_accept = primary_nic.default_firewall_rule == accept
 
-                        output = sgr.create(sg_name=sg_name, **data)
-                        output = json.loads(output)
-                else:
-                    data["port-range-min"] = rule.port
-                    data["port-range-max"] = rule.port
-                    # create the rule
-                    output = sgr.create(sg_name=sg_name, **data)
-                    output = json.loads(output)
-            if not output:
-                logs.warn(msg=f"Firewall rule: {rule} was not transferred correctly")
-        if primary_nic.default_firewall_rule == accept:
-            output = sgr.create(sg_name=sg_name, **{"ethertype": "IPv4",
-                                                    "port-range-min": 1,
-                                                    "port-range-max": 65535,
-                                                    "remote-ip": '0.0.0.0/0'})
-            output = json.loads(output)
-            if not output:
-                logs.warn(msg="All Accept rule: '0.0.0.0/0' was not set correctly.")
-
-        output = sg.list_security_group(**{'name': f"{sg_name}"})
-        custom_sg_id = json.loads(output)[0]['id']
-        logs.debug(f"Transferred firewall rules list: {custom_sg_id} for newly created Security group")
-        return custom_sg_id
+    if accept_only_rules:
+        _transfer_accept_rules_to_sg(sgr, sg_name, accept_only_rules, sgr_data)
+    elif default_is_accept:
+        logs.debug(msg='No custom firewall rules; applying allow-all rules to mirror OnApp default allow.')
+        _add_allow_all_sg_rules(sgr, sg_name)
     else:
-        logs.debug(f'Firewall rules contains only {accept}" rules.')
-        return custom_sg_id
+        logs.debug(msg='No ACCEPT rules to transfer; leaving security group empty (default deny on V/IS).')
+
+    logs.debug(f"Transferred firewall rules list: {custom_sg_id} for newly created Security group")
+    return custom_sg_id
 
 
 def get_iface_from_specific_vs(cfg: OnApp2VHIConfig, vm_name: str):
