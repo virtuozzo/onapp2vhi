@@ -21,12 +21,33 @@ from onapp2vhi.ops.error import MigrationError
 logs = OnAppVHILogger()
 
 
+def ordered_nic_ip_addresses(vs_ip_addresses):
+    """Return IP dicts with OnApp primary first, duplicates removed, order preserved.
+
+    OnApp 6.4+ (including 6.5/6.6) sets `primary` on the IP itself, not as list
+    position. Older releases omit the flag; then API order is kept.
+    """
+    if not vs_ip_addresses:
+        return []
+    primaries = [ip for ip in vs_ip_addresses if ip.get("primary")]
+    others = [ip for ip in vs_ip_addresses if not ip.get("primary")]
+    ordered = primaries + others if primaries else list(vs_ip_addresses)
+    unique = []
+    seen = set()
+    for ip in ordered:
+        addr = ip.get("address")
+        if not addr or addr in seen:
+            continue
+        seen.add(addr)
+        unique.append(ip)
+    return unique
+
+
 def get_network_configuration(cfg: OnApp2VHIConfig,
                               virtual_server_identifier: str,
                               vinfra_project: str,
                               strict_ip_pool_match: bool = False,
                               no_network_create: bool = False) -> str:
-    data = {}
     networks_cmd = []
     version = onapp_version(cfg)
     vs_network_interfaces = NetworkInterfaces()
@@ -35,6 +56,7 @@ def get_network_configuration(cfg: OnApp2VHIConfig,
     virtual_server_nic = get_virtual_server_interfaces(cfg, virtual_server_identifier)
 
     for nic in virtual_server_nic:
+        data = {}
         network_join = get_hypervisor_network_join(
             cfg, virtual_server_hypervisor_id, nic["network_interface"]["network_join_id"]
         )
@@ -52,35 +74,23 @@ def get_network_configuration(cfg: OnApp2VHIConfig,
             logs.warn(f'IP addresses are not assigned to network interface with ID: {nic_id}')
             continue
 
+        ordered_ips = ordered_nic_ip_addresses(vs_ip_addresses)
+        if version > 6.3 and not any(ip.get("primary") for ip in vs_ip_addresses):
+            logs.warn(
+                f'The primary IP is not found; the following IP will be set as primary: {ordered_ips[0]["address"]}'
+            )
+        lead_ip = ordered_ips[0]
         data['network_identifier'] = network_identifier
-        data["ipv4"] = next((ip_address['ipv4'] for ip_address in vs_ip_addresses), False)
-        if version <= 6.3 and nic['network_interface']['primary'] is True:
-            pass
-        elif version > 6.3:
-            data["primary_ip"] = [
-                ip_address['address'] for ip_address in vs_ip_addresses
-                if ip_address["primary"]
-            ]
+        data["ipv4"] = lead_ip.get("ipv4", False)
         data["primary"] = True if nic['network_interface']['primary'] else False
-        if data.get("primary_ip", None):
-            data["ip_addresses"] = [ip_address['address'] for ip_address in vs_ip_addresses
-                                    if ip_address['address'] != data["primary_ip"]]
-        else:
-            data["ip_addresses"] = [ip_address['address'] for ip_address in vs_ip_addresses]
+        data["ip_addresses"] = [ip_address['address'] for ip_address in ordered_ips]
         data["mac_address"] = nic["network_interface"]["mac_address"]
         data["network_id"] = get_network_id_by_identifier(cfg, network_identifier)
         data['network_nameserver'] = get_network_nameserver(cfg, data['network_id'], ipv4=True)
-        data["ip_net_id"] = next((ip_address['ip_net_id'] for ip_address in vs_ip_addresses))
-        data["ip_range_id"] = next((ip_address['ip_range_id'] for ip_address in vs_ip_addresses))
+        data["ip_net_id"] = lead_ip['ip_net_id']
+        data["ip_range_id"] = lead_ip['ip_range_id']
         data['ip_net'] = get_ip_net(cfg, data['network_id'], data['ip_net_id'])
         data['ip_range'] = get_ip_range(cfg, data['network_id'], data['ip_net_id'], data["ip_range_id"])
-        if data.get("primary_ip", None):
-            data["ip_addresses"].insert(0, data["primary_ip"][0])  # the primary IP should be first
-            data["ip_addresses"] = list(set(data["ip_addresses"]))  # remove IP addr duplications
-        else:
-            logs.warn(
-                f'The primary IP is not found the following IP will be set as primary: {data["ip_addresses"][0]}'
-            )
         nic = NetworkInterface(**data)
         vs_network_interfaces.add(nic)
 

@@ -1,7 +1,7 @@
 from unittest import TestCase
 from mock import patch, mock_open, Mock
 
-from onapp2vhi.inc.network_handler import get_network_configuration
+from onapp2vhi.inc.network_handler import get_network_configuration, ordered_nic_ip_addresses
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.inc.rest_client import OnAppRequests
 from onapp2vhi.inc.ssh_connector import SSH
@@ -43,6 +43,31 @@ migration_network_id = 00000000-0000-0000-0000-000000000001
 [key]
 ssh_key = path/to/your/ssh_key/id_rsa
 """
+
+
+class OrderedNicIpAddressesTestCase(TestCase):
+
+    def test_primary_flag_not_first_in_api_list(self):
+        ips = [
+            {'address': '185.146.85.168', 'primary': False, 'ipv4': True, 'ip_net_id': 1, 'ip_range_id': 1},
+            {'address': '89.39.209.145', 'primary': True, 'ipv4': True, 'ip_net_id': 2, 'ip_range_id': 2},
+        ]
+        ordered = ordered_nic_ip_addresses(ips)
+        self.assertEqual(
+            [ip['address'] for ip in ordered],
+            ['89.39.209.145', '185.146.85.168']
+        )
+
+    def test_without_primary_flag_keeps_api_order(self):
+        ips = [
+            {'address': '10.0.0.1', 'ipv4': True},
+            {'address': '10.0.0.2', 'ipv4': True},
+        ]
+        ordered = ordered_nic_ip_addresses(ips)
+        self.assertEqual(
+            [ip['address'] for ip in ordered],
+            ['10.0.0.1', '10.0.0.2']
+        )
 
 
 class GetNetworkConfigurationTestCase(TestCase):
@@ -488,8 +513,16 @@ Next columns are deprecated: enable_dhcp, dns_nameservers, allocation_pools, gat
         self.assertIn('id=271f403b-0222-4257-8e36-9c6a04857369', result)
         self.assertIn("fixed-ip='10.119.0.7'", result)
         self.assertIn("fixed-ip='2a01:a240:a240::2'", result)
+        self.assertLess(
+            result.index("fixed-ip='10.119.0.7'"),
+            result.index("fixed-ip='2a01:a240:a240::2'"),
+        )
         self.assertIn("mac='00:16:3e:11:05:1d'", result)
         self.assertIn('id=6a152778-cd18-4444-a444-b3513d32128d', result)
         self.assertIn("fixed-ip='2a01:a240:a240::102'", result)
         self.assertIn("fixed-ip='192.168.17.2'", result)
+        self.assertLess(
+            result.index("fixed-ip='192.168.17.2'"),
+            result.index("fixed-ip='2a01:a240:a240::102'"),
+        )
         self.assertIn("mac='00:16:3e:3f:20:27'", result)
