@@ -1034,7 +1034,7 @@ class TransferFirewallRulesToSecurityGroupTestCase(OnAppHelpersTestCase):
         self.mock_ssh_vinfra_security_group.execute.assert_has_calls([
             # first check purposely return empty
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --project 123 -f json"),
+                 "compute security-group list --project 123 --name sg_from_vs_abcdef_and_nic_eth0 -f json"),
             # security group creation
             call("vinfra --vinfra-username='domain_user' --vinfra-password='domain_pass' "
                  "--vinfra-domain='Migration' --vinfra-project='dummy_vhi_proj' service compute "
@@ -1136,7 +1136,7 @@ class TransferFirewallRulesToSecurityGroupTestCase(OnAppHelpersTestCase):
         self.mock_ssh_vinfra_security_group.execute.assert_has_calls([
             # first check purposely return empty
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --project 123 -f json"),
+                 "compute security-group list --project 123 --name sg_from_vs_abcdef_and_nic_eth0 -f json"),
             # security group creation
             call("vinfra --vinfra-username='domain_user' --vinfra-password='domain_pass' "
                  "--vinfra-domain='Migration' --vinfra-project='dummy_vhi_proj' service compute "
@@ -1238,7 +1238,7 @@ class TransferFirewallRulesToSecurityGroupTestCase(OnAppHelpersTestCase):
         self.mock_ssh_vinfra_security_group.execute.assert_has_calls([
             # first check purposely return empty
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --project 123 -f json"),
+                 "compute security-group list --project 123 --name sg_from_vs_abcdef_and_nic_eth0 -f json"),
             # security group creation
             call("vinfra --vinfra-username='domain_user' --vinfra-password='domain_pass' "
                  "--vinfra-domain='Migration' --vinfra-project='dummy_vhi_proj' service compute "
@@ -1342,7 +1342,7 @@ class TransferFirewallRulesToSecurityGroupTestCase(OnAppHelpersTestCase):
         self.mock_ssh_vinfra_security_group.execute.assert_has_calls([
             # first check purposely return empty
             call("vinfra --vinfra-username='admin' --vinfra-password='ui_admin_password' service "
-                 "compute security-group list --project 123 -f json"),
+                 "compute security-group list --project 123 --name sg_from_vs_abcdef_and_nic_eth0 -f json"),
             # security group creation
             call("vinfra --vinfra-username='domain_user' --vinfra-password='domain_pass' "
                  "--vinfra-domain='Migration' --vinfra-project='dummy_vhi_proj' service compute "
@@ -1508,6 +1508,73 @@ class TransferFirewallRulesToSecurityGroupTestCase(OnAppHelpersTestCase):
 
         self.assertEquals(results, 'sec_grp_1')
         self.mock_ssh_vinfra_security_group_rules.execute.assert_not_called()
+
+    @patch('onapp2vhi.inc.onapp_helpers.OnAppRequests')
+    @patch('onapp2vhi.inc.vinfra_wrapper.SSH')
+    def test_transfer_no_rules_default_accept_skips_existing_rules(self, mock_ssh, mock_onapprequests):
+
+        def onapprequestsget(param: str):
+            if param == 'virtual_machines/abcdef/network_interfaces':
+                return [
+                    {
+                        'network_interface': {
+                            'id': 'eth0',
+                            'identifier': 'eth0',
+                            'virtual_machine_id': 11,
+                            'label': 'main iface',
+                            'primary': ['2.2.2.2'],
+                            'mac_address': 'aa:bb:cc:dd:ee:ff',
+                            'network_join_id': 'eth0',
+                            'default_firewall_rule': 'ACCEPT',
+                            'connected': True,
+                        }
+                    },
+                ]
+            elif param == 'virtual_machines/abcdef/ip_addresses':
+                return [
+                    {
+                        'ip_address_join':
+                        {
+                            'ip_address': {'address': '2.2.2.2'},
+                            'network_interface_id': 'eth0'
+                        }
+                    }
+                ]
+            elif param == 'version':
+                return {'version': '5.9.9.testbuild(99)'}
+            elif param == 'virtual_machines/abcdef/firewall_rules':
+                return []
+
+            raise RuntimeError(f'unhandled onapprequsets.get({param})')
+
+        self.mock_onapprequests.get.side_effect = onapprequestsget
+
+        self.mock_ssh_vinfra_project.execute.side_effect = [
+            (0, json.dumps({'id': 123})),
+        ]
+        self.mock_ssh_vinfra_security_group.execute.side_effect = [
+            (0, json.dumps([])),
+            (0, json.dumps({'name': 'test_grp'})),
+            (0, json.dumps([{'id': 'sec_grp_1'}])),
+        ]
+        self.mock_ssh_vinfra_security_group_rules.execute.side_effect = [
+            (0, json.dumps({'result': 'ok'})),
+            (0, json.dumps({'result': 'ok'})),
+            (0, json.dumps({'result': 'ok'})),
+            (1, 'Security group rule already exists. Rule id is 99fd010d-7727-4707-993d-a527aece6475.'),
+        ]
+
+        mock_ssh.side_effect = [
+            self.mock_ssh_vinfra_security_group,
+            self.mock_ssh_vinfra_security_group_rules,
+            self.mock_ssh_vinfra_project
+        ]
+        mock_onapprequests.return_value = self.mock_onapprequests
+
+        results = transfer_firewall_rules_to_sg(self.mock_cfg, 'abcdef', 'dummy_vhi_proj')
+
+        self.assertEquals(results, 'sec_grp_1')
+        self.assertEqual(self.mock_ssh_vinfra_security_group_rules.execute.call_count, 4)
 
     # TODO! cases not covered:
     # - vinfra operation failed, i.e: output = empty / None

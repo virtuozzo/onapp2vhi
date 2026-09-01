@@ -359,7 +359,7 @@ class VinfraSGRules(VinfraServiceCompute):
             cmd += ' --egress'
         else:
             cmd += ' --ingress'
-        return self.execute(f"{cmd} -f json")
+        return self.execute(cmd)
 
     def list_sg_rules(self, sg_group: str = '', list_all: bool = False, **kwargs):
         """

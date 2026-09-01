@@ -20,6 +20,7 @@ from onapp2vhi.inc.vinfra_wrapper import (
     VinfraProject,
     VinfraServerInterface,
     VinfraServiceComputeServer,
+    VinfraError,
 )
 from onapp2vhi.utilities.config import OnApp2VHIConfig
 from onapp2vhi.onapp.onappstore import OnAppStore, OnAppStoreFailed
@@ -570,6 +571,21 @@ def check_sg_exists_in_project(cfg: OnApp2VHIConfig, vhiproj: str, sg_id: str):
     return False
 
 
+def _create_sg_rule_idempotent(sgr: VinfraSGRules, sg_name: str, egress: bool = False, **rule_kwargs) -> bool:
+    try:
+        output = sgr.create(sg_name=sg_name, egress=egress, **rule_kwargs)
+        output = json.loads(output)
+        if not output:
+            logs.warn(msg=f"Security group rule was not created: {rule_kwargs}")
+            return False
+        return True
+    except VinfraError as e:
+        if 'already exists' in e.output.lower():
+            logs.debug(msg=f'Security group rule already exists, skipping: {rule_kwargs}')
+            return True
+        raise
+
+
 def _add_allow_all_sg_rules(sgr: VinfraSGRules, sg_name: str):
     """
     Mirror OnApp default allow on V/IS: any-to-any ingress and egress for IPv4 and IPv6.
@@ -580,18 +596,15 @@ def _add_allow_all_sg_rules(sgr: VinfraSGRules, sg_name: str):
         ("IPv4", "0.0.0.0/0", True),
         ("IPv6", "::/0", True),
     ):
-        output = sgr.create(
-            sg_name=sg_name,
+        _create_sg_rule_idempotent(
+            sgr,
+            sg_name,
             egress=egress,
             **{"ethertype": ethertype,
                "port-range-min": 1,
                "port-range-max": 65535,
                "remote-ip": cidr},
         )
-        output = json.loads(output)
-        if not output:
-            logs.warn(msg=f"Allow-all rule was not set correctly for {ethertype} "
-                          f"{'egress' if egress else 'ingress'} {cidr}.")
 
 
 def _transfer_accept_rules_to_sg(sgr: VinfraSGRules, sg_name: str, accept_rules, sgr_data: dict):
@@ -608,15 +621,11 @@ def _transfer_accept_rules_to_sg(sgr: VinfraSGRules, sg_name: str, accept_rules,
                     data["port-range-min"] = port
                     data["port-range-max"] = port
 
-                    output = sgr.create(sg_name=sg_name, **data)
-                    output = json.loads(output)
+                    _create_sg_rule_idempotent(sgr, sg_name=sg_name, **data)
             else:
                 data["port-range-min"] = rule.port
                 data["port-range-max"] = rule.port
-                output = sgr.create(sg_name=sg_name, **data)
-                output = json.loads(output)
-        if not output:
-            logs.warn(msg=f"Firewall rule: {rule} was not transferred correctly")
+                _create_sg_rule_idempotent(sgr, sg_name=sg_name, **data)
 
 
 def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
@@ -647,30 +656,27 @@ def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
     security_group_name = f'sg_from_vs_{vm_idn}_and_nic_{primary_nic.nic_idn}'
     output = proj.show(domain=cfg.vhi_conf['vinfra_domain'], project_name=vhiproj)
     proj_id = json.loads(output)['id']
-    sg_list = sg.list_security_group(**{'project': proj_id})
-    sg_list = json.loads(sg_list)
+    sg_list = json.loads(sg.list_security_group(**{'project': proj_id, 'name': security_group_name}))
+    existing_sg = next((obj for obj in sg_list if obj['name'] == security_group_name), None)
 
-    for _sg_obj in sg_list:
-        if security_group_name != _sg_obj['name']:
-            continue
+    if existing_sg:
+        logs.warn(f'Security Group exists on VHI side NAME: {existing_sg["name"]}| ID: {existing_sg["id"]}')
+        sg_name = existing_sg['name']
+        custom_sg_id = existing_sg['id']
+    else:
+        _description = f'Security group created from the VS: {vm_idn} with primary NIC: {primary_nic.nic_idn}'
+        _cmd_create_sg = (f"{cfg.DOMAIN_AUTH} --vinfra-domain='{cfg.vhi_conf['vinfra_domain']}' --vinfra-project='{vhiproj}'"
+                          f" service compute security-group create {security_group_name} --description '{_description}'")
+        sg_create = sg.execute(_cmd_create_sg)
+        sg_create = json.loads(sg_create)
+        sg_name = sg_create.get('name', '')
+        output = sg.list_security_group(**{'name': f"{sg_name}"})
+        output = json.loads(output)
+        if not output:
+            logs.error(msg="Security group hasn't been created")
+            return False
 
-        logs.warn(f'Security Group exists on VHI side NAME: {_sg_obj["name"]}| ID: {_sg_obj["id"]}')
-        return _sg_obj['id']
-
-    # Create new SG
-    _description = f'Security group created from the VS: {vm_idn} with primary NIC: {primary_nic.nic_idn}'
-    _cmd_create_sg = (f"{cfg.DOMAIN_AUTH} --vinfra-domain='{cfg.vhi_conf['vinfra_domain']}' --vinfra-project='{vhiproj}'"
-                      f" service compute security-group create {security_group_name} --description '{_description}'")
-    sg_create = sg.execute(_cmd_create_sg)
-    sg_create = json.loads(sg_create)
-    sg_name = sg_create.get('name', '')
-    output = sg.list_security_group(**{'name': f"{sg_name}"})
-    output = json.loads(output)
-    if not output:
-        logs.error(msg="Security group hasn't been created")
-        return False
-
-    custom_sg_id = output[0]['id']
+        custom_sg_id = output[0]['id']
 
     # https://virtuozzo.atlassian.net/wiki/spaces/PROD/pages/2616033301/WiP+-+Compare+OnApp+firewall+rules+with+Virtuozzo+security+groups#The-first-scenario%3A-The-default-firewall-rule-of-OnApp-VS-is-Drop
     accept_only_rules = [rule for rule in firewall_rules_for_primary_nic if rule.command == accept]
@@ -684,7 +690,7 @@ def transfer_firewall_rules_to_sg(cfg: OnApp2VHIConfig,
     else:
         logs.debug(msg='No ACCEPT rules to transfer; leaving security group empty (default deny on V/IS).')
 
-    logs.debug(f"Transferred firewall rules list: {custom_sg_id} for newly created Security group")
+    logs.debug(f"Transferred firewall rules list: {custom_sg_id} for Security group {sg_name}")
     return custom_sg_id
 
 
