@@ -25,19 +25,68 @@ function checkOS() {
         fi
 }
 
-# Keep OnApp guest network; cloud-init must not rewrite it from incomplete metadata.
+# True when a guest NIC already has more than one address (OnApp alias, dual-stack, extra ifcfg).
+function guestHasNicWithMultipleIps() {
+        if [[ -f /etc/network/interfaces ]] && awk '
+                $1 == "iface" && $2 != "lo" {
+                        split($2, a, ":")
+                        count[a[1]]++
+                }
+                END {
+                        for (d in count)
+                                if (count[d] > 1)
+                                        exit 0
+                        exit 1
+                }
+        ' /etc/network/interfaces; then
+                return 0
+        fi
+        if compgen -G '/etc/sysconfig/network-scripts/ifcfg-*:*' > /dev/null; then
+                return 0
+        fi
+        if grep -E '^IPADDR[0-9]+=' /etc/sysconfig/network-scripts/ifcfg-* 2>/dev/null | grep -qv '/ifcfg-lo:'; then
+                return 0
+        fi
+        return 1
+}
+
 function writeOnappCloudCfg() {
         mkdir -p /etc/cloud/cloud.cfg.d
-        cat << EOF > /etc/cloud/cloud.cfg.d/onapp.cfg
+        if [[ "${DISABLE_CLOUDINIT_NETWORK}" == "yes" ]]; then
+                cat << EOF > /etc/cloud/cloud.cfg.d/onapp.cfg
 ssh_deletekeys: false
 preserve_hostname: true
 network:
   config: disabled
 EOF
+        else
+                cat << EOF > /etc/cloud/cloud.cfg.d/onapp.cfg
+ssh_deletekeys: false
+preserve_hostname: true
+EOF
+        fi
+}
+
+# Single-IP guests: let cloud-init own ENI like before. Multi-IP: keep OnApp interfaces.
+function maybeHandOverEniToCloudInit() {
+        if [[ "${DISABLE_CLOUDINIT_NETWORK}" == "yes" ]]; then
+                return
+        fi
+        if [[ -f /etc/network/interfaces ]]; then
+                cat << EOF > /etc/network/interfaces
+source /etc/network/interfaces.d/*
+EOF
+        fi
 }
 
 # Install Cloudinit
 function installCloudinit() {
+        if guestHasNicWithMultipleIps; then
+                DISABLE_CLOUDINIT_NETWORK=yes
+                echo "NIC with multiple IPs: disabling cloud-init network config"
+        else
+                DISABLE_CLOUDINIT_NETWORK=no
+        fi
         if [[ ${OS} == 'ubuntu' ]]; then
                 apt-get update
                 apt-get install -y cloud-init cloud-guest-utils net-tools
@@ -54,8 +103,12 @@ function installCloudinit() {
 				if [[ -f /etc/network/interfaces ]]; then
 					cp /etc/network/interfaces /etc/network/onapp2vhi.interfaces
 				fi
+				maybeHandOverEniToCloudInit
 				echo 'datasource_list: [ ConfigDrive, OpenStack, None ]' | sudo -s tee /etc/cloud/cloud.cfg.d/90_dpkg.cfg
 				dpkg-reconfigure -f noninteractive cloud-init
+				if [[ "${DISABLE_CLOUDINIT_NETWORK}" != "yes" ]]; then
+					sed -i "s/'netplan', 'eni'/'eni'/g" /etc/cloud/cloud.cfg
+				fi
 				cloud-init clean --seed --logs
 				cloud-init init --local
 				rm -rf /etc/cron.d/cron-cloud-install
@@ -70,6 +123,7 @@ function installCloudinit() {
 				if [[ -f /etc/network/interfaces ]]; then
 					cp /etc/network/interfaces /etc/network/onapp2vhi.interfaces
 				fi
+				maybeHandOverEniToCloudInit
                                 echo 'datasource_list: [ ConfigDrive, OpenStack, None ]' | sudo -s tee /etc/cloud/cloud.cfg.d/90_dpkg.cfg
                                 dpkg-reconfigure -f noninteractive cloud-init
                                 cloud-init clean --seed --logs
@@ -90,6 +144,7 @@ function installCloudinit() {
 			if [[ -f /etc/network/interfaces ]]; then
 				cp /etc/network/interfaces /etc/network/onapp2vhi.interfaces
 			fi
+			maybeHandOverEniToCloudInit
                         cloud-init clean --seed --logs
                         cloud-init init --local
                         rm -rf /etc/cron.d/cron-cloud-install
