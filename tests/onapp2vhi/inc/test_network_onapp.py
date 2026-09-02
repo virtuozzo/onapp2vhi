@@ -16,6 +16,7 @@ from onapp2vhi.inc.network_onapp import (
     get_network_id_by_identifier,
     get_ip_net,
     get_ip_range,
+    nic_has_multiple_ips,
 )
 from onapp2vhi.inc.rest_client import OnAppRequests
 from onapp2vhi.utilities.config import OnApp2VHIConfig
@@ -475,3 +476,22 @@ class GetNetworkIdByIdentifier(BaseNetworkOnAppTestCase):
 
         self.mock_onapprequests.get.assert_called_with('settings/networks')
         self.assertEqual(result, '')
+
+
+class NicHasMultipleIpsTestCase(TestCase):
+
+    def test_any_nic_with_two_addresses(self):
+        self.assertTrue(nic_has_multiple_ips({
+            1: ['185.146.85.168', '89.39.209.145'],
+            2: ['192.168.1.146'],
+        }))
+
+    def test_one_address_per_nic(self):
+        self.assertFalse(nic_has_multiple_ips({
+            1: ['89.39.209.145'],
+            2: ['192.168.1.146'],
+        }))
+
+    def test_empty(self):
+        self.assertFalse(nic_has_multiple_ips({}))
+        self.assertFalse(nic_has_multiple_ips(None))

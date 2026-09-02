@@ -5,6 +5,10 @@ from onapp2vhi.inc.ssh_connector import ssh_run, SSH
 from onapp2vhi.inc.utils import exit_status_code_handler
 from onapp2vhi.utilities.web import download_file
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+from onapp2vhi.inc.network_onapp import (
+    DISABLE_CLOUDINIT_NETWORK_MARKER,
+    nic_has_multiple_ips,
+)
 
 logs = OnAppVHILogger()
 
@@ -83,6 +87,14 @@ def vm_install_bootloader(cfg: OnApp2VHIConfig, vm_handler, idn: str, vm_propert
                         f' Output:\n\t{output}'
         ):
             return False
+
+    if _cloud_init and nic_has_multiple_ips(_nics):
+        logs.info(
+            f'{_spaces}{_boot_msg}OnApp: NIC has multiple IPs, '
+            f'disable cloud-init network on first boot [{VM_IDn}] --',
+            header=True,
+        )
+        _vm_ssh.execute(f'touch {DISABLE_CLOUDINIT_NETWORK_MARKER}')
 
     # -- STEP 4 --
     if vm_handler.vz_guest_tools:

@@ -36,6 +36,10 @@ send -- "/bin/cp -rf /mnt/cron-cloud-install /sysroot/etc/cron.d/cron-cloud-inst
 send -- "\r"
 expect -exact "\r
 \[root@recovery ~\]# "
+send -- ": onapp2vhi-multi-ip\r"
+send -- "\r"
+expect -exact "\r
+\[root@recovery ~\]# "
 send -- "/bin/cp -rf /mnt/provisiongrub.sh /sysroot/root/ProvisionGRUB.sh\r"
 send -- "\r"
 expect -exact "\r

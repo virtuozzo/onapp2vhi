@@ -13,6 +13,7 @@ from onapp2vhi.inc.onapp_helpers import (
     deactivate_disk,
 )
 from onapp2vhi.utilities.config import OnApp2VHIConfig
+from onapp2vhi.inc.network_onapp import nic_has_multiple_ips
 
 logs = OnAppVHILogger()
 
@@ -91,6 +92,11 @@ def vm_install_bootloader_offline(cfg: OnApp2VHIConfig, vm_handler, idn: str, vm
 
     _hv_ssh.execute(f"sed -i 's/identifier/{vm_idn}/g' {install_script}"
                     f" && sed -i 's/identifier/{vm_idn}/g' /onapp/tools/scripts/recovery.xml.mg")
+    if _cloud_init and nic_has_multiple_ips(_nics):
+        logs.info(msg='NIC has multiple IPs: disable cloud-init network on first boot', separator=True)
+        _hv_ssh.execute(
+            f"sed -i 's|: onapp2vhi-multi-ip|touch /sysroot/etc/onapp2vhi-disable-cloud-network|g' {install_script}"
+        )
 
     # -- STEP 6 --
     logs.info(f'{_spaces}{_boot_msg}STEP #6 -- OnApp: Start VM in recovery mode --', header=True)
@@ -119,6 +125,9 @@ def vm_install_bootloader_offline(cfg: OnApp2VHIConfig, vm_handler, idn: str, vm
     logs.info(f'{_spaces}{_boot_msg}STEP #8 -- Restore grub script placeholders --', header=True)
     _hv_ssh.execute(f"sed -i 's/{vm_idn}/identifier/g' {install_script}"
                     f" && sed -i 's/{vm_idn}/identifier/g' /onapp/tools/scripts/recovery.xml.mg")
+    _hv_ssh.execute(
+        f"sed -i 's|touch /sysroot/etc/onapp2vhi-disable-cloud-network|: onapp2vhi-multi-ip|g' {install_script}"
+    )
 
     exit_status, output = _hv_ssh.execute(f"virsh shutdown {vm_idn}")
     while exit_status != 1:

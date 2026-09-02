@@ -242,3 +242,13 @@ def get_vm_network_info(cfg: OnApp2VHIConfig, vm_identifier: str = '') -> dict:
                                                     network_interface_id=_nic_id)
         network_info[_nic_id] = [addr['address'] for addr in _ip_addrs]
     return network_info
+
+
+DISABLE_CLOUDINIT_NETWORK_MARKER = '/etc/onapp2vhi-disable-cloud-network'
+
+
+def nic_has_multiple_ips(network_info: dict) -> bool:
+    """True if any NIC already has more than one address on OnApp."""
+    if not network_info:
+        return False
+    return any(len(addrs or []) > 1 for addrs in network_info.values())
