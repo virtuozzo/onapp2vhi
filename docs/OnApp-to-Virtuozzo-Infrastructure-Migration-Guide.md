@@ -178,7 +178,7 @@ Install from the `o2v-ps` branch on GitHub (`virtuozzo/onapp2vhi`).
 2. Create the V/IS service user:
 
    ```bash
-   onapp2vhi create_service_user
+   onapp2vhi create-service-user
    ```
 
 3. On the V/IS controller, load admin credentials and temporarily disable port security on migration networks:
@@ -269,7 +269,7 @@ reboot
 onapp2vhi --help
 onapp2vhi --generate-config
 onapp2vhi-config
-onapp2vhi create_service_user
+onapp2vhi create-service-user
 onapp2vhi list-onapp-users
 onapp2vhi list-onapp-vms
 onapp2vhi migrate --user=<id> [--vm=<id1,id2>] [options...]

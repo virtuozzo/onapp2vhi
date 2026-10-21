@@ -116,7 +116,7 @@
 ## Setup User on VHI Side
 
 - run virtual env [~/onapp2vhi]# source .venv/bin/activate
-    - run next command: `(.venv)[~/onapp2vhi]# onapp2vhi create_service_user`
+    - run next command: `(.venv)[~/onapp2vhi]# onapp2vhi create-service-user`
     - user for migrations will be created and saved into `~/.config/onapp2vhi/config.ini` file with credentials
 - On VHI server do next steps:
     - set into .bashrc file:
@@ -154,7 +154,7 @@
 
 - Currently, migration tool provides next commands:
   * **Commands**:
-    * `create_service_user` - command will create special user under the hood for migration and save his credentials into config file
+    * `create-service-user` - command will create special user under the hood for migration and save his credentials into config file
     * `list-onapp-users` - get and show all user at OnApp cloud
     * `list-onapp-vms` - get and show all virtual machines at OnApp cloud
     * `migrate` - entry point to start migration
